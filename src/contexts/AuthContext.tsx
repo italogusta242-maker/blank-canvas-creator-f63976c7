@@ -109,13 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const profileStatus = profile?.status || "pendente_onboarding";
 
       if (profileStatus === "ativo") {
-        // Test account skips cronômetro
-        const userEmail = (await supabase.auth.getUser()).data.user?.email;
-        if (userEmail === "teste@anaac.com") {
-          navigate("/aluno", { replace: true });
-        } else {
-          navigate("/cronometro", { replace: true });
-        }
+        navigate("/aluno", { replace: true });
       } else {
         await safeSignOut();
       }
