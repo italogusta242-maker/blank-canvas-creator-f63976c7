@@ -136,7 +136,7 @@ const initialUser: FunnelUser = { nome: "", email: "", telefone: "", senha: "", 
 const STORAGE_KEY = "funnel_checkout_state";
 
 export const useFunnelStore = create<FunnelState>((set, get) => ({
-  step: "vsl",
+  step: "modern",
   goTo: (step) => set({ step }),
   next: () => {
     const idx = STEP_ORDER.indexOf(get().step);
