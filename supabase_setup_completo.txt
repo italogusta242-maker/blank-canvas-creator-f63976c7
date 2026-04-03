@@ -1,0 +1,208 @@
+-- ========================================================
+-- SETUP COMPLETO SUPABASE - PROJETO SHAPE INSANO
+-- Copie e cole este conteúdo no SQL Editor do Supabase
+-- ========================================================
+
+-- 1. EXTENSÕES INICIAIS
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABELA DE PERFIS (PROFILES)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome text,
+  email text,
+  telefone text,
+  cpf text,
+  nascimento date,
+  sexo text,
+  avatar_url text,
+  peso float,
+  altura float,
+  meta_peso float,
+  faixa_etaria text,
+  cidade_estado text,
+  como_chegou text,
+  indicacao text,
+  onboarded boolean DEFAULT false,
+  status text DEFAULT 'active',
+  hustle_points integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. TABELA DE ROLES (ADMINS E COLABORADORES)
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  role text CHECK (role IN ('admin', 'specialist', 'cs', 'closer')) NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, role)
+);
+
+-- 4. TABELAS DE DESAFIOS E CONTEÚDO
+CREATE TABLE IF NOT EXISTS public.challenges (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  title text NOT NULL,
+  description text,
+  banner_image_url text,
+  start_date timestamp with time zone,
+  end_date timestamp with time zone,
+  type text DEFAULT 'standard',
+  is_active boolean DEFAULT true,
+  rules jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.challenge_modules (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  challenge_id uuid REFERENCES public.challenges(id) ON DELETE CASCADE NOT NULL,
+  title text NOT NULL,
+  description text,
+  order_index integer DEFAULT 0,
+  is_locked boolean DEFAULT false,
+  icon text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.challenge_lessons (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  module_id uuid REFERENCES public.challenge_modules(id) ON DELETE CASCADE NOT NULL,
+  title text NOT NULL,
+  description text,
+  video_url text,
+  duration text,
+  order_index integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. TABELAS DE COMUNIDADE (SOCIAL)
+CREATE TABLE IF NOT EXISTS public.community_posts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  content text NOT NULL,
+  media_url text,
+  likes integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.post_comments (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id uuid REFERENCES public.community_posts(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.post_likes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id uuid REFERENCES public.community_posts(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(post_id, user_id)
+);
+
+-- 6. TABELAS DE HÁBITOS E GAMIFICAÇÃO
+CREATE TABLE IF NOT EXISTS public.daily_habits (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  date date DEFAULT current_date NOT NULL,
+  water_liters float DEFAULT 0,
+  completed_meals jsonb DEFAULT '[]'::jsonb,
+  sleep_quality integer DEFAULT 0,
+  notes text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS public.hustle_points (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  points integer NOT NULL,
+  reason text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 7. TABELAS DE PAGAMENTOS E ACESSO (FASE 6 - FITP)
+CREATE TABLE IF NOT EXISTS public.user_product_access (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  plan_id text NOT NULL, -- ex: 'mensal', 'trimestral', 'familiar'
+  is_active boolean DEFAULT true,
+  expires_at timestamp with time zone,
+  group_id uuid, -- Para planos familiares
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.family_groups (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  max_slots integer DEFAULT 3,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.family_members (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id uuid REFERENCES public.family_groups(id) ON DELETE CASCADE NOT NULL,
+  invited_email text NOT NULL,
+  invited_user_id uuid REFERENCES public.profiles(id),
+  status text CHECK (status IN ('pending', 'active')) DEFAULT 'pending',
+  joined_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. STORAGE BUCKETS
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('community_media', 'community_media', true) 
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('avatars', 'avatars', true) 
+ON CONFLICT (id) DO NOTHING;
+
+-- 9. RLS E POLÍTICAS (SIMPLIFICADO PARA O EDITOR DA LOVABLE)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_product_access ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  -- Profiles
+  CREATE POLICY "Public Profiles Access" ON public.profiles FOR SELECT USING (true);
+  CREATE POLICY "Users Update Own Profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+  
+  -- Community
+  CREATE POLICY "Posts Visible to All" ON public.community_posts FOR SELECT USING (true);
+  CREATE POLICY "Auth Users Post" ON public.community_posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+  
+  -- Product Access
+  CREATE POLICY "Users View Own Access" ON public.user_product_access FOR SELECT USING (auth.uid() = user_id);
+END $$;
+
+-- 10. FUNCÕES E TRIGGERS ÚTEIS
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, nome)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'nome');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger para criar perfil automático
+-- DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- CREATE TRIGGER on_auth_user_created
+--   AFTER INSERT ON auth.users
+--   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Trigger para updated_at
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER tr_user_product_access_updated_at BEFORE UPDATE ON public.user_product_access FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

@@ -1,0 +1,65 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+*.local
+
+node_modules
+dist
+dist-ssr
+supabase/.temp/
+venv/
+.venv/
+env/
+.env.env
+*.log
+nohup.out
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Database and Scripts
+*.sql
+*.sql_CLEAN.sql
+DATABASE_COMMANDS.md
+check_tables.js
+check_encoding.js
+convert_to_utf8.js
+fix.js
+fix_roles.js
+test_db.js
+test_direct_db.js
+test_rest_api.js
+verify_migration.js
+create_admin_user.js
+create_admin_sql.cjs
+create_bucket.cjs
+rebrand.cjs
+refatorar-rotas.cjs
+repair_encoding.cjs
+
+# Artifacts & Logs
+server_log.txt
+tsc_output.txt
+tsc_errors.txt
+relatorio-performance.html
+git_status.txt
+git_status_fixed.txt
+type_check.txt

@@ -1,0 +1,330 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* DEFAULT: LIGHT MODE (Ivory & Fuchsia) */
+    /* Ajustado para quebrar o excesso de branco */
+    --background: 220 15% 96%; /* Soft slate gray */
+    --foreground: 222 47% 11%; /* Dark Blue */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 342 100% 57%; /* Fuchsia */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 95%; /* Light Blue/Gray */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 222 20% 92%;
+    --muted-foreground: 222 20% 45%;
+
+    --accent: 342 100% 57%; /* Fuchsia */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 222 20% 90%;
+    --input: 222 20% 90%;
+    --ring: 342 100% 57%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 342 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 95%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 222 20% 88%;
+    --sidebar-ring: 342 100% 57%;
+
+    /* ANAAC Design System Tokens (Evolução v3 - Navy Blue) */
+    --anaac-primary: 342 100% 57%;    /* Fuchsia */
+    --anaac-accent: 280 100% 60%;     /* Purple */
+    --anaac-bg: 222 47% 5%;           /* Navy Deep */
+    --anaac-card: 222 47% 9%;         /* Navy Card */
+    --anaac-border: 222 47% 16%;      /* Navy Border */
+    --anaac-text: 0 0% 100%;          /* Pure White */
+    --anaac-text-muted: 222 20% 75%;  /* Muted Text - increased visibility */
+    --anaac-gold: 42 100% 50%;        /* Kept for legacy if needed but avoids usage in admin */
+    --anaac-gold-glow: 42 100% 70%;
+
+    /* Crimson tokens (used on login/CTA buttons) */
+    --crimson: 342 100% 47%;
+    --crimson-glow: 342 80% 58%;
+  }
+
+  /* DARK MODE (Enforced Light - but variables kept for structural compatibility if needed) */
+  [data-theme='dark'] {
+    --background: 222 47% 4%; /* Near Black Blue */
+    --foreground: 60 30% 98%;
+
+    --card: 222 47% 6%;
+    --card-foreground: 60 30% 98%;
+
+    --popover: 222 47% 6%;
+    --popover-foreground: 60 30% 98%;
+
+    --primary: 342 100% 57%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 60 30% 98%;
+
+    --muted: 222 47% 12%;
+    --muted-foreground: 222 20% 65%;
+
+    --accent: 342 100% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 342 100% 57%;
+
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 60 30% 98%;
+    --sidebar-primary: 342 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 10%;
+    --sidebar-accent-foreground: 60 30% 98%;
+    --sidebar-border: 222 47% 15%;
+  }
+
+  /* Special states - These remain consistent but can be adjusted later if needed */
+  :root {
+    --dishonor-bg: 260 20% 6%;
+    --dishonor-card: 260 15% 10%;
+    --dishonor-border: 260 12% 18%;
+    --dishonor-muted: 260 8% 35%;
+    --dishonor-accent: 270 40% 45%;
+    --dishonor-glow: 270 50% 55%;
+    --dishonor-alert: 0 70% 45%;
+    --dishonor-frost: 220 30% 50%;
+
+    --truce-bg: 210 25% 7%;
+    --truce-card: 210 20% 11%;
+    --truce-border: 210 18% 20%;
+    --truce-muted: 210 15% 40%;
+    --truce-accent: 210 60% 50%;
+    --truce-glow: 200 70% 55%;
+    --truce-frost: 200 40% 60%;
+
+    --glass-bg: 0 0% 100% / 0.04;
+    --glass-border: 0 0% 100% / 0.08;
+    --glass-highlight: 0 0% 100% / 0.12;
+    --forja-teal: 170 80% 45%;
+    --forja-teal-glow: 170 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    /* Adicionando leve textura para quebrar branco excessivo */
+    background-image: radial-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 45px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 25px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  p, span, div {
+    line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .font-cinzel {
+    font-family: 'Playfair Display', serif;
+  }
+
+  .text-1 {
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  .text-2 {
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  /* Text Abstractions for Theme Contrast */
+  .text-primary {
+    color: hsl(var(--foreground));
+  }
+
+  .text-secondary {
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .text-muted {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .card-dark-text {
+    color: hsl(0, 0%, 100%); /* Always white for explicitly dark cards */
+  }
+
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+
+  .text-crimson {
+    color: hsl(var(--crimson));
+  }
+
+  .bg-crimson {
+    background-color: hsl(var(--crimson));
+  }
+
+  .bg-obsidian {
+    background-color: hsl(var(--obsidian));
+  }
+
+  .bg-marble {
+    background-color: hsl(var(--marble));
+  }
+
+  .bg-marble-light {
+    background-color: hsl(var(--marble-light));
+  }
+
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-glow)));
+  }
+
+  .crimson-gradient {
+    background: linear-gradient(135deg, hsl(var(--crimson)), hsl(var(--crimson-glow)));
+  }
+
+  .gold-text-gradient {
+    background: linear-gradient(135deg, hsl(var(--crimson)), hsl(var(--gold)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gold-shadow {
+    box-shadow: 0 0 20px hsl(var(--gold) / 0.3), 0 0 60px hsl(var(--gold) / 0.1);
+  }
+
+  .crimson-shadow {
+    box-shadow: 0 0 20px hsl(var(--crimson) / 0.3), 0 0 60px hsl(var(--crimson) / 0.1);
+  }
+
+  .marble-texture {
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, hsl(var(--primary) / 0.02) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, hsl(var(--primary) / 0.02) 0%, transparent 50%);
+  }
+
+  .grayscale-mode {
+    filter: grayscale(100%) brightness(0.7);
+    transition: filter 1s ease-in-out;
+  }
+
+  .glass-panel {
+    @apply bg-card/80 backdrop-blur-md border border-white/20 shadow-glass;
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+/* ── Global Bug Fixes ── */
+/* Fix: border-radius must persist on images across all states */
+img {
+  border-radius: inherit;
+}
+img:hover,
+img:active,
+img:focus {
+  border-radius: inherit;
+}
+
+/* Fix: text contrast for inputs over light/white backgrounds */
+:root input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+:root textarea,
+:root select {
+  color: hsl(222 47% 11%);
+}
+
+/* Pulse glow animation */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px hsl(var(--crimson) / 0.3); }
+  50% { box-shadow: 0 0 30px hsl(var(--crimson) / 0.6), 0 0 60px hsl(var(--crimson) / 0.2); }
+}
+
+@keyframes flame-flicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  25% { opacity: 0.9; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(0.98); }
+  75% { opacity: 0.95; transform: scale(1.01); }
+}
+
+@keyframes gold-particle {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-100px) scale(0); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-flame {
+  animation: flame-flicker 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 2s ease-in-out infinite;
+}
