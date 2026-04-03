@@ -12,7 +12,7 @@ const FunnelVSL = () => {
   const next = useFunnelStore((s) => s.next);
 
   // Fetch dynamic VSL URL from app_settings
-  const { data: vslUrl } = useQuery({
+  const { data: vslUrl, isLoading, isFetched } = useQuery({
     queryKey: ["app_settings", "vsl_video_url"],
     queryFn: async () => {
       const { data } = await supabase
@@ -34,6 +34,14 @@ const FunnelVSL = () => {
   const [videoEnded, setVideoEnded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto skip if no video is configured
+  useEffect(() => {
+    if (isFetched && !VIDEO_URL) {
+      console.warn("No VSL configured, skipping video step...");
+      next();
+    }
+  }, [isFetched, VIDEO_URL, next]);
 
   // ── Handle play/mute on first tap ──
   const handleTapToUnmute = useCallback(() => {
@@ -124,10 +132,14 @@ const FunnelVSL = () => {
     next();
   };
 
-  if (!VIDEO_URL) {
+  // If fetching metadata or video is not found, wait.
+  // The useEffect will call next() if no video is found.
+  if (isLoading || !VIDEO_URL) {
     return (
       <div className="relative w-full h-full bg-black flex items-center justify-center">
-        <p className="text-white/60 text-sm">Carregando vídeo...</p>
+        <p className="text-white/60 text-sm">
+          {isLoading ? "Carregando vídeo..." : "Redirecionando..."}
+        </p>
       </div>
     );
   }
