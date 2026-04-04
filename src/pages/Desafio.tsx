@@ -464,8 +464,13 @@ const Challenge = () => {
   };
 
   const calculateCycleDay = () => {
-    if (!user?.created_at) return 1;
-    const diffDays = Math.floor(Math.abs(new Date().getTime() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24));
+    // Data de início oficial: Segunda-feira, 06 de Abril de 2026 (Brasília)
+    const startDate = new Date('2026-04-06T00:00:00-03:00').getTime();
+    const now = new Date().getTime();
+    
+    if (now < startDate) return 1;
+    
+    const diffDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
     return (diffDays % 21) + 1;
   };
   
