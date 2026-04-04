@@ -120,21 +120,15 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-      {/* Category tabs */}
-      <div className="flex border-b border-border">
-        {(Object.keys(PLAN_MAPPING) as PlanCategory[]).map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`flex-1 py-3 text-xs font-bold transition-all ${
-              category === cat
-                ? `bg-primary/10 ${PLAN_MAPPING[cat].color} border-b-2 border-primary`
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {PLAN_MAPPING[cat].label}
-          </button>
-        ))}
+      {/* Category header */}
+      <div className="flex items-center justify-between border-b border-border p-4 bg-muted/20">
+         <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Sua Liga</span>
+            <span className={`font-sans font-bold text-lg ${PLAN_MAPPING[category]?.color || 'text-foreground'}`}>
+              Liga {PLAN_MAPPING[category]?.label || 'Desafiante'}
+            </span>
+         </div>
+         <Trophy className={PLAN_MAPPING[category]?.color || 'text-muted-foreground'} size={24} />
       </div>
 
       <div className="p-2 space-y-2">
@@ -144,7 +138,15 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
           </div>
         ) : (
           <>
-            <PodiumCard entries={entries} onAvatarClick={onAvatarClick} />
+            {entries.length === 0 ? (
+              <div className="text-center py-12 px-4 opacity-80">
+                <Trophy size={48} className={`mx-auto mb-3 opacity-20 ${PLAN_MAPPING[category]?.color || ''}`} />
+                <p className="font-cinzel text-sm font-bold text-foreground">Você é a primeira da Liga {PLAN_MAPPING[category]?.label || ""} a chegar aqui!</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Comece a treinar para dominar o topo do ranking este mês.</p>
+              </div>
+            ) : (
+              <PodiumCard entries={entries} onAvatarClick={onAvatarClick} />
+            )}
             
             {/* Show user's own position if not in Top 10 */}
             {userEntry && userEntry.rank > 10 && (

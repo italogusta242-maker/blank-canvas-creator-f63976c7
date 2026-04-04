@@ -28,21 +28,23 @@ function getPeriodStart(period: RankPeriod): string | null {
   return null; // alltime
 }
 
-function useRanking(period: RankPeriod) {
+function useRanking(period: RankPeriod, plannerType?: string) {
   const { user } = useAuth();
   const periodStart = getPeriodStart(period);
 
   return useQuery({
-    queryKey: ["gym-rats-ranking", period],
+    queryKey: ["gym-rats-ranking", period, plannerType],
     queryFn: async () => {
       // For alltime, use hustle_points directly from profiles (cached total)
       if (period === "alltime") {
-        const { data, error } = await supabase
+        let q = supabase
           .from("profiles")
           .select("id, nome, avatar_url, hustle_points")
           .gt("hustle_points", 0)
-          .order("hustle_points", { ascending: false })
-          .limit(30);
+          
+        if (plannerType) q = q.eq("planner_type", plannerType);
+        
+        const { data, error } = await q.order("hustle_points", { ascending: false }).limit(30);
         if (error) throw error;
         return (data || []).map((p: any, i: number) => ({
           user_id: p.id,
@@ -54,13 +56,17 @@ function useRanking(period: RankPeriod) {
         }));
       }
 
-      // For weekly/monthly — use hustle_points table
-      const query = supabase
+      // For weekly/monthly — use hustle_points table with inner join on profiles to filter planner
+      let query: any = supabase
         .from("hustle_points")
-        .select("user_id, points, profiles:user_id (nome, avatar_url)");
+        .select("user_id, points, profiles!inner(nome, avatar_url, planner_type)");
+
+      if (plannerType) {
+        query = query.eq("profiles.planner_type", plannerType);
+      }
 
       if (periodStart) {
-        query.gte("created_at", periodStart);
+        query = query.gte("created_at", periodStart);
       }
 
       const { data, error } = await query;
@@ -102,8 +108,19 @@ const MEDAL_BG = ["bg-accent text-white", "bg-zinc-400 text-black", "bg-amber-70
 
 export function GymRatsHub() {
   const { user } = useAuth();
+  
+  const { data: userProfile } = useQuery({
+    queryKey: ["profile-planner", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("planner_type").eq("id", user.id).single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const [period, setPeriod] = useState<RankPeriod>("weekly");
-  const { data: ranking = [], isLoading } = useRanking(period);
+  const { data: ranking = [], isLoading } = useRanking(period, userProfile?.planner_type);
 
   const top3 = ranking.slice(0, 3);
   const rest = ranking.slice(3);

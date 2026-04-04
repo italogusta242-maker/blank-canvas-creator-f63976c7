@@ -168,12 +168,31 @@ const Challenge = () => {
     queryKey: ["profile-group", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase.from("profiles").select("group_id").eq("id", user.id).maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("group_id, planner_type").eq("id", user.id).maybeSingle();
       if (error) { console.error("Profile fetch error:", error); return null; }
       return data;
     },
     enabled: !!user,
   });
+
+  const [isUpdatingPlanner, setIsUpdatingPlanner] = useState(false);
+
+  const handleSelectPlanner = async (plannerType: string) => {
+    if (!user) return;
+    setIsUpdatingPlanner(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ planner_type: plannerType }).eq("id", user.id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["profile-group", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Planner ativado com sucesso!");
+    } catch(err) {
+      console.error(err);
+      toast.error("Erro ao ativar o planner.");
+    } finally {
+      setIsUpdatingPlanner(false);
+    }
+  };
 
   const userGroupId = userProfile?.group_id ?? null;
 
@@ -481,6 +500,56 @@ const Challenge = () => {
   const isCompleted = (lessonId: string) => progress.some((p: any) => p.lesson_id === lessonId && p.status === 'completed');
 
   if (!profileLoaded || loadingChallenges) return <SkeletonLayout />;
+
+  if (profileLoaded && !userProfile?.planner_type) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-2">
+          <h1 className="font-sans text-3xl md:text-5xl font-black text-foreground uppercase tracking-tight">Escolha seu Planner</h1>
+          <p className="text-muted-foreground max-w-md mx-auto text-sm">Esta escolha define suas metas diárias e sua liga na comunidade. Você competirá com pessoas do seu mesmo nível.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
+          <button 
+            disabled={isUpdatingPlanner}
+            onClick={() => handleSelectPlanner('foco_essencial')}
+            className="flex flex-col items-center p-8 bg-card border border-border hover:border-emerald-500/50 rounded-3xl transition-all disabled:opacity-50 text-left hover:-translate-y-1 shadow-sm"
+          >
+            <div className="bg-emerald-500/10 text-emerald-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-emerald-500/20">Essencial</div>
+            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Foco Essencial</h3>
+            <p className="text-xs text-muted-foreground text-center">O básico que funciona perfeitamente. Menos obrigações, ideal para quem tem rotina apertada e precisa de constância real.</p>
+          </button>
+
+          <button 
+             disabled={isUpdatingPlanner}
+             onClick={() => handleSelectPlanner('constancia')}
+             className="flex flex-col items-center p-8 bg-card border border-border hover:border-blue-500/50 rounded-3xl transition-all disabled:opacity-50 text-left hover:-translate-y-1 shadow-sm"
+          >
+            <div className="bg-blue-500/10 text-blue-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-blue-500/20">Pro</div>
+            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Constância em Foco</h3>
+            <p className="text-xs text-muted-foreground text-center">Volume equilibrado de atividades. O caminho sustentável para quem já domina a base e quer evolução definitiva.</p>
+          </button>
+
+          <button 
+             disabled={isUpdatingPlanner}
+             onClick={() => handleSelectPlanner('elite')}
+             className="flex flex-col items-center p-8 bg-card border border-border hover:border-rose-500/50 rounded-3xl transition-all disabled:opacity-50 text-left relative overflow-hidden hover:-translate-y-1 shadow-sm"
+          >
+            <div className="bg-rose-500/10 text-rose-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-rose-500/20">Hardcore</div>
+            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Elite 100%</h3>
+            <p className="text-xs text-muted-foreground text-center">Máxima exigência. Sem margem para erros. Para quem quer extrair até a última gota de performance.</p>
+          </button>
+        </div>
+
+        {isUpdatingPlanner && (
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold animate-pulse text-accent uppercase tracking-widest">Forjando seu destino...</p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-32">
