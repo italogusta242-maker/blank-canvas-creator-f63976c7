@@ -178,14 +178,17 @@ const Challenge = () => {
   const userGroupId = userProfile?.group_id ?? null;
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
-    queryKey: ["challenges", "all"],
+    queryKey: ["challenges", userGroupId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      let query = supabase.from("challenges").select("*").eq("is_active", true);
+      
+      if (userGroupId) {
+        query = query.or(`target_group_id.is.null,target_group_id.eq.${userGroupId}`);
+      } else {
+        query = query.is("target_group_id", null);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
       return data as Challenge[];
     },
