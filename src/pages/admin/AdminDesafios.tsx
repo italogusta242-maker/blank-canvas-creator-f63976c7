@@ -293,7 +293,7 @@ const AdminDesafios = () => {
             duration: lesson.duration || '05:00',
             order_index: lesson.sort_order ?? lesson.order_index ?? 0
           };
-          if (!lesson.id.startsWith('temp-') && !lesson.id.startsWith('item-')) lessonBase.id = lesson.id;
+          if (lesson.id && !lesson.id.startsWith('temp-') && !lesson.id.startsWith('item-')) lessonBase.id = lesson.id;
           allLessonsToUpsert.push(lessonBase);
         });
       }
