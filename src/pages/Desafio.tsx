@@ -177,14 +177,10 @@ const Challenge = () => {
   const userGroupId = userProfile?.group_id ?? null;
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
-    queryKey: ["challenges", userGroupId],
+    queryKey: ["challenges", "all"],
     queryFn: async () => {
       let query = supabase.from("challenges").select("*").eq("is_active", true);
-      if (userGroupId) {
-        query = query.or(`target_group_id.is.null,target_group_id.eq.${userGroupId}`);
-      } else {
-        query = query.is("target_group_id", null);
-      }
+      // EMERGÊNCIA: Filtro de target_group_id removido para liberar módulos para todos
       const { data, error } = await query.limit(10);
       if (error) throw error;
       return data as Challenge[];
@@ -192,7 +188,7 @@ const Challenge = () => {
     enabled: profileLoaded,
   });
 
-  const activeChallenge = (userGroupId ? challenges.find(c => c.target_group_id === userGroupId) : undefined) || challenges.find(c => !c.target_group_id) || challenges[0];
+  const activeChallenge = challenges[0];
 
   const { data: challengeBanners = [] } = useQuery({
     queryKey: ["banners", activeChallenge?.id],

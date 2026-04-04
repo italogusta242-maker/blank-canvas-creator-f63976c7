@@ -101,21 +101,15 @@ export function useTrainingPlan() {
 
       // 3. Last fallback: All challenge lessons (only if no selection/assigned plan)
       if (!basePlan) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("group_id")
-          .eq("id", user.id)
+        // EMERGÊNCIA: Pega qualquer desafio ativo, ignorando o target_group_id
+        const { data: challenge } = await supabase
+          .from("challenges")
+          .select("id, title")
+          .eq("is_active", true)
+          .limit(1)
           .maybeSingle();
 
-        if (profile?.group_id) {
-          const { data: challenge } = await supabase
-            .from("challenges")
-            .select("id, title")
-            .eq("is_active", true)
-            .eq("target_group_id", profile.group_id)
-            .maybeSingle();
-
-          if (challenge) {
+        if (challenge) {
             const { data: workoutModule } = await supabase
               .from("challenge_modules")
               .select("id")
@@ -146,7 +140,6 @@ export function useTrainingPlan() {
           }
         }
       }
-
       if (!basePlan) return null;
 
       // 4. Force groups to be an array
