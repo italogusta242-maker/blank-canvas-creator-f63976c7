@@ -108,11 +108,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const profileStatus = profile?.status || "pendente_onboarding";
 
-      if (profileStatus === "ativo") {
-        navigate("/aluno", { replace: true });
-      } else {
-        await safeSignOut();
-      }
+      // EMERGÊNCIA: Todos os usuários logados têm acesso liberado ao aplicativo
+      navigate("/aluno", { replace: true });
     } catch (err) {
       console.error("AuthContext: role check exception, keeping session", err);
       // Don't sign out on exceptions - could be network issues

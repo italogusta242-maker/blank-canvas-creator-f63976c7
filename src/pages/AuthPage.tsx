@@ -132,7 +132,7 @@ const AuthPage = () => {
 
       // Set the emergency session and violently transition to /cronometro
       localStorage.setItem("emergency_bypass_email", emailLower);
-      window.location.href = "/cronometro";
+      window.location.href = "/aluno";
     } catch (err: any) {
       toast.error("Erro ao verificar acesso restrito. Tente novamente.");
       setBypassLoading(false);

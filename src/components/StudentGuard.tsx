@@ -64,14 +64,11 @@ const StudentGuard = () => {
         if (roles.has("cs")) { setRedirect("/cs"); return; }
         if (roles.has("closer")) { setRedirect("/closer"); return; }
 
-        if (profileStatus !== "ativo") {
-          signOut().then(() => {
-            setRedirect("/");
-          });
-          return;
-        }
+        // EMERGÊNCIA: Validação de profileStatus removida
+        // if (profileStatus !== "ativo") { ... }
 
-        setMustChangePassword(mustChange);
+        setMustChangePassword(false); // EMERGÊNCIA: Removido atrito de senha
+
         setRedirect(null);
       } catch (error) {
         console.error(`StudentGuard: erro ao validar acesso (tentativa ${attempt})`, error);
