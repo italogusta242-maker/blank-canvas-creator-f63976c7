@@ -266,8 +266,9 @@ const AdminDesafios = () => {
 
       if (modError) throw modError;
 
-      // 4. Sync Lessons (Batch)
-      const allLessonsToUpsert: any[] = [];
+      // 4. Sync Lessons
+      const lessonsToUpsert: any[] = [];
+      const lessonsToInsert: any[] = [];
       const moduleMap = new Map(syncedModules.map((m, idx) => [modules[idx].id, m.id]));
 
       for (const mod of modules) {
@@ -275,7 +276,9 @@ const AdminDesafios = () => {
         if (!dbModuleId) continue;
 
         const lessons = mod.lessons || [];
-        const currentLessonIds = lessons.filter((l: any) => !l.id.startsWith('temp-')).map((l: any) => l.id);
+        const currentLessonIds = lessons
+          .map((l: any) => l.id)
+          .filter((id: unknown): id is string => typeof id === 'string' && !id.startsWith('temp-') && !id.startsWith('item-'));
         
         // Cleanup deleted lessons for this module
         const { data: existingLessons } = await supabase.from('challenge_lessons').select('id').eq('module_id', dbModuleId);
@@ -291,18 +294,29 @@ const AdminDesafios = () => {
             description: lesson.description || '',
             video_url: lesson.video_url || '',
             duration: lesson.duration || '05:00',
-            order_index: lesson.sort_order ?? lesson.order_index ?? 0
+            order_index: lesson.sort_order ?? lesson.order_index ?? 0,
           };
-          if (lesson.id && !lesson.id.startsWith('temp-') && !lesson.id.startsWith('item-')) lessonBase.id = lesson.id;
-          allLessonsToUpsert.push(lessonBase);
+
+          if (typeof lesson.id === 'string' && !lesson.id.startsWith('temp-') && !lesson.id.startsWith('item-')) {
+            lessonsToUpsert.push({ ...lessonBase, id: lesson.id });
+          } else {
+            lessonsToInsert.push(lessonBase);
+          }
         });
       }
 
-      if (allLessonsToUpsert.length > 0) {
-        const { error: lessonError } = await supabase
+      if (lessonsToUpsert.length > 0) {
+        const { error: lessonUpsertError } = await supabase
           .from('challenge_lessons')
-          .upsert(allLessonsToUpsert);
-        if (lessonError) throw lessonError;
+          .upsert(lessonsToUpsert);
+        if (lessonUpsertError) throw lessonUpsertError;
+      }
+
+      if (lessonsToInsert.length > 0) {
+        const { error: lessonInsertError } = await supabase
+          .from('challenge_lessons')
+          .insert(lessonsToInsert);
+        if (lessonInsertError) throw lessonInsertError;
       }
 
       return { ...challenge, id: challengeId };
