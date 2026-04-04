@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDailyHabits } from "@/hooks/useDailyHabits";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { pickPreferredChallenge } from "@/lib/challenges";
 
 // ── Types ──
 interface FoodSubstitute {
@@ -243,20 +244,14 @@ const Dieta = () => {
       if (error) throw error;
       if (ownPlan) return ownPlan;
 
-      // 2. Fallback: fetch plan from user's challenge lessons
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("group_id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!profile?.group_id) return null;
-
-      const { data: challenge } = await supabase
+      // 3. Fallback: fetch plan from the preferred active challenge
+      const { data: challenges } = await supabase
         .from("challenges")
-        .select("id")
+        .select("id, title")
         .eq("is_active", true)
-        .eq("target_group_id", profile.group_id)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
+
+      const challenge = pickPreferredChallenge(challenges as { id: string; title: string | null }[] | null);
       if (!challenge) return null;
 
       // Find the diets module for this challenge

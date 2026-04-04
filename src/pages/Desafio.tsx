@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { parseWorkoutDescription } from "@/components/training/helpers";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { pickPreferredChallenge } from "@/lib/challenges";
 
 // --- Types ---
 interface Challenge {
@@ -179,16 +180,19 @@ const Challenge = () => {
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
     queryKey: ["challenges", "all"],
     queryFn: async () => {
-      let query = supabase.from("challenges").select("*").eq("is_active", true);
-      // EMERGÊNCIA: Filtro de target_group_id removido para liberar módulos para todos
-      const { data, error } = await query.limit(10);
+      const { data, error } = await supabase
+        .from("challenges")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(10);
       if (error) throw error;
       return data as Challenge[];
     },
     enabled: profileLoaded,
   });
 
-  const activeChallenge = challenges[0];
+  const activeChallenge = useMemo(() => pickPreferredChallenge(challenges), [challenges]);
 
   const { data: challengeBanners = [] } = useQuery({
     queryKey: ["banners", activeChallenge?.id],

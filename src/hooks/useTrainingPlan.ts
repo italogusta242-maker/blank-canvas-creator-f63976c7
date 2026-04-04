@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { TrainingPlan, WorkoutGroup } from "@/components/training/types";
 import { parseWorkoutDescription, splitExercisesIntoGroups } from "@/components/training/helpers";
+import { pickPreferredChallenge } from "@/lib/challenges";
 
 export function useTrainingPlan() {
   const { user } = useAuth();
@@ -99,47 +100,47 @@ export function useTrainingPlan() {
         }
       }
 
-      // 3. Last fallback: All challenge lessons (only if no selection/assigned plan)
+      // 3. Last fallback: preferred active challenge workout lessons
       if (!basePlan) {
-        // EMERGÊNCIA: Pega qualquer desafio ativo, ignorando o target_group_id
-        const { data: challenge } = await supabase
+        const { data: challenges } = await supabase
           .from("challenges")
           .select("id, title")
           .eq("is_active", true)
-          .limit(1)
-          .maybeSingle();
+          .order("created_at", { ascending: false });
+
+        const challenge = pickPreferredChallenge(challenges as { id: string; title: string | null }[] | null);
 
         if (challenge) {
-            const { data: workoutModule } = await supabase
-              .from("challenge_modules")
-              .select("id")
-              .eq("challenge_id", challenge.id)
-              .eq("type", "workouts")
-              .maybeSingle();
+          const { data: workoutModule } = await supabase
+            .from("challenge_modules")
+            .select("id")
+            .eq("challenge_id", challenge.id)
+            .eq("type", "workouts")
+            .maybeSingle();
 
-            if (workoutModule) {
-              const { data: lessons } = await supabase
-                .from("challenge_lessons")
-                .select("id, title, description")
-                .eq("module_id", workoutModule.id)
-                .order("order_index", { ascending: true });
+          if (workoutModule) {
+            const { data: lessons } = await supabase
+              .from("challenge_lessons")
+              .select("id, title, description")
+              .eq("module_id", workoutModule.id)
+              .order("order_index", { ascending: true });
 
-              if (lessons?.length) {
-                basePlan = {
-                  id: `challenge-${challenge.id}`,
-                  title: challenge.title || 'Treino do Desafio',
-                  groups: lessons.map(l => ({ 
-                    name: l.title || "Treino", 
-                    exercises: parseWorkoutDescription(l.description || '') 
-                  })),
-                  total_sessions: 50,
-                  valid_until: null,
-                };
-              }
+            if (lessons?.length) {
+              basePlan = {
+                id: `challenge-${challenge.id}`,
+                title: challenge.title || "Treino do Desafio",
+                groups: lessons.map((lesson) => ({
+                  name: lesson.title || "Treino",
+                  exercises: parseWorkoutDescription(lesson.description || ""),
+                })),
+                total_sessions: 50,
+                valid_until: null,
+              } as TrainingPlan;
             }
           }
         }
       }
+
       if (!basePlan) return null;
 
       // 4. Force groups to be an array
