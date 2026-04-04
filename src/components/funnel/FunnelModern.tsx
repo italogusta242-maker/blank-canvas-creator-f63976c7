@@ -190,7 +190,7 @@ const FunnelModern = () => {
   }, [form.nome, form.email, form.telefone, form.cupom, selectedPlan?.id]);
 
   return (
-    <div className="w-full min-h-screen bg-white pb-20 overflow-y-auto overflow-x-hidden font-sans text-[#111]">
+    <div className="w-full h-full bg-white pb-20 overflow-y-auto overflow-x-hidden font-sans text-[#111]">
       {/* ── Header ── */}
       <header className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 flex items-center justify-between z-50">
         <div className="flex items-center gap-3">
