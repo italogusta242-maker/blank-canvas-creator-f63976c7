@@ -23,31 +23,10 @@ const Cronometro = () => {
 
   // Auto-redirect when countdown expires
   useEffect(() => {
-    let timer: NodeJS.Timeout;
     if (isExpired) {
-      const checkAndRedirect = async () => {
-        if (!user) {
-          navigate("/funil2", { replace: true });
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("status")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.status === "ativo") {
-          navigate("/", { replace: true });
-        } else {
-          navigate("/funil2", { replace: true });
-        }
-      };
-      
-      timer = setTimeout(checkAndRedirect, 3000);
+      navigate("/", { replace: true });
     }
-    return () => clearTimeout(timer);
-  }, [isExpired, navigate, user]);
+  }, [isExpired, navigate]);
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center">

@@ -555,9 +555,13 @@ const Challenge = () => {
                         <div className="aspect-video rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black relative">
                           <iframe src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`} className="w-full h-full border-0" allowFullScreen />
                         </div>
-                      ) : currentLesson?.video_url && (currentLesson.video_url.includes('supabase.co') || currentLesson.video_url.endsWith('.mp4')) ? (
+                      ) : currentLesson?.video_url && (
+                        currentLesson.video_url.includes('supabase.co') ||
+                        currentLesson.video_url.match(/\.(mp4|mov|webm|mkv)$/i) ||
+                        currentLesson.video_url.startsWith('/') // Support direct local paths
+                      ) ? (
                         <div className="aspect-video rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black relative">
-                          <video controls className="w-full aspect-video rounded-3xl object-cover" src={currentLesson.video_url} />
+                          <video controls className="w-full aspect-video rounded-3xl object-cover" src={currentLesson.video_url} playsInline preload="metadata" />
                         </div>
                       ) : (
                         <div className="min-h-[400px] bg-secondary/10 border border-white/5 rounded-3xl p-6 md:p-10 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
