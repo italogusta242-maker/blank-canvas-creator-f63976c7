@@ -494,12 +494,6 @@ const Challenge = () => {
         </div>
       </div>
 
-      {/* Banner Promocional Estático */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 w-full">
-        <div className="flex flex-col gap-4 mb-6">
-          <img src="/IMG_1230.JPG.jpg" alt="Oferta Especial" className="w-full aspect-[21/9] rounded-xl object-cover bg-muted shadow-md" />
-        </div>
-      </div>
 
       {/* Full-width Carousel */}
       <div className="mb-10 w-full">
