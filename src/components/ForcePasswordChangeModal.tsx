@@ -53,13 +53,24 @@ const ForcePasswordChangeModal = ({ onComplete }: Props) => {
     setLoading(true);
     try {
       const { error: authErr } = await supabase.auth.updateUser({ password });
-      if (authErr) throw authErr;
+      if (authErr) {
+        if (authErr.message.toLowerCase().includes("different from the old password")) {
+          console.log("User entered the same password, proceeding to unlock profile.");
+        } else {
+          throw authErr;
+        }
+      }
 
       if (user) {
-        await supabase
-          .from("profiles")
-          .update({ must_change_password: false } as any)
-          .eq("id", user.id);
+        const { error: rpcErr } = await supabase.rpc("clear_must_change_password", { p_user_id: user.id });
+        
+        if (rpcErr) {
+          console.error("RPC clear_must_change_password failed, falling back to direct update:", rpcErr);
+          await supabase
+            .from("profiles")
+            .update({ must_change_password: false } as any)
+            .eq("id", user.id);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ["profile"] });
