@@ -2525,6 +2525,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_force_activate: { Args: { emails: string[] }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
