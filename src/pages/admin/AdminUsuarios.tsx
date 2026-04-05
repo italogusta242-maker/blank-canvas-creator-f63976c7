@@ -1820,6 +1820,79 @@ const AdminUsuarios = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Create User Modal */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Novo Aluno</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome Completo*</Label>
+              <Input
+                value={newUser.nome}
+                onChange={(e) => setField("nome", e.target.value)}
+                className="bg-background border-border"
+                placeholder="Ex: Maria Silva"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email*</Label>
+              <Input
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setField("email", e.target.value)}
+                className="bg-background border-border"
+                placeholder="Ex: maria@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha Temporária*</Label>
+              <Input
+                type="text"
+                value={newUser.password}
+                onChange={(e) => setField("password", e.target.value)}
+                className="bg-background border-border"
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Telefone (Opcional)</Label>
+                <Input
+                  value={newUser.telefone}
+                  onChange={(e) => setField("telefone", e.target.value)}
+                  className="bg-background border-border"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF (Opcional)</Label>
+                <Input
+                  value={newUser.cpf}
+                  onChange={(e) => setField("cpf", e.target.value)}
+                  className="bg-background border-border"
+                  placeholder="Apenas números"
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 pt-2">
+              <Switch
+                id="skip-onboarding"
+                checked={newUser.skipOnboarding}
+                onCheckedChange={(c) => setField("skipOnboarding", c)}
+              />
+              <Label htmlFor="skip-onboarding" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Pular Onboarding do Aluno
+              </Label>
+            </div>
+            <Button className="w-full mt-4" onClick={handleCreateUser} disabled={creating}>
+              {creating ? "Criando..." : "Criar Aluno"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit User Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[480px]">
