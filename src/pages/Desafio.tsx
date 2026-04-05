@@ -163,6 +163,7 @@ const Challenge = () => {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [isChangingPlanner, setIsChangingPlanner] = useState(false);
 
   const { data: userProfile, isSuccess: profileLoaded } = useQuery({
     queryKey: ["profile-group", user?.id],
@@ -185,6 +186,7 @@ const Challenge = () => {
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["profile-group"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setIsChangingPlanner(false);
       toast.success("Planner ativado com sucesso!");
       setTimeout(() => {
         window.location.reload();
@@ -198,6 +200,16 @@ const Challenge = () => {
   };
 
   const userGroupId = userProfile?.group_id ?? null;
+
+  const { data: userGroupName } = useQuery({
+    queryKey: ["user-group-name", userGroupId],
+    queryFn: async () => {
+      if (!userGroupId) return null;
+      const { data } = await supabase.from("user_groups").select("name").eq("id", userGroupId).maybeSingle();
+      return data?.name || "Sem Turma";
+    },
+    enabled: !!userGroupId,
+  });
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
     queryKey: ["challenges", userGroupId, userProfile?.planner_type],
@@ -504,7 +516,7 @@ const Challenge = () => {
 
   if (!profileLoaded || loadingChallenges) return <SkeletonLayout />;
 
-  if (profileLoaded && !userProfile?.planner_type) {
+  if ((profileLoaded && !userProfile?.planner_type) || isChangingPlanner) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in fade-in duration-500">
         <div className="space-y-2">
@@ -550,18 +562,50 @@ const Challenge = () => {
             <p className="text-xs font-bold animate-pulse text-accent uppercase tracking-widest">Forjando seu destino...</p>
           </div>
         )}
+        {isChangingPlanner && !isUpdatingPlanner && (
+          <div className="mt-4">
+            <Button variant="ghost" onClick={() => setIsChangingPlanner(false)}>Cancelar</Button>
+          </div>
+        )}
       </div>
     );
   }
+
+  const formatPlannerName = (pType?: string) => {
+    if (pType === "foco_essencial") return "Foco Essencial";
+    if (pType === "constancia") return "Constância PRO";
+    if (pType === "elite") return "Elite 100%";
+    return "Selecione a Liga";
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-32">
       <div className="max-w-7xl mx-auto px-4 pt-6 md:px-6 md:pt-12">
         {/* Header */}
         <div className="mb-6 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-          <h1 className="text-2xl md:text-4xl lg:text-5xl font-cinzel font-black tracking-tighter italic text-foreground uppercase">
-            {activeChallenge?.title || "Área de Membros"}
-          </h1>
+          <div className="space-y-4">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-cinzel font-black tracking-tighter italic text-foreground uppercase">
+              {activeChallenge?.title || "Área de Membros"}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              {userGroupId && (
+                <div className="bg-background border border-border px-3 py-1.5 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                    <BookOpen size={12} className="text-primary" /> Turma: <span className="text-foreground">{userGroupName || "Carregando..."}</span>
+                  </span>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => setIsChangingPlanner(true)} 
+                className="bg-accent/10 border border-accent/30 hover:border-accent hover:bg-accent/20 px-3 py-1.5 rounded-full flex items-center justify-center shadow-sm transition-all group"
+              >
+                 <span className="text-[11px] font-black text-accent uppercase tracking-wider flex items-center gap-1.5">
+                   <Star size={12} fill="currentColor" /> Liga: {formatPlannerName(userProfile?.planner_type)}
+                 </span>
+              </button>
+            </div>
+          </div>
           <div className="bg-background border border-border px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl flex flex-col gap-2 w-full md:min-w-[280px] md:w-auto shadow-sm">
              <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Seu Ciclo</span>
