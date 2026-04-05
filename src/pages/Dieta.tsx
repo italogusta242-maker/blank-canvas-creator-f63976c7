@@ -97,17 +97,102 @@ const Dieta = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"dieta" | "lista">("dieta");
 
-  /** Parse a lesson description text into meal foods */
+  // ── Shared JSON parsing helpers ──
+  const parseFoodItem = (f: any): ParsedFood => ({
+    name: f.name || f.alimento || f.food || "",
+    portion: f.portion || f.porcao || f.displayPortion || "",
+    calories: Number(f.calories || f.kcal || f.cal || 0),
+    protein: Number(f.protein || f.proteina || f.p || 0),
+    carbs: Number(f.carbs || f.carboidrato || f.c || 0),
+    fat: Number(f.fat || f.gordura || f.g || 0),
+    substitutes: (Array.isArray(f.substitutes) ? f.substitutes : Array.isArray(f.substitutos) ? f.substitutos : []).map((s: any) => ({
+      name: s.name || s.alimento || "",
+      portion: s.portion || s.porcao || "",
+      calories: Number(s.calories || s.kcal || 0),
+      protein: Number(s.protein || s.proteina || s.p || 0),
+      carbs: Number(s.carbs || s.carboidrato || s.c || 0),
+      fat: Number(s.fat || s.gordura || s.g || 0),
+    })),
+  });
+
+  const parseMealFromJson = (m: any, idx: number) => {
+    const rawFoods = Array.isArray(m.foods) ? m.foods
+      : Array.isArray(m.alimentos) ? m.alimentos
+      : Array.isArray(m.items) ? m.items
+      : [];
+    const foods = rawFoods.map(parseFoodItem).filter((f: any) => f.name);
+    const mProtein = Number(m.protein || m.p || 0) || foods.reduce((acc: number, f: any) => acc + (f.protein || 0), 0);
+    const mCarbs = Number(m.carbs || m.c || 0) || foods.reduce((acc: number, f: any) => acc + (f.carbs || 0), 0);
+    const mFat = Number(m.fat || m.g || 0) || foods.reduce((acc: number, f: any) => acc + (f.fat || 0), 0);
+    const mCal = Number(m.calories || m.kcal || m.cal || 0) || foods.reduce((acc: number, f: any) => acc + (f.calories || 0), 0);
+    return {
+      id: `meal-${idx}`,
+      name: m.name || m.title || m.refeicao || `Refeição ${idx + 1}`,
+      time: m.time || m.horario || "",
+      foods,
+      calories: Math.round(mCal),
+      macros: { protein: Math.round(mProtein), carbs: Math.round(mCarbs), fats: Math.round(mFat) },
+      notes: m.notes || m.observacao || m.obs || "",
+    };
+  };
+
+  const looksLikeMeal = (obj: any) =>
+    obj && typeof obj === "object" && !Array.isArray(obj) &&
+    (obj.foods !== undefined || obj.alimentos !== undefined ||
+     obj.refeicao !== undefined || obj.name !== undefined ||
+     obj.title !== undefined || obj.time !== undefined ||
+     obj.kcal !== undefined || obj.calories !== undefined);
+
+  /** Try to parse a description string as JSON meals. Returns null if not valid JSON meal data. */
+  const tryParseJsonMeals = (text: string): any[] | null => {
+    if (!text) return null;
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return null;
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(trimmed);
+      if (typeof parsed === "string") {
+        try { parsed = JSON.parse(parsed); } catch { return null; }
+      }
+    } catch {
+      // Try repairing common JSON issues
+      let repaired = trimmed;
+      let braces = 0, brackets = 0;
+      for (const c of repaired) { if (c === '{') braces++; if (c === '}') braces--; if (c === '[') brackets++; if (c === ']') brackets--; }
+      while (brackets > 0) { repaired += ']'; brackets--; }
+      while (braces > 0) { repaired += '}'; braces--; }
+      repaired = repaired.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+      try { parsed = JSON.parse(repaired); } catch { return null; }
+    }
+
+    if (Array.isArray(parsed) && parsed.length > 0 && looksLikeMeal(parsed[0])) {
+      return parsed.map(parseMealFromJson);
+    }
+    if (parsed && !Array.isArray(parsed) && looksLikeMeal(parsed)) {
+      return [parseMealFromJson(parsed, 0)];
+    }
+    if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].name || parsed[0].alimento)) {
+      const foods = parsed.map(parseFoodItem).filter((f: any) => f.name);
+      if (foods.length > 0) {
+        const cal = foods.reduce((a: number, f: any) => a + (f.calories || 0), 0);
+        const p = foods.reduce((a: number, f: any) => a + (f.protein || 0), 0);
+        const c = foods.reduce((a: number, f: any) => a + (f.carbs || 0), 0);
+        const g = foods.reduce((a: number, f: any) => a + (f.fat || 0), 0);
+        return [{ id: "meal-0", name: "Refeição", time: "", foods, calories: Math.round(cal), macros: { protein: Math.round(p), carbs: Math.round(c), fats: Math.round(g) }, notes: "" }];
+      }
+    }
+    return null;
+  };
+
+  /** Parse a lesson description text into meal foods (plain text fallback) */
   const parseDietDescription = (text: string): ParsedFood[] => {
     if (!text) return [];
     const foods: ParsedFood[] = [];
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
     for (const line of lines) {
-      // Skip section headers (all caps lines like "PROTEÍNAS", "CARBOIDRATOS")
       if (/^[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇ\s]{3,}$/.test(line) && !line.match(/\d/)) continue;
-      // Skip lines that are just dashes or bullets
       if (/^[-–•*]+$/.test(line)) continue;
-      // Try to extract portion info: "Arroz branco - 4 colheres" or "200g de frango"
       const portionMatch = line.match(/^(.+?)\s*[-–:]\s*(.+)$/);
       if (portionMatch) {
         foods.push({ name: portionMatch[1].replace(/^[-–•*]\s*/, "").trim(), portion: portionMatch[2].trim(), substitutes: [] });
