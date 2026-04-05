@@ -25,10 +25,7 @@ const AuthPage = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  // Bypass state
-  const [bypassMode, setBypassMode] = useState(false);
-  const [bypassEmail, setBypassEmail] = useState("");
-  const [bypassLoading, setBypassLoading] = useState(false);
+  // Bypass removido — redireciona para funnel
 
   useEffect(() => {
     const pendingEmail = localStorage.getItem("pending_email");
@@ -100,44 +97,7 @@ const AuthPage = () => {
     setResetLoading(false);
   };
 
-  const handleBypassLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bypassEmail.includes("@")) { toast.error("Informe um email válido"); return; }
-    
-    setBypassLoading(true);
-    try {
-      const emailLower = bypassEmail.trim().toLowerCase();
-      
-      const { data, error } = await supabase.functions.invoke('verify-bypass-email', {
-        body: { email: emailLower }
-      });
-      
-      if (error || !data?.allowed) {
-        toast.error(data?.error || "E-mail não encontrado em nossa base de dados. Verifique a ortografia ou use o e-mail exato da compra.");
-        setBypassLoading(false);
-        return;
-      }
 
-      // Record the bypass log
-      await supabase.from("webhook_logs").insert({
-          email: emailLower,
-          event_type: "emergency_bypass",
-          status_log: "bypass_acionado",
-          raw_payload: { 
-            message: `Bypass acionado para o e-mail ${emailLower}`, 
-            source: data.found_in,
-            timestamp: new Date().toISOString()
-          }
-      });
-
-      // Set the emergency session and violently transition to /cronometro
-      localStorage.setItem("emergency_bypass_email", emailLower);
-      window.location.href = "/aluno";
-    } catch (err: any) {
-      toast.error("Erro ao verificar acesso restrito. Tente novamente.");
-      setBypassLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden">
@@ -192,23 +152,8 @@ const AuthPage = () => {
               </button>
             </motion.form>
           )
-        ) : bypassMode ? (
-          <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} onSubmit={handleBypassLogin} className="w-full space-y-4">
-            <p className="text-white/80 text-sm text-center mb-4 leading-relaxed">
-              Sistema de <strong className="text-pink-400">Primeiro Acesso</strong> ativado.<br/>Insira o e-mail que você utilizou no momento da compra.
-            </p>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-black/50" size={18} />
-              <Input type="email" placeholder="E-mail de cadastro" value={bypassEmail} onChange={(e) => setBypassEmail(e.target.value)} className="pl-10 py-6 bg-card/80 border-border text-black placeholder:text-black/40 rounded-xl" required autoComplete="email" />
-            </div>
-            
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={bypassLoading} className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-600 text-white font-cinzel font-bold rounded-xl shadow-lg shadow-pink-500/20 tracking-wider text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-              {bypassLoading ? <><Loader2 size={18} className="animate-spin" /> VERIFICANDO...</> : "ACESSAR PLATAFORMA"}
-            </motion.button>
-            <button type="button" onClick={() => setBypassMode(false)} className="w-full text-white/60 hover:text-white text-xs text-center py-2 transition-colors">
-              ← Voltar ao login normal
-            </button>
-          </motion.form>
+        ) : false ? (
+          <div />
         ) : (
           <>
             <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.25 }} onSubmit={handleLogin} className="w-full space-y-4">
@@ -232,9 +177,9 @@ const AuthPage = () => {
               <a href="/esqueci-minha-senha" className="text-white/60 hover:text-white text-xs py-1 transition-colors">
                 Esqueci minha senha
               </a>
-              <button onClick={() => setBypassMode(true)} className="text-white/40 hover:text-white text-[11px] underline underline-offset-2 py-1 transition-colors">
-                Problemas de acesso após a compra? (Primeiro Acesso)
-              </button>
+              <a href="/funil" className="text-white/40 hover:text-white text-[11px] underline underline-offset-2 py-1 transition-colors">
+                Ainda não é membro? Conheça nossos planos
+              </a>
             </div>
           </>
         )}

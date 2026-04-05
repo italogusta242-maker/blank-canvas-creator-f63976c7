@@ -108,8 +108,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const profileStatus = profile?.status || "pendente_onboarding";
 
-      // EMERGÊNCIA: Todos os usuários logados têm acesso liberado ao aplicativo
-      navigate("/aluno", { replace: true });
+      // Gating por status de pagamento
+      if (profileStatus === "ativo" || profileStatus === "pendente_onboarding") {
+        navigate("/aluno", { replace: true });
+      } else if (profileStatus === "cancelado" || profileStatus === "expirado") {
+        navigate("/acesso-negado?reason=expired", { replace: true });
+      } else {
+        // inativo, pendente, ou qualquer outro status
+        navigate("/acesso-negado?reason=no_access", { replace: true });
+      }
     } catch (err) {
       console.error("AuthContext: role check exception, keeping session", err);
       // Don't sign out on exceptions - could be network issues

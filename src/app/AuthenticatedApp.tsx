@@ -38,6 +38,7 @@ const Comunidade = lazy(() => import("@/pages/Comunidade"));
 const Cronometro = lazy(() => import("@/pages/Cronometro"));
 const PagamentoAprovado = lazy(() => import("@/pages/PagamentoAprovado"));
 const AguardandoPagamento = lazy(() => import("@/pages/AguardandoPagamento"));
+const AcessoNegado = lazy(() => import("@/pages/AcessoNegado"));
 
 const PageLoader = () => <SkeletonLayout />;
 
@@ -79,6 +80,7 @@ const AppRoutes = () => {
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/pagamento-sucesso" element={<PagamentoAprovado />} />
         <Route path="/aguardando-pagamento" element={<AguardandoPagamento />} />
+        <Route path="/acesso-negado" element={<AcessoNegado />} />
 
         <Route element={<StudentGuard />}>
           <Route path="/cronometro" element={<Cronometro />} />

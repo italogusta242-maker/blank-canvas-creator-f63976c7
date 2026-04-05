@@ -64,10 +64,13 @@ const StudentGuard = () => {
         if (roles.has("cs")) { setRedirect("/cs"); return; }
         if (roles.has("closer")) { setRedirect("/closer"); return; }
 
-        // EMERGÊNCIA: Validação de profileStatus removida
-        // if (profileStatus !== "ativo") { ... }
+        // Gating por status de pagamento
+        if (profileStatus !== "ativo" && profileStatus !== "pendente_onboarding") {
+          setRedirect("/acesso-negado?reason=no_access");
+          return;
+        }
 
-        setMustChangePassword(false); // EMERGÊNCIA: Removido atrito de senha
+        setMustChangePassword(mustChange);
 
         setRedirect(null);
       } catch (error) {
