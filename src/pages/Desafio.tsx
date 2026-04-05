@@ -224,7 +224,7 @@ const Challenge = () => {
   });
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
-    queryKey: ["challenges", userGroupId, userProfile.data?.planner_type],
+    queryKey: ["challenges", userGroupId],
     queryFn: async () => {
       let query = supabase.from("challenges").select("*").eq("is_active", true);
       
@@ -556,7 +556,7 @@ const Challenge = () => {
       const label = (variables.planType === 'training' || variables.planType === 'treino' || variables.planType === 'workouts') ? 'Treino' : (variables.planType === 'planner' ? 'Planner' : 'Dieta');
       
       if (variables.planType === 'planner' && result?.newPlannerType) {
-        const plannerLabel = result.newPlannerType === 'elite' ? 'Elite 100%' : result.newPlannerType === 'constancia' ? 'Constância PRO' : 'Foco Essencial';
+        const plannerLabel = result.newPlannerType === 'elite' ? 'Elite' : result.newPlannerType === 'constancia' ? 'Constância' : 'Essencial';
         toast.success(`Liga ${plannerLabel} ativada com sucesso! 🎯`);
       } else {
         toast.success(`${label} selecionado(a) com sucesso!`);
@@ -607,9 +607,9 @@ const Challenge = () => {
   if (!profileLoaded || loadingChallenges) return <SkeletonLayout />;
 
   const formatPlannerName = (pType?: string) => {
-    if (pType === "foco_essencial") return "Foco Essencial";
-    if (pType === "constancia") return "Constância PRO";
-    if (pType === "elite") return "Elite 100%";
+    if (pType === "foco_essencial") return "Essencial";
+    if (pType === "constancia") return "Constância";
+    if (pType === "elite") return "Elite";
     return "Liga Não Definida";
   };
 
