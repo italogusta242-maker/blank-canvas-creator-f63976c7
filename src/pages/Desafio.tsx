@@ -204,12 +204,11 @@ const Challenge = () => {
     queryFn: async () => {
       let query = supabase.from("challenges").select("*").eq("is_active", true);
       
-      const filters = [];
-      if (userGroupId) filters.push(`target_group_id.eq.${userGroupId}`);
-      if (userProfile?.planner_type) filters.push(`target_group_id.eq.${userProfile.planner_type}`);
-      filters.push(`target_group_id.is.null`);
-
-      query = query.or(filters.join(","));
+      if (userGroupId) {
+        query = query.or(`target_group_id.is.null,target_group_id.eq.${userGroupId}`);
+      } else {
+        query = query.is("target_group_id", null);
+      }
       
       const { data, error } = await query.order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
