@@ -183,9 +183,12 @@ const Challenge = () => {
     try {
       const { error } = await supabase.from("profiles").update({ planner_type: plannerType }).eq("id", user.id);
       if (error) throw error;
-      await queryClient.invalidateQueries({ queryKey: ["profile-group", user.id] });
-      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["profile-group"] });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Planner ativado com sucesso!");
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch(err) {
       console.error(err);
       toast.error("Erro ao ativar o planner.");
@@ -197,15 +200,16 @@ const Challenge = () => {
   const userGroupId = userProfile?.group_id ?? null;
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
-    queryKey: ["challenges", userGroupId],
+    queryKey: ["challenges", userGroupId, userProfile?.planner_type],
     queryFn: async () => {
       let query = supabase.from("challenges").select("*").eq("is_active", true);
       
-      if (userGroupId) {
-        query = query.or(`target_group_id.is.null,target_group_id.eq.${userGroupId}`);
-      } else {
-        query = query.is("target_group_id", null);
-      }
+      const filters = [];
+      if (userGroupId) filters.push(`target_group_id.eq.${userGroupId}`);
+      if (userProfile?.planner_type) filters.push(`target_group_id.eq.${userProfile.planner_type}`);
+      filters.push(`target_group_id.is.null`);
+
+      query = query.or(filters.join(","));
       
       const { data, error } = await query.order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
