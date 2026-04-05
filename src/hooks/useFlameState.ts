@@ -42,21 +42,34 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
 
       const workoutDates = new Set((workouts || []).map(w => w.started_at ? w.started_at.split('T')[0] : ''));
       
-      let calculatedStreak = 0;
-      const now = new Date();
-      
       // Streak counts if today or yesterday is active
       const isActive = workoutDates.has(today) || workoutDates.has(yesterday);
       
+      let calculatedStreak = 0;
+      let consecutiveMisses = 0;
+      const now = new Date();
+
       if (isActive) {
         for (let i = 0; i < 90; i++) {
           const d = new Date(now);
           d.setDate(d.getDate() - i);
           const dateStr = toLocalDate(d);
+          if (dateStr > today) continue; // safety check
+          
+          const isSunday = d.getDay() === 0;
+
           if (workoutDates.has(dateStr)) {
             calculatedStreak++;
-          } else if (i > 0) {
-            break;
+            consecutiveMisses = 0; // reset misses 
+          } else {
+            // Count skip logic
+            if (!isSunday && i > 0) { // i > 0 so missing TODAY doesn't count until day is over
+              consecutiveMisses++;
+            }
+            // If they skipped more than 1 day in the past (excluding Sundays), it breaks
+            if (consecutiveMisses > 1) {
+              break;
+            }
           }
         }
       }

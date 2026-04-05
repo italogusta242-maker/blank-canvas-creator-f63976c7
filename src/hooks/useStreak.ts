@@ -42,16 +42,27 @@ export const useStreak = (userId?: string) => {
         active = true;
       }
 
+      let consecutiveMisses = 0;
+
       if (active) {
         for (let i = 0; i < 90; i++) {
           const d = new Date(now);
           d.setDate(d.getDate() - i);
           const dateStr = toLocalDate(d);
+          if (dateStr > today) continue;
           
+          const isSunday = d.getDay() === 0;
+
           if (workoutDates.has(dateStr)) {
             calculatedStreak++;
-          } else if (i > 0) {
-            break;
+            consecutiveMisses = 0;
+          } else {
+            if (!isSunday && i > 0) {
+              consecutiveMisses++;
+            }
+            if (consecutiveMisses > 1) {
+              break;
+            }
           }
         }
       }

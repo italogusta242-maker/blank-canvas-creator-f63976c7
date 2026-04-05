@@ -255,17 +255,29 @@ export default function Comunidade() {
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
-        return d.toISOString().split("T")[0];
+        return { date: d.toISOString().split("T")[0], obj: d };
       });
       const { data } = await supabase
         .from("workouts")
         .select("finished_at")
         .eq("user_id", user.id)
         .not("finished_at", "is", null)
-        .gte("finished_at", `${days[0]}T00:00:00`)
-        .lte("finished_at", `${days[6]}T23:59:59`);
+        .gte("finished_at", `${days[0].date}T00:00:00`)
+        .lte("finished_at", `${days[6].date}T23:59:59`);
       const activeDays = new Set((data || []).map((w: any) => w.finished_at?.split("T")[0]));
-      return days.map((d) => ({ date: d, active: activeDays.has(d) }));
+      
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const DAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
+      return days.map((d) => {
+        const active = activeDays.has(d.date);
+        const isSunday = d.obj.getDay() === 0;
+        const isPast = d.obj < today;
+        const frozen = !active && isPast && !isSunday;
+        const dayLabel = DAY_LABELS[d.obj.getDay()];
+        return { date: d.date, active, frozen, dayLabel };
+      });
     },
     enabled: !!user,
   });
@@ -315,7 +327,7 @@ export default function Comunidade() {
 
   const posts = data?.pages.flat() ?? [];
 
-  const dayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
+  // dayLabels now come from weekActivity data
   
   const handleAvatarClick = (id: string) => {
     navigate(`/aluno/perfil/${id}`);
@@ -358,11 +370,13 @@ export default function Comunidade() {
                 <div className={`w-full aspect-square rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
                   day.active
                     ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-[0_0_8px_rgba(249,115,22,0.5)]"
+                    : day.frozen
+                    ? "bg-gradient-to-br from-blue-400 to-cyan-300 text-white shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                     : "bg-secondary/60 border border-border text-muted-foreground"
                 }`}>
-                  {day.active ? "✓" : ""}
+                  {day.active ? "✓" : day.frozen ? "❄" : ""}
                 </div>
-                <span className="text-[9px] text-muted-foreground uppercase">{dayLabels[i]}</span>
+                <span className="text-[9px] text-muted-foreground uppercase">{day.dayLabel}</span>
               </div>
             ))}
           </div>

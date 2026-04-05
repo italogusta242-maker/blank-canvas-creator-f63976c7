@@ -286,8 +286,9 @@ const Dashboard = () => {
 
   // Visual styles based on flame state
   const isFrozen = flameState === "frozen";
-  const cardBg = isFrozen ? "bg-[hsl(var(--truce-card))]" : "bg-card";
-  const cardBorder = isFrozen ? "border-[hsl(var(--truce-border))]" : "border-border";
+  const pageBg = undefined;
+  const cardBg = "bg-card";
+  const cardBorder = "border-border";
   const textMuted = "text-muted-foreground";
 
   // Button gradient based on flame state
@@ -313,9 +314,6 @@ const Dashboard = () => {
   
   // Volume bar color override
   const volumeBarColor = isFrozen ? "hsl(210, 40%, 40%)" : "hsl(140, 60%, 40%)";
-  
-  // Background color based on flame state
-  const pageBg = isFrozen ? "hsl(210, 25%, 7%)" : undefined;
   
   // Stat badge colors
   const statBorderColor = isFrozen ? "hsl(210, 18%, 20%)" : undefined;
@@ -355,7 +353,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div>
-              <p className={`text-[10px] font-sans font-semibold tracking-widest text-muted-foreground mb-0.5 uppercase`}>BEM-VINDO AO ANAAC CLUB</p>
+              <p className={`text-[10px] font-sans font-semibold tracking-widest text-muted-foreground mb-0.5 uppercase`}>BEM-VINDA AO ANAAC CLUB</p>
               <h1 className="font-sans text-lg font-bold flex items-center gap-2">
                 <span className="text-foreground">{profile?.nome?.split(' ')[0] || "ATLETA"}</span>
               </h1>
@@ -455,7 +453,7 @@ const Dashboard = () => {
              </div>
            </div>
            <div>
-            <p className="text-xs font-sans font-semibold tracking-widest text-muted-foreground uppercase mb-1">BEM-VINDO AO ANAAC CLUB</p>
+            <p className="text-xs font-sans font-semibold tracking-widest text-muted-foreground uppercase mb-1">BEM-VINDA AO ANAAC CLUB</p>
             <h1 className="font-sans text-3xl font-bold flex items-center">
               <span className="text-foreground">{profile?.nome?.toUpperCase() || "MIRI"}</span>
             </h1>
