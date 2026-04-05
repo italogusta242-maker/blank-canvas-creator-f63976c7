@@ -35,7 +35,6 @@ import { parseWorkoutDescription } from "@/components/training/helpers";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { pickPreferredChallenge } from "@/lib/challenges";
-<<<<<<< HEAD
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -46,8 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-=======
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
 
 // --- Types ---
 interface Challenge {
@@ -176,25 +173,8 @@ const Challenge = () => {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<any>(null);
-<<<<<<< HEAD
   const [pendingPlanSelection, setPendingPlanSelection] = useState<{ id: string; type: string; title?: string } | null>(null);
-=======
   const [isChangingPlanner, setIsChangingPlanner] = useState(false);
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
-
-  const { data: userProfile, isSuccess: profileLoaded } = useQuery({
-    queryKey: ["profile-group", user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase.from("profiles").select("group_id, planner_type").eq("id", user.id).maybeSingle();
-      if (error) { console.error("Profile fetch error:", error); return null; }
-      return data;
-    },
-    enabled: !!user,
-  });
-
-<<<<<<< HEAD
-=======
   const [isUpdatingPlanner, setIsUpdatingPlanner] = useState(false);
 
   const handleSelectPlanner = async (plannerType: string) => {
@@ -217,9 +197,21 @@ const Challenge = () => {
       setIsUpdatingPlanner(false);
     }
   };
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
 
-  const userGroupId = userProfile?.group_id ?? null;
+  const userProfile = useQuery({
+    queryKey: ["profile-group", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase.from("profiles").select("group_id, planner_type").eq("id", user.id).maybeSingle();
+      if (error) { console.error("Profile fetch error:", error); return null; }
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const profileLoaded = userProfile.isSuccess;
+
+  const userGroupId = userProfile.data?.group_id ?? null;
 
   const { data: userGroupName } = useQuery({
     queryKey: ["user-group-name", userGroupId],
@@ -232,11 +224,7 @@ const Challenge = () => {
   });
 
   const { data: challenges = [], isLoading: loadingChallenges } = useQuery({
-<<<<<<< HEAD
-    queryKey: ["challenges", userGroupId],
-=======
-    queryKey: ["challenges", userGroupId, userProfile?.planner_type],
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
+    queryKey: ["challenges", userGroupId, userProfile.data?.planner_type],
     queryFn: async () => {
       let query = supabase.from("challenges").select("*").eq("is_active", true);
       
@@ -328,7 +316,6 @@ const Challenge = () => {
     enabled: !!user && selectedModule?.type === 'workouts',
   });
 
-  // Unified list of lessons and plans for the sidebar and auto-selection
   const unifiedContent = useMemo(() => {
     const moduleType = selectedModule?.type;
     let list = [...moduleLessons];
@@ -342,7 +329,6 @@ const Challenge = () => {
         description: (p as any).goal_description || (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
         isPlan: true
       }));
-      // Unify and avoid duplicates by title
       pItems.forEach(pi => {
         if (!list.some(l => l.title === pi.title)) list.push(pi as any);
       });
@@ -393,14 +379,9 @@ const Challenge = () => {
     
     if (!selectedPlans || selectedPlans.length === 0) return false;
 
-    // Filter and sort to find the latest record for this type
     const latestRecord = [...selectedPlans]
       .filter((p: any) => {
-<<<<<<< HEAD
         const pNormalizedType = (p.plan_type === 'training' || p.plan_type === 'treino' || p.plan_type === 'workouts') ? 'training' : (p.plan_type === 'planner' ? 'planner' : 'diet');
-=======
-        const pNormalizedType = (p.plan_type === 'training' || p.plan_type === 'treino' || p.plan_type === 'workouts') ? 'training' : 'diet';
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
         return pNormalizedType === type;
       })
       .sort((a: any, b: any) => {
@@ -411,14 +392,12 @@ const Challenge = () => {
 
     if (!latestRecord) return false;
 
-    // Match by raw ID AND the lesson flag in metadata
     const isRecordLesson = !!latestRecord.plan_data?.is_lesson;
     return latestRecord.source_plan_id === sourceId && isRecordLesson === isLessonInList;
   };
 
   const toggleProgressMutation = useMutation({
     mutationFn: async (lessonId: string) => {
-      console.log("Toggle progress for:", lessonId);
       if (!user) { console.error("No user found"); return; }
       const existing = progress.find((p: any) => p.lesson_id === lessonId);
       const newStatus = existing?.status === 'completed' ? 'in_progress' : 'completed';
@@ -471,21 +450,12 @@ const Challenge = () => {
   });
 
   const importPlanMutation = useMutation({
-<<<<<<< HEAD
     mutationFn: async ({ sourceId, planType, planData, planTitle }: { sourceId: string; planType: string; planData?: any; planTitle?: string }) => {
-      console.log("[importPlan] Starting:", { sourceId, planType, planTitle });
       if (!user) { console.error("[importPlan] No user found"); return; }
-=======
-    mutationFn: async ({ sourceId, planType, planData }: { sourceId: string; planType: string; planData?: any }) => {
-      console.log("Importing plan details:", { sourceId, planType });
-      if (!user) { console.error("No user found"); return; }
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
       
       const normalizedType = (planType === 'training' || planType === 'treino' || planType === 'workouts' || planType === 'running') ? 'training' : (planType === 'planner' ? 'planner' : 'diet');
       const isLessonInList = unifiedContent.some(l => l.id === sourceId && !(l as any).isPlan);
 
-<<<<<<< HEAD
-      // Auto-detect planner level from lesson title
       const lessonTitle = (planTitle || unifiedContent.find(l => l.id === sourceId)?.title || "").toLowerCase().trim();
       let newPlannerType: string | null = null;
       
@@ -497,65 +467,17 @@ const Challenge = () => {
         newPlannerType = 'elite';
       }
 
-      // Update profile planner_type with verification
       if (newPlannerType) {
-        console.log("[importPlan] Updating planner_type to:", newPlannerType, "for user:", user.id);
-        
-        // Step 1: Do the update
         const { error: profileErr } = await supabase
           .from('profiles')
           .update({ planner_type: newPlannerType })
           .eq('id', user.id);
         
         if (profileErr) {
-          console.error("[importPlan] ❌ Profile UPDATE error:", profileErr);
           toast.error("Erro ao atualizar liga: " + profileErr.message);
           throw profileErr;
         }
-        
-        // Step 2: Verify the update actually persisted
-        const { data: verify, error: verifyErr } = await supabase
-          .from('profiles')
-          .select('planner_type')
-          .eq('id', user.id)
-          .single();
-        
-        if (verifyErr) {
-          console.error("[importPlan] ❌ Verification SELECT failed:", verifyErr);
-        } else {
-          console.log("[importPlan] 🔍 Verification result:", verify);
-          if (verify?.planner_type !== newPlannerType) {
-            console.error("[importPlan] ❌ UPDATE was silently blocked! Expected:", newPlannerType, "Got:", verify?.planner_type);
-            toast.error("A atualização da liga foi bloqueada. Verifique as permissões do banco de dados.");
-            throw new Error('Profile update was silently blocked by RLS');
-          }
-          console.log("[importPlan] ✅ Profile planner_type confirmed as:", verify.planner_type);
-        }
       }
-
-      // Upsert selected plan
-=======
-      // Auto-detect if user is selecting a Planner/Daily Goal level and update profile
-      const lessonTitle = unifiedContent.find(l => l.id === sourceId)?.title?.toLowerCase() || "";
-      let newPlannerType = null;
-      
-      // We check the title regardless of the plan type, as the user might select a "Daily Goal Planner" 
-      // from a 'Lessons' or other module which isn't strictly 'training'.
-      if (lessonTitle.includes('essencial') || lessonTitle.includes('iniciante')) {
-        newPlannerType = 'foco_essencial';
-      } else if (lessonTitle.includes('constância') || lessonTitle.includes('constancia') || lessonTitle.includes('intermediário') || lessonTitle.includes('intermediario')) {
-        newPlannerType = 'constancia';
-      } else if (lessonTitle.includes('elite') || lessonTitle.includes('avançado') || lessonTitle.includes('avancado')) {
-        newPlannerType = 'elite';
-      }
-
-      if (newPlannerType) {
-        console.log("Auto-detected planner type from title:", newPlannerType);
-        const { error: profileErr } = await supabase.from('profiles').update({ planner_type: newPlannerType }).eq('id', user.id);
-        if (profileErr) console.error("Failed to update profile planner type:", profileErr);
-      }
-
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
       const { error } = await supabase.from("user_selected_plans").upsert({
           user_id: user.id,
           challenge_id: activeChallenge?.id || null, 
@@ -565,25 +487,21 @@ const Challenge = () => {
           plan_data: { ...(planData || {}), is_lesson: isLessonInList },
           created_at: new Date().toISOString(),
         }, { onConflict: 'user_id,plan_type,source_plan_id' });
-<<<<<<< HEAD
       if (error) { console.error("[importPlan] ❌ Plan upsert error:", error); throw error; }
       
       return { newPlannerType };
     },
     onMutate: async (variables) => {
-      // Cancel all in-flight queries that we're about to optimistically update
       await queryClient.cancelQueries({ queryKey: ["user-selected-plans"] });
       await queryClient.cancelQueries({ queryKey: ["profile-group"] });
       await queryClient.cancelQueries({ queryKey: ["profile"] });
       await queryClient.cancelQueries({ queryKey: ["profile-planner-type"] });
       
-      // Snapshot previous values for rollback
       const previousSelectedPlans = queryClient.getQueryData(["user-selected-plans", user?.id]);
       const previousProfileGroup = queryClient.getQueryData(["profile-group", user?.id]);
       const previousProfile = queryClient.getQueryData(["profile", user?.id]);
       const previousPlannerType = queryClient.getQueryData(["profile-planner-type", user?.id]);
       
-      // Optimistic update: selected plans
       const normalizedType = (variables.planType === 'training' || variables.planType === 'treino' || variables.planType === 'workouts' || variables.planType === 'running') ? 'training' : (variables.planType === 'planner' ? 'planner' : 'diet');
       
       queryClient.setQueryData(["user-selected-plans", user?.id], (old: any) => {
@@ -596,7 +514,6 @@ const Challenge = () => {
         }];
       });
 
-      // Optimistic update: planner_type across ALL caches
       if (variables.planType === 'planner') {
          const lessonTitle = (variables.planTitle || "").toLowerCase().trim();
          let newPlannerType: string | null = null;
@@ -609,17 +526,14 @@ const Challenge = () => {
          }
          
          if (newPlannerType) {
-           // Cache used by Desafio.tsx badge
            queryClient.setQueryData(["profile-group", user?.id], (old: any) => {
              if (!old) return { planner_type: newPlannerType };
              return { ...old, planner_type: newPlannerType };
            });
-           // Cache used by Dashboard.tsx (useProfile hook)
            queryClient.setQueryData(["profile", user?.id], (old: any) => {
              if (!old) return { planner_type: newPlannerType };
              return { ...old, planner_type: newPlannerType };
            });
-           // Cache used by Comunidade.tsx SegmentedRanking
            queryClient.setQueryData(["profile-planner-type", user?.id], (old: any) => {
              if (!old) return { planner_type: newPlannerType };
              return { ...old, planner_type: newPlannerType };
@@ -630,8 +544,6 @@ const Challenge = () => {
       return { previousSelectedPlans, previousProfileGroup, previousProfile, previousPlannerType };
     },
     onSuccess: (result, variables) => {
-      console.log("[importPlan] ✅ onSuccess. Invalidating all caches...");
-      // Invalidate ALL caches that any component in the app uses for planner_type
       queryClient.invalidateQueries({ queryKey: ["user-selected-plans", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["training-plan", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["diet-plan", user?.id] });
@@ -651,11 +563,9 @@ const Challenge = () => {
       }
     },
     onError: (err: any, variables, context: any) => {
-      console.error("[importPlan] ❌ onError:", err);
       const msg = err.message || (typeof err === 'string' ? err : 'Tente novamente');
       toast.error(`Erro ao selecionar plano: ${msg}`);
       
-      // Rollback ALL optimistic updates
       if (context?.previousSelectedPlans) {
         queryClient.setQueryData(["user-selected-plans", user?.id], context.previousSelectedPlans);
       }
@@ -670,27 +580,10 @@ const Challenge = () => {
       }
     },
     onSettled: () => {
-      // Final safety net: force re-fetch of ALL profile-related data
       queryClient.invalidateQueries({ queryKey: ["user-selected-plans", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile-group", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile-planner-type", user?.id] });
-=======
-      if (error) { console.error("Plan selection error:", error); throw error; }
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["user-selected-plans", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["training-plan", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["diet-plan", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      const label = (variables.planType === 'training' || variables.planType === 'treino' || variables.planType === 'workouts') ? 'Treino' : (variables.planType === 'planner' ? 'Planner' : 'Dieta');
-      toast.success(`${label} selecionado(a) com sucesso!`);
-    },
-    onError: (err: any) => {
-      console.error("Import mutation error:", err);
-      const msg = err.message || (typeof err === 'string' ? err : 'Tente novamente');
-      toast.error(`Erro ao selecionar plano: ${msg}`);
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
     }
   });
 
@@ -699,7 +592,6 @@ const Challenge = () => {
   };
 
   const calculateCycleDay = () => {
-    // Data de início oficial: Segunda-feira, 06 de Abril de 2026 (Brasília)
     const startDate = new Date('2026-04-06T00:00:00-03:00').getTime();
     const now = new Date().getTime();
     
@@ -714,79 +606,16 @@ const Challenge = () => {
 
   if (!profileLoaded || loadingChallenges) return <SkeletonLayout />;
 
-<<<<<<< HEAD
-=======
-  if ((profileLoaded && !userProfile?.planner_type) || isChangingPlanner) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in fade-in duration-500">
-        <div className="space-y-2">
-          <h1 className="font-sans text-3xl md:text-5xl font-black text-foreground uppercase tracking-tight">Escolha seu Planner</h1>
-          <p className="text-muted-foreground max-w-md mx-auto text-sm">Esta escolha define suas metas diárias e sua liga na comunidade. Você competirá com pessoas do seu mesmo nível.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
-          <button 
-            disabled={isUpdatingPlanner}
-            onClick={() => handleSelectPlanner('foco_essencial')}
-            className="flex flex-col items-center p-8 bg-card border border-border hover:border-emerald-500/50 rounded-3xl transition-all disabled:opacity-50 text-left hover:-translate-y-1 shadow-sm"
-          >
-            <div className="bg-emerald-500/10 text-emerald-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-emerald-500/20">Essencial</div>
-            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Foco Essencial</h3>
-            <p className="text-xs text-muted-foreground text-center">O básico que funciona perfeitamente. Menos obrigações, ideal para quem tem rotina apertada e precisa de constância real.</p>
-          </button>
-
-          <button 
-             disabled={isUpdatingPlanner}
-             onClick={() => handleSelectPlanner('constancia')}
-             className="flex flex-col items-center p-8 bg-card border border-border hover:border-blue-500/50 rounded-3xl transition-all disabled:opacity-50 text-left hover:-translate-y-1 shadow-sm"
-          >
-            <div className="bg-blue-500/10 text-blue-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-blue-500/20">Pro</div>
-            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Constância em Foco</h3>
-            <p className="text-xs text-muted-foreground text-center">Volume equilibrado de atividades. O caminho sustentável para quem já domina a base e quer evolução definitiva.</p>
-          </button>
-
-          <button 
-             disabled={isUpdatingPlanner}
-             onClick={() => handleSelectPlanner('elite')}
-             className="flex flex-col items-center p-8 bg-card border border-border hover:border-rose-500/50 rounded-3xl transition-all disabled:opacity-50 text-left relative overflow-hidden hover:-translate-y-1 shadow-sm"
-          >
-            <div className="bg-rose-500/10 text-rose-400 mb-4 font-black tracking-widest text-xs uppercase px-4 py-1.5 rounded-full border border-rose-500/20">Hardcore</div>
-            <h3 className="text-xl font-bold font-sans mb-3 text-foreground text-center">Elite 100%</h3>
-            <p className="text-xs text-muted-foreground text-center">Máxima exigência. Sem margem para erros. Para quem quer extrair até a última gota de performance.</p>
-          </button>
-        </div>
-
-        {isUpdatingPlanner && (
-          <div className="flex flex-col items-center gap-2 mt-4">
-            <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-bold animate-pulse text-accent uppercase tracking-widest">Forjando seu destino...</p>
-          </div>
-        )}
-        {isChangingPlanner && !isUpdatingPlanner && (
-          <div className="mt-4">
-            <Button variant="ghost" onClick={() => setIsChangingPlanner(false)}>Cancelar</Button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
   const formatPlannerName = (pType?: string) => {
     if (pType === "foco_essencial") return "Foco Essencial";
     if (pType === "constancia") return "Constância PRO";
     if (pType === "elite") return "Elite 100%";
-<<<<<<< HEAD
     return "Liga Não Definida";
-=======
-    return "Selecione a Liga";
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-32">
       <div className="max-w-7xl mx-auto px-4 pt-6 md:px-6 md:pt-12">
-        {/* Header */}
         <div className="mb-6 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
           <div className="space-y-4">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-cinzel font-black tracking-tighter italic text-foreground uppercase">
@@ -801,23 +630,13 @@ const Challenge = () => {
                 </div>
               )}
               
-<<<<<<< HEAD
               <div 
                 className="bg-accent/10 border border-accent/30 px-3 py-1.5 rounded-full flex items-center justify-center shadow-sm group"
-=======
-              <button 
-                onClick={() => setIsChangingPlanner(true)} 
-                className="bg-accent/10 border border-accent/30 hover:border-accent hover:bg-accent/20 px-3 py-1.5 rounded-full flex items-center justify-center shadow-sm transition-all group"
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
               >
                  <span className="text-[11px] font-black text-accent uppercase tracking-wider flex items-center gap-1.5">
-                   <Star size={12} fill="currentColor" /> Liga: {formatPlannerName(userProfile?.planner_type)}
+                   <Star size={12} fill="currentColor" /> Liga: {formatPlannerName(userProfile.data?.planner_type)}
                  </span>
-<<<<<<< HEAD
               </div>
-=======
-              </button>
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
             </div>
           </div>
           <div className="bg-background border border-border px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl flex flex-col gap-2 w-full md:min-w-[280px] md:w-auto shadow-sm">
@@ -832,14 +651,11 @@ const Challenge = () => {
         </div>
       </div>
 
-
-      {/* Full-width Carousel */}
       <div className="mb-10 w-full">
         <BannerCarousel banners={challengeBanners} />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        {/* Modules Grid */}
         <div className="mb-12">
           <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar scroll-smooth">
             {challengeModules.map((mod) => {
@@ -974,15 +790,11 @@ const Challenge = () => {
                                    <Button 
                                      onClick={() => {
                                        const pType = selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta');
-<<<<<<< HEAD
                                        if (pType === 'planner') {
                                          setPendingPlanSelection({ id: currentLesson.id, type: pType, title: currentLesson.title });
                                        } else {
                                          toggleItem(currentLesson.id, pType);
                                        }
-=======
-                                       toggleItem(currentLesson.id, pType);
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
                                      }}
                                       className={cn("h-14 px-10 rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-2xl transition-all", 
                                         isAlreadyImported(currentLesson.id, selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta')) 
@@ -1174,8 +986,6 @@ const Challenge = () => {
           </AnimatePresence>
         </div>
       </div>
-<<<<<<< HEAD
-
       <AlertDialog open={!!pendingPlanSelection} onOpenChange={(open) => !open && setPendingPlanSelection(null)}>
         <AlertDialogContent className="bg-card border border-white/10 rounded-3xl max-w-sm p-6 text-center text-foreground">
           <AlertDialogHeader className="space-y-4">
@@ -1206,8 +1016,6 @@ const Challenge = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-=======
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
     </div>
   );
 };

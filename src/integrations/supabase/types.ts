@@ -2526,13 +2526,10 @@ export type Database = {
     }
     Functions: {
       admin_force_activate: { Args: { emails: string[] }; Returns: number }
-<<<<<<< HEAD
-=======
       clear_must_change_password: {
         Args: { p_user_id: string }
         Returns: undefined
       }
->>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
