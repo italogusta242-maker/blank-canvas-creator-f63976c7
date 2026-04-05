@@ -52,6 +52,7 @@ const ForcePasswordChangeModal = ({ onComplete }: Props) => {
 
     setLoading(true);
     try {
+<<<<<<< HEAD
       const { error: authErr } = await supabase.auth.updateUser({ password });
       if (authErr) throw authErr;
 
@@ -63,6 +64,28 @@ const ForcePasswordChangeModal = ({ onComplete }: Props) => {
       }
 
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+=======
+      // Step 1: Update password in Supabase Auth
+      const { error: authErr } = await supabase.auth.updateUser({ password });
+      if (authErr) throw authErr;
+
+      // Step 2: Get confirmed user ID
+      const { data: { user: confirmedUser }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !confirmedUser) throw userErr || new Error("Usuário não encontrado");
+
+      // Step 3: Use security definer function to bypass protect_profile_columns trigger
+      const { error: rpcErr } = await supabase.rpc("clear_must_change_password", {
+        p_user_id: confirmedUser.id,
+      });
+      if (rpcErr) {
+        console.error("Failed to clear must_change_password via RPC:", rpcErr);
+        throw rpcErr;
+      }
+
+      // Step 4: Invalidate cache so StudentGuard re-evaluates
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["profile", confirmedUser.id] });
+>>>>>>> 2b5d54a9483f51b2344e08056cc59f1758c734d0
       setSuccess(true);
     } catch (err: any) {
       toast({ title: "Erro ao atualizar senha", description: err.message, variant: "destructive" });
