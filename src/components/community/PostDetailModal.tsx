@@ -20,6 +20,22 @@ interface PostDetailModalProps {
   autoFocusComment?: boolean;
 }
 
+/* ── Skeleton for loading comments ── */
+const CommentSkeleton = () => (
+  <div className="space-y-5">
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="flex gap-3 animate-pulse">
+        <div className="w-6 h-6 rounded-full bg-secondary/80 shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 bg-secondary/80 rounded-full w-24" />
+          <div className="h-3 bg-secondary/60 rounded-full w-3/4" />
+          <div className="h-2 bg-secondary/40 rounded-full w-16 mt-1" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: PostDetailModalProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -34,19 +50,45 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
     }
   }, [isOpen, autoFocusComment]);
 
+  // ── Fetch comments + profiles separately to avoid broken FK join ──
   const { data: comments = [], isLoading: isLoadingComments } = useQuery({
     queryKey: ["post-comments-detail", post?.id],
     queryFn: async () => {
       if (!post?.id) return [];
-      const { data, error } = await supabase
+
+      // Step 1: fetch raw comments (no join)
+      const { data: rawComments, error } = await supabase
         .from("post_comments")
-        .select("id, content, created_at, user_id, profiles (id, nome, avatar_url, is_verified)")
+        .select("id, content, created_at, user_id, post_id")
         .eq("post_id", post.id)
         .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data as any[];
+
+      if (error) {
+        console.error("Error fetching comments:", error);
+        throw error;
+      }
+      if (!rawComments || rawComments.length === 0) return [];
+
+      // Step 2: batch-fetch profiles for all unique commenter user_ids
+      const uniqueUserIds = [...new Set(rawComments.map((c) => c.user_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, nome, avatar_url, is_verified")
+        .in("id", uniqueUserIds);
+
+      const profileMap = new Map(
+        (profilesData || []).map((p) => [p.id, p])
+      );
+
+      // Step 3: merge profiles into comments
+      return rawComments.map((c) => ({
+        ...c,
+        profiles: profileMap.get(c.user_id) || { nome: "Usuário", avatar_url: null, is_verified: false },
+      }));
     },
     enabled: !!post?.id && isOpen,
+    staleTime: 5000,
+    retry: 2,
   });
 
   const { data: likes = [] } = useQuery({
@@ -199,7 +241,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
 
               <div className="space-y-6 pt-4 border-t border-border/50">
                 {isLoadingComments ? (
-                  <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary/50" /></div>
+                  <CommentSkeleton />
                 ) : processedComments.length === 0 ? (
                   <p className="text-center text-[10px] text-muted-foreground italic py-10">Seja a primeira a comentar! 🔥</p>
                 ) : (

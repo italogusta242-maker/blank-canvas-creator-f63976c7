@@ -281,8 +281,8 @@ const AdminUsuarios = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({
-    nome: "", email: "", password: "", telefone: "", cpf: "",
-    role: "user" as string, skipOnboarding: false,
+    nome: "", email: "", password: "", telefone: "",
+    role: "user" as string, plano: "",
   });
 
   // Create Profissional
@@ -848,9 +848,9 @@ const AdminUsuarios = () => {
           password: newUser.password,
           nome: newUser.nome,
           telefone: newUser.telefone || undefined,
-          cpf: newUser.cpf || undefined,
           role: newUser.role,
-          skipOnboarding: newUser.skipOnboarding,
+          skipOnboarding: true,
+          plano: newUser.plano || undefined,
         },
       });
 
@@ -860,7 +860,7 @@ const AdminUsuarios = () => {
 
       toast.success("Aluno criado com sucesso!");
       setCreateOpen(false);
-      setNewUser({ nome: "", email: "", password: "", telefone: "", cpf: "", role: "user", skipOnboarding: false });
+      setNewUser({ nome: "", email: "", password: "", telefone: "", role: "user", plano: "" });
       fetchAlunos();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
@@ -1867,24 +1867,21 @@ const AdminUsuarios = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>CPF (Opcional)</Label>
-                <Input
-                  value={newUser.cpf}
-                  onChange={(e) => setField("cpf", e.target.value)}
-                  className="bg-background border-border"
-                  placeholder="Apenas números"
-                />
+                <Label>Plano Adquirido</Label>
+                <Select value={newUser.plano} onValueChange={(val) => setField("plano", val === "none" ? "" : val)}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem plano</SelectItem>
+                    {plans.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — R$ {p.price.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            <div className="flex items-center space-x-2 pt-2">
-              <Switch
-                id="skip-onboarding"
-                checked={newUser.skipOnboarding}
-                onCheckedChange={(c) => setField("skipOnboarding", c)}
-              />
-              <Label htmlFor="skip-onboarding" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Pular Onboarding do Aluno
-              </Label>
             </div>
             <Button className="w-full mt-4" onClick={handleCreateUser} disabled={creating}>
               {creating ? "Criando..." : "Criar Aluno"}
