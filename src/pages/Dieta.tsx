@@ -97,17 +97,102 @@ const Dieta = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"dieta" | "lista">("dieta");
 
-  /** Parse a lesson description text into meal foods */
+  // ── Shared JSON parsing helpers ──
+  const parseFoodItem = (f: any): ParsedFood => ({
+    name: f.name || f.alimento || f.food || "",
+    portion: f.portion || f.porcao || f.displayPortion || "",
+    calories: Number(f.calories || f.kcal || f.cal || 0),
+    protein: Number(f.protein || f.proteina || f.p || 0),
+    carbs: Number(f.carbs || f.carboidrato || f.c || 0),
+    fat: Number(f.fat || f.gordura || f.g || 0),
+    substitutes: (Array.isArray(f.substitutes) ? f.substitutes : Array.isArray(f.substitutos) ? f.substitutos : []).map((s: any) => ({
+      name: s.name || s.alimento || "",
+      portion: s.portion || s.porcao || "",
+      calories: Number(s.calories || s.kcal || 0),
+      protein: Number(s.protein || s.proteina || s.p || 0),
+      carbs: Number(s.carbs || s.carboidrato || s.c || 0),
+      fat: Number(s.fat || s.gordura || s.g || 0),
+    })),
+  });
+
+  const parseMealFromJson = (m: any, idx: number) => {
+    const rawFoods = Array.isArray(m.foods) ? m.foods
+      : Array.isArray(m.alimentos) ? m.alimentos
+      : Array.isArray(m.items) ? m.items
+      : [];
+    const foods = rawFoods.map(parseFoodItem).filter((f: any) => f.name);
+    const mProtein = Number(m.protein || m.p || 0) || foods.reduce((acc: number, f: any) => acc + (f.protein || 0), 0);
+    const mCarbs = Number(m.carbs || m.c || 0) || foods.reduce((acc: number, f: any) => acc + (f.carbs || 0), 0);
+    const mFat = Number(m.fat || m.g || 0) || foods.reduce((acc: number, f: any) => acc + (f.fat || 0), 0);
+    const mCal = Number(m.calories || m.kcal || m.cal || 0) || foods.reduce((acc: number, f: any) => acc + (f.calories || 0), 0);
+    return {
+      id: `meal-${idx}`,
+      name: m.name || m.title || m.refeicao || `Refeição ${idx + 1}`,
+      time: m.time || m.horario || "",
+      foods,
+      calories: Math.round(mCal),
+      macros: { protein: Math.round(mProtein), carbs: Math.round(mCarbs), fats: Math.round(mFat) },
+      notes: m.notes || m.observacao || m.obs || "",
+    };
+  };
+
+  const looksLikeMeal = (obj: any) =>
+    obj && typeof obj === "object" && !Array.isArray(obj) &&
+    (obj.foods !== undefined || obj.alimentos !== undefined ||
+     obj.refeicao !== undefined || obj.name !== undefined ||
+     obj.title !== undefined || obj.time !== undefined ||
+     obj.kcal !== undefined || obj.calories !== undefined);
+
+  /** Try to parse a description string as JSON meals. Returns null if not valid JSON meal data. */
+  const tryParseJsonMeals = (text: string): any[] | null => {
+    if (!text) return null;
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return null;
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(trimmed);
+      if (typeof parsed === "string") {
+        try { parsed = JSON.parse(parsed); } catch { return null; }
+      }
+    } catch {
+      // Try repairing common JSON issues
+      let repaired = trimmed;
+      let braces = 0, brackets = 0;
+      for (const c of repaired) { if (c === '{') braces++; if (c === '}') braces--; if (c === '[') brackets++; if (c === ']') brackets--; }
+      while (brackets > 0) { repaired += ']'; brackets--; }
+      while (braces > 0) { repaired += '}'; braces--; }
+      repaired = repaired.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+      try { parsed = JSON.parse(repaired); } catch { return null; }
+    }
+
+    if (Array.isArray(parsed) && parsed.length > 0 && looksLikeMeal(parsed[0])) {
+      return parsed.map(parseMealFromJson);
+    }
+    if (parsed && !Array.isArray(parsed) && looksLikeMeal(parsed)) {
+      return [parseMealFromJson(parsed, 0)];
+    }
+    if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].name || parsed[0].alimento)) {
+      const foods = parsed.map(parseFoodItem).filter((f: any) => f.name);
+      if (foods.length > 0) {
+        const cal = foods.reduce((a: number, f: any) => a + (f.calories || 0), 0);
+        const p = foods.reduce((a: number, f: any) => a + (f.protein || 0), 0);
+        const c = foods.reduce((a: number, f: any) => a + (f.carbs || 0), 0);
+        const g = foods.reduce((a: number, f: any) => a + (f.fat || 0), 0);
+        return [{ id: "meal-0", name: "Refeição", time: "", foods, calories: Math.round(cal), macros: { protein: Math.round(p), carbs: Math.round(c), fats: Math.round(g) }, notes: "" }];
+      }
+    }
+    return null;
+  };
+
+  /** Parse a lesson description text into meal foods (plain text fallback) */
   const parseDietDescription = (text: string): ParsedFood[] => {
     if (!text) return [];
     const foods: ParsedFood[] = [];
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
     for (const line of lines) {
-      // Skip section headers (all caps lines like "PROTEÍNAS", "CARBOIDRATOS")
       if (/^[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇ\s]{3,}$/.test(line) && !line.match(/\d/)) continue;
-      // Skip lines that are just dashes or bullets
       if (/^[-–•*]+$/.test(line)) continue;
-      // Try to extract portion info: "Arroz branco - 4 colheres" or "200g de frango"
       const portionMatch = line.match(/^(.+?)\s*[-–:]\s*(.+)$/);
       if (portionMatch) {
         foods.push({ name: portionMatch[1].replace(/^[-–•*]\s*/, "").trim(), portion: portionMatch[2].trim(), substitutes: [] });
@@ -143,114 +228,18 @@ const Dieta = () => {
             .maybeSingle();
           
           if (lesson) {
-            // ── Helper: safely parse a single food item from JSON ──
-            const parseFoodItem = (f: any) => ({
-              name: f.name || f.alimento || f.food || "",
-              portion: f.portion || f.porcao || f.displayPortion || "",
-              calories: Number(f.calories || f.kcal || f.cal || 0),
-              protein: Number(f.protein || f.proteina || f.p || 0),
-              carbs: Number(f.carbs || f.carboidrato || f.c || 0),
-              fat: Number(f.fat || f.gordura || f.g || 0),
-              substitutes: (Array.isArray(f.substitutes) ? f.substitutes : Array.isArray(f.substitutos) ? f.substitutos : []).map((s: any) => ({
-                name: s.name || s.alimento || "",
-                portion: s.portion || s.porcao || "",
-                calories: Number(s.calories || s.kcal || 0),
-                protein: Number(s.protein || s.proteina || s.p || 0),
-                carbs: Number(s.carbs || s.carboidrato || s.c || 0),
-                fat: Number(s.fat || s.gordura || s.g || 0),
-              })),
-            });
-
-            // ── Helper: convert a meal JSON object to our internal format ──
-            const parseMealFromJson = (m: any, idx: number) => {
-              // Safely extract foods array — guard against non-array values
-              const rawFoods = Array.isArray(m.foods) ? m.foods
-                : Array.isArray(m.alimentos) ? m.alimentos
-                : Array.isArray(m.items) ? m.items
-                : [];
-              const foods = rawFoods.map(parseFoodItem).filter((f: any) => f.name);
-
-              const mProtein = Number(m.protein || m.p || 0) || foods.reduce((acc: number, f: any) => acc + (f.protein || 0), 0);
-              const mCarbs = Number(m.carbs || m.c || 0) || foods.reduce((acc: number, f: any) => acc + (f.carbs || 0), 0);
-              const mFat = Number(m.fat || m.g || 0) || foods.reduce((acc: number, f: any) => acc + (f.fat || 0), 0);
-              const mCal = Number(m.calories || m.kcal || m.cal || 0) || foods.reduce((acc: number, f: any) => acc + (f.calories || 0), 0);
-
-              return {
-                id: `sel-meal-${idx}`,
-                name: m.name || m.title || m.refeicao || `Refeição ${idx + 1}`,
-                time: m.time || m.horario || "",
-                foods,
-                calories: Math.round(mCal),
-                macros: {
-                  protein: Math.round(mProtein),
-                  carbs: Math.round(mCarbs),
-                  fats: Math.round(mFat),
-                },
-                notes: m.notes || m.observacao || m.obs || "",
-              };
-            };
-
-            // ── Helper: check if an object looks like a meal (has meal-like keys) ──
-            const looksLikeMeal = (obj: any) =>
-              obj && typeof obj === "object" && !Array.isArray(obj) &&
-              (obj.foods !== undefined || obj.alimentos !== undefined ||
-               obj.refeicao !== undefined || obj.name !== undefined ||
-               obj.title !== undefined || obj.time !== undefined ||
-               obj.kcal !== undefined || obj.calories !== undefined);
-
-            // ── Step 1: Try to parse description as JSON ──
-            let parsedJson: any = null;
-            const descTrimmed = (lesson.description || "").trim();
-            if (descTrimmed.startsWith("[") || descTrimmed.startsWith("{")) {
-              try {
-                parsedJson = JSON.parse(descTrimmed);
-                // Handle double-encoded JSON strings
-                if (typeof parsedJson === "string") {
-                  try { parsedJson = JSON.parse(parsedJson); } catch { parsedJson = null; }
-                }
-              } catch {
-                parsedJson = null;
-              }
-            }
-
-            // ── Step 2: Determine the proper meal format ──
+            // Try JSON parsing first, then plain text fallback
+            const jsonMeals = tryParseJsonMeals(lesson.description || "");
             let meals: any[];
 
-            if (Array.isArray(parsedJson) && parsedJson.length > 0 && looksLikeMeal(parsedJson[0])) {
-              // Array of meal objects — each element is a meal (refeição)
-              meals = parsedJson.map(parseMealFromJson);
-            } else if (parsedJson && typeof parsedJson === "object" && !Array.isArray(parsedJson) && looksLikeMeal(parsedJson)) {
-              // Single meal object
-              meals = [parseMealFromJson(parsedJson, 0)];
-            } else if (Array.isArray(parsedJson) && parsedJson.length > 0 && (parsedJson[0].name || parsedJson[0].alimento)) {
-              // Array of food items (not meals) — wrap in a single meal
-              meals = [{
-                id: `sel-${selected.source_plan_id}`,
-                name: lesson.title || "Refeição",
-                time: "",
-                foods: parsedJson.map(parseFoodItem).filter((f: any) => f.name),
-                calories: 0,
-                macros: { protein: 0, carbs: 0, fats: 0 },
-                notes: "",
-              }];
-              // Recalculate meal totals from foods
-              const m = meals[0];
-              m.calories = m.foods.reduce((a: number, f: any) => a + (f.calories || 0), 0);
-              m.macros.protein = m.foods.reduce((a: number, f: any) => a + (f.protein || 0), 0);
-              m.macros.carbs = m.foods.reduce((a: number, f: any) => a + (f.carbs || 0), 0);
-              m.macros.fats = m.foods.reduce((a: number, f: any) => a + (f.fat || 0), 0);
+            if (jsonMeals && jsonMeals.length > 0) {
+              meals = jsonMeals.map((m, i) => ({ ...m, id: `sel-meal-${i}` }));
             } else {
-              // Not valid JSON or not a recognized structure — parse as plain text
-              // but NEVER show raw JSON as food items
-              const isLikelyJson = descTrimmed.startsWith("[") || descTrimmed.startsWith("{");
-              const plainText = isLikelyJson ? "" : (lesson.description || "");
-              const parsedFoods = parseDietDescription(plainText).map(f => ({
-                name: f.name,
-                portion: f.portion,
-                calories: 0, protein: 0, carbs: 0, fat: 0,
-                substitutes: [],
-              })).filter(f => f.name);
-
+              // Plain text fallback — but NEVER show raw JSON
+              const desc = (lesson.description || "").trim();
+              const isLikelyJson = desc.startsWith("[") || desc.startsWith("{");
+              const plainText = isLikelyJson ? "" : desc;
+              const parsedFoods = parseDietDescription(plainText).filter(f => f.name);
               meals = parsedFoods.length > 0 ? [{
                 id: `sel-${selected.source_plan_id}`,
                 name: lesson.title || "Refeição",
@@ -319,21 +308,32 @@ const Dieta = () => {
 
       if (!lessons?.length) return null;
 
-      // Parse lessons into meals format
-      const meals = lessons.map((lesson, idx) => ({
-        id: `challenge-diet-${idx}`,
-        name: lesson.title,
-        time: "",
-        foods: parseDietDescription(lesson.description || "").map(f => ({
-          name: f.name,
-          portion: f.portion,
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          substitutes: [],
-        })),
-      }));
+      // Parse lessons into meals format — try JSON first, then plain text
+      const meals: any[] = [];
+      for (const lesson of lessons) {
+        const desc = lesson.description || "";
+        const jsonMeals = tryParseJsonMeals(desc);
+        if (jsonMeals && jsonMeals.length > 0) {
+          // JSON lesson: each parsed meal becomes a separate meal entry
+          jsonMeals.forEach((m, mi) => meals.push({ ...m, id: `challenge-diet-${meals.length + mi}` }));
+        } else {
+          // Plain text fallback — skip if it looks like broken JSON
+          const trimmed = desc.trim();
+          const isLikelyJson = trimmed.startsWith("[") || trimmed.startsWith("{");
+          const plainFoods = isLikelyJson ? [] : parseDietDescription(desc).filter(f => f.name);
+          if (plainFoods.length > 0) {
+            meals.push({
+              id: `challenge-diet-${meals.length}`,
+              name: lesson.title,
+              time: "",
+              foods: plainFoods,
+              calories: 0,
+              macros: { protein: 0, carbs: 0, fats: 0 },
+              notes: "",
+            });
+          }
+        }
+      }
 
       return {
         id: `challenge-diet-${challenge.id}`,
