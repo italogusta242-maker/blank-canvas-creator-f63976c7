@@ -1,0 +1,30 @@
+﻿              whileTap={{ scale: 0.98 }}
+              onClick={() => shareWorkout(shareCardRef)}
+              disabled={isSharing}
+              className="w-full py-4 bg-secondary/80 hover:bg-secondary text-foreground font-cinzel font-bold text-sm rounded-xl tracking-wider disabled:opacity-50 flex items-center justify-center gap-3 border border-border/50 transition-colors"
+            >
+              <Share2 size={18} />
+              {isSharing ? "GERANDO..." : "COMPARTILHAR IMAGEM"}
+            </motion.button>
+          </div>
+
+          {/* Skip */}
+          <button
+            onClick={() => {
+              setView("list");
+              setSelectedGroup(null);
+            }}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Pular
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// NEW: TESTIMONIAL MODAL

@@ -1,0 +1,5 @@
+-- Adicione a coluna scoring_rules na tabela challenges
+-- Você pode rodar este comando no painel SQL Editor do Supabase
+
+ALTER TABLE challenges
+ADD COLUMN IF NOT EXISTS scoring_rules JSONB DEFAULT '{"workout": 30, "diet": 40, "running": 30}'::jsonb;
