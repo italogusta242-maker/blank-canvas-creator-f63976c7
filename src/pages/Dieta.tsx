@@ -308,21 +308,32 @@ const Dieta = () => {
 
       if (!lessons?.length) return null;
 
-      // Parse lessons into meals format
-      const meals = lessons.map((lesson, idx) => ({
-        id: `challenge-diet-${idx}`,
-        name: lesson.title,
-        time: "",
-        foods: parseDietDescription(lesson.description || "").map(f => ({
-          name: f.name,
-          portion: f.portion,
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          substitutes: [],
-        })),
-      }));
+      // Parse lessons into meals format — try JSON first, then plain text
+      const meals: any[] = [];
+      for (const lesson of lessons) {
+        const desc = lesson.description || "";
+        const jsonMeals = tryParseJsonMeals(desc);
+        if (jsonMeals && jsonMeals.length > 0) {
+          // JSON lesson: each parsed meal becomes a separate meal entry
+          jsonMeals.forEach((m, mi) => meals.push({ ...m, id: `challenge-diet-${meals.length + mi}` }));
+        } else {
+          // Plain text fallback — skip if it looks like broken JSON
+          const trimmed = desc.trim();
+          const isLikelyJson = trimmed.startsWith("[") || trimmed.startsWith("{");
+          const plainFoods = isLikelyJson ? [] : parseDietDescription(desc).filter(f => f.name);
+          if (plainFoods.length > 0) {
+            meals.push({
+              id: `challenge-diet-${meals.length}`,
+              name: lesson.title,
+              time: "",
+              foods: plainFoods,
+              calories: 0,
+              macros: { protein: 0, carbs: 0, fats: 0 },
+              notes: "",
+            });
+          }
+        }
+      }
 
       return {
         id: `challenge-diet-${challenge.id}`,
