@@ -12,7 +12,7 @@ const UPSELL_PERKS = [
 const REASON_MESSAGES: Record<string, { title: string; subtitle: string }> = {
   no_access: {
     title: "Você ainda não tem acesso",
-    subtitle: "Para desbloquear todos os recursos do Shape Insano, escolha um plano.",
+    subtitle: "Para desbloquear todos os recursos do ANAAC Club, escolha um plano.",
   },
   expired: {
     title: "Seu acesso expirou",
@@ -20,7 +20,7 @@ const REASON_MESSAGES: Record<string, { title: string; subtitle: string }> = {
   },
   default: {
     title: "Acesso Restrito",
-    subtitle: "Esta área é exclusiva para membros ativos do Shape Insano.",
+    subtitle: "Esta área é exclusiva para membros ativos do ANAAC Club.",
   },
 };
 

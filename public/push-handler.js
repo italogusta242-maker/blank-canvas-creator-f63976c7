@@ -23,11 +23,11 @@ self.addEventListener("push", (event) => {
       if (focusedOnConversation) return;
 
       await self.registration.showNotification(
-        data.title || "Shape Insano",
+        data.title || "ANAAC Club",
         {
           body: data.body || "",
-          icon: "/insano-icon-192.png",
-          badge: "/insano-icon-192.png",
+          icon: "/anaac-logo-pwa.svg",
+          badge: "/anaac-logo-pwa.svg",
           vibrate: [200, 100, 200],
           data: data.data || {},
           tag: conversationId || "chat-" + Date.now(),

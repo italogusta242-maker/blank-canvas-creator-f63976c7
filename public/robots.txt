@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://shapeinsano.lovable.app/sitemap.xml
+Sitemap: https://anaacclub.lovable.app/sitemap.xml
