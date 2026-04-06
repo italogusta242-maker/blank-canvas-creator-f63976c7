@@ -105,7 +105,7 @@ const EspecialistaPlanos = () => {
 
       const [plansRes, profilesRes] = await Promise.all([
         supabase.from("training_plans").select("*").in("user_id", studentIds),
-        supabase.from("profiles").select("id, nome, email").in("id", studentIds),
+        supabase.from("profiles").select("id, full_name, email").in("id", studentIds),
       ]);
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
