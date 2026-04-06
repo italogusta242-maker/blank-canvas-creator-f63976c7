@@ -141,10 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             status: "ativo",
             onboarded: true,
           });
-          await supabase.from("user_roles").upsert(
-            { user_id: userId, role: "user" },
-            { onConflict: "user_id,role" }
-          );
+          // Role is created by the database trigger — never from frontend
         }
       } catch (e) {
         console.error("AuthContext: ensureProfileExists error", e);

@@ -88,6 +88,7 @@ const RoleGuard = ({ allowedRoles }: RoleGuardProps) => {
   }
 
   if (!hasAccess) {
+    console.warn(`[SECURITY] Acesso negado à rota admin para user ${user.email} (${user.id}). Roles: ${rolesCache.roles.join(", ") || "nenhuma"}`);
     return <AcessoNegado />;
   }
 
