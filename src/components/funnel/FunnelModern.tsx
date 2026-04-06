@@ -102,9 +102,9 @@ const FunnelModern = () => {
       // 1. Save lead (Final status)
       await supabase.from("funnel_leads").upsert(
         {
-          full_name: form.full_name,
+          nome: form.full_name,
           email: form.email.toLowerCase(),
-          phone: form.phone,
+          telefone: form.phone,
           cupom: form.cupom || null,
           status: "pending",
           selected_plan_id: currentPlan.id,
