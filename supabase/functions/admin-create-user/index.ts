@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
       const { error: subError } = await adminClient
         .from("subscriptions")
         .insert({
-          user_id: newUser.user.id,
+          user_id: userId,
           plan_price: planData?.price || 0,
           status: "active",
         });
