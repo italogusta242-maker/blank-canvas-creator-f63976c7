@@ -477,24 +477,57 @@ export const ChallengeView = ({
                             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                               <div className="text-foreground leading-relaxed space-y-4 text-sm max-w-4xl">
                                  {activeLesson?.description ? (
-                                   activeLesson.description.split('\n').map((line: string, i: number) => {
-                                     const trimmed = line.trim();
-                                     if (!trimmed) return null;
-                                     
-                                     const isHeader = trimmed.endsWith(':') || 
-                                                     (trimmed.length < 50 && !trimmed.includes('.') && trimmed === trimmed.toUpperCase());
-                                     
-                                     if (isHeader) {
-                                       return <h5 key={i} className="text-accent uppercase tracking-[0.15em] font-black mt-6 mb-2 text-sm">{trimmed}</h5>;
-                                     }
-                                     
-                                     return (
-                                       <div key={i} className="flex items-start gap-3 pl-2 py-1">
-                                         <span className="text-accent shrink-0 mt-0.5">•</span>
-                                         <span className="text-foreground leading-loose">{trimmed}</span>
-                                       </div>
-                                     );
-                                   })
+                                    (() => {
+                                      const text = activeLesson.description;
+                                      // Render JSON diet content the same way as student view
+                                      if (selectedModule?.type === 'diets' && text.trim().startsWith('[')) {
+                                        try {
+                                          const meals = JSON.parse(text);
+                                          return (
+                                            <div className="space-y-6">
+                                              {meals.filter((m: any) => !m.refeicao?.includes("Opção 2") && !m.refeicao?.includes("Opção 3")).map((meal: any, i: number) => (
+                                                <div key={i} className="space-y-2 pb-4 border-b border-border/30 last:border-0">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-0.5 rounded uppercase tracking-tighter">
+                                                      {meal.time || "HORÁRIO"}
+                                                    </span>
+                                                    <h4 className="text-sm font-bold text-foreground italic">{meal.refeicao || meal.name}</h4>
+                                                  </div>
+                                                  <div className="pl-2 space-y-1">
+                                                    {(meal.alimentos || meal.foods || []).map((food: any, fi: number) => (
+                                                      <p key={fi} className="text-[11px] text-muted-foreground leading-tight italic">
+                                                        • {food.alimento || food.name}: <span className="text-foreground/70 not-italic font-bold">{food.porcao || food.portion}</span>
+                                                      </p>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          );
+                                        } catch (e) {
+                                          // fall through to text rendering
+                                        }
+                                      }
+                                      // Config diet placeholder
+                                      if (text.startsWith('__CONFIG_DIET__')) {
+                                        return <p className="text-muted-foreground italic">Cardápio hardcoded — visualização disponível na área do aluno.</p>;
+                                      }
+                                      return text.split('\n').map((line: string, i: number) => {
+                                        const trimmed = line.trim();
+                                        if (!trimmed) return null;
+                                        const isHeader = trimmed.endsWith(':') || 
+                                                        (trimmed.length < 50 && !trimmed.includes('.') && trimmed === trimmed.toUpperCase());
+                                        if (isHeader) {
+                                          return <h5 key={i} className="text-accent uppercase tracking-[0.15em] font-black mt-6 mb-2 text-sm">{trimmed}</h5>;
+                                        }
+                                        return (
+                                          <div key={i} className="flex items-start gap-3 pl-2 py-1">
+                                            <span className="text-accent shrink-0 mt-0.5">•</span>
+                                            <span className="text-foreground leading-loose">{trimmed}</span>
+                                          </div>
+                                        );
+                                      });
+                                    })()
                                  ) : (
                                    <p className="italic text-muted-foreground">{selectedModule.description || "Nenhum conteúdo descritivo detalhado para esta aula."}</p>
                                  )}
