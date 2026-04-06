@@ -28,7 +28,6 @@ const ConviteAcesso = lazy(() => import("@/pages/ConviteAcesso"));
 const BattleMode = lazy(() => import("@/pages/BattleMode"));
 const Treinos = lazy(() => import("@/pages/Treinos"));
 const Dieta = lazy(() => import("@/pages/Dieta"));
-const DietPlan = lazy(() => import("@/components/diet/DietPlan"));
 const Desafio = lazy(() => import("@/pages/Desafio"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminUsuarios = lazy(() => import("@/pages/admin/AdminUsuarios"));
