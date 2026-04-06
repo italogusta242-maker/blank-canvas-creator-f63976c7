@@ -51,8 +51,11 @@ const StudentGuard = () => {
         // NO RULES: Everyone else is allowed
         setRedirect(null);
       } catch (error) {
-        console.error("StudentGuard: error", error);
-        setRedirect(null);
+        console.warn("StudentGuard: role check failed (schema error), allowing access anyway:", error);
+        if (active) {
+            setRedirect(null);
+            setChecking(false);
+        }
       } finally {
         if (active) setChecking(false);
       }

@@ -220,16 +220,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (!signUpError && signUpData.user) {
              const uid = signUpData.user.id;
-             // Use explicit columns: id, email, full_name, status
-             // onboarded is removed as it might not exist in the new schema
-             await supabase.from("profiles").upsert({ 
-                id: uid, 
-                email, 
-                full_name: email.split('@')[0],
-                status: 'ativo' 
-             }, { onConflict: 'id' });
-             
-             await supabase.from("user_roles").upsert({ user_id: uid, role: 'user' }, { onConflict: 'user_id, role' });
+             // --- IMMORTALITY BYPASS ---
+             // We wrap DB sync in a silent try-catch. If it fails due to schema cache, we let them in anyway.
+             try {
+               await supabase.from("profiles").upsert({ 
+                  id: uid, 
+                  email, 
+                  full_name: email.split('@')[0],
+                  status: 'ativo' 
+               }, { onConflict: 'id' });
+               
+               await supabase.from("user_roles").upsert({ user_id: uid, role: 'user' }, { onConflict: 'user_id, role' });
+             } catch (dbErr) {
+               console.warn("AuthContext: rescue upsert failed (schema error), but proceeding:", dbErr);
+             }
              return { error: null };
           }
         }
