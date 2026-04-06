@@ -91,7 +91,7 @@ const AppRoutes = () => {
             <Route index element={<Suspense fallback={<DashboardSkeleton />}><Dashboard /></Suspense>} />
             <Route path="desafio" element={<Suspense fallback={<DesafioSkeleton />}><Desafio /></Suspense>} />
             <Route path="treinos" element={<Suspense fallback={<TreinosSkeleton />}><Treinos /></Suspense>} />
-            <Route path="dieta" element={<Suspense fallback={<DietaSkeleton />}><Dieta /></Suspense>} />
+            <Route path="dieta" element={<Suspense fallback={<DietaSkeleton />}><DietPlan /></Suspense>} />
             <Route path="comunidade" element={<Suspense fallback={<ComunidadeSkeleton />}><Comunidade /></Suspense>} />
             <Route path="perfil/:userId?" element={<Suspense fallback={<PerfilSkeleton />}><Perfil /></Suspense>} />
             <Route path="batalha" element={<Suspense fallback={<DashboardSkeleton />}><BattleMode /></Suspense>} />
