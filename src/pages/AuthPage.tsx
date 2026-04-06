@@ -42,18 +42,26 @@ const AuthPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-    if (error) {
-      if (error === "Invalid login credentials") {
-        toast.error("Email ou senha incorretos. Verifique seus dados ou redefina sua senha.");
-      } else if (error.includes("Email not confirmed")) {
-        toast.error("Email não confirmado. Verifique sua caixa de entrada.");
-      } else if (error.includes("too many requests")) {
-        toast.error("Muitas tentativas. Aguarde alguns minutos.");
-      } else {
-        toast.error(error);
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        if (error === "Invalid login credentials") {
+          toast.error("Email ou senha incorretos. Verifique seus dados ou redefina sua senha.");
+        } else if (error.includes("Email not confirmed")) {
+          toast.error("Email não confirmado. Verifique sua caixa de entrada.");
+        } else if (error.includes("too many requests")) {
+          toast.error("Muitas tentativas. Aguarde alguns minutos.");
+        } else if (error.includes("NetworkError") || error.includes("network") || error.includes("fetch")) {
+          toast.error("Erro de conexão. Verifique sua internet e tente novamente.");
+        } else {
+          toast.error(error);
+        }
       }
+    } catch (err: any) {
+      console.error("AuthPage: login exception", err);
+      toast.error("Erro de conexão com o servidor. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
   };
 

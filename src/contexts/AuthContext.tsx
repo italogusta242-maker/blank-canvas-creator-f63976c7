@@ -160,22 +160,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    void supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (cancelled) return;
-      if (currentSession) {
-        void syncSessionState(currentSession, true);
-      } else {
-        // Safari ITP may clear localStorage before the SDK hydrates.
-        // Retry once after a short delay to let Supabase recover tokens.
-        setTimeout(() => {
-          if (cancelled) return;
-          void supabase.auth.getSession().then(({ data: { session: retry } }) => {
+    void supabase.auth.getSession()
+      .then(({ data: { session: currentSession } }) => {
+        if (cancelled) return;
+        if (currentSession) {
+          void syncSessionState(currentSession, true);
+        } else {
+          // Safari ITP may clear localStorage before the SDK hydrates.
+          // Retry once after a short delay to let Supabase recover tokens.
+          setTimeout(() => {
             if (cancelled) return;
-            void syncSessionState(retry, true);
-          });
-        }, 1500);
-      }
-    });
+            void supabase.auth.getSession()
+              .then(({ data: { session: retry } }) => {
+                if (cancelled) return;
+                void syncSessionState(retry, true);
+              })
+              .catch((err) => {
+                console.error("AuthContext: retry getSession failed", err);
+                if (!cancelled) setLoading(false);
+              });
+          }, 1500);
+        }
+      })
+      .catch((err) => {
+        console.error("AuthContext: getSession failed", err);
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -187,23 +197,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isLoading = loading;
 
   const signUp = async (email: string, password: string, name?: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { nome: name },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    return { error: error?.message ?? null };
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nome: name },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      return { error: error?.message ?? null };
+    } catch (err: any) {
+      console.error("AuthContext: signUp exception", err);
+      return { error: err?.message || "Erro de rede ao criar conta. Verifique sua conexão." };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      return { error: error.message };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { error: error.message };
+      }
+      return { error: null };
+    } catch (err: any) {
+      console.error("AuthContext: signIn exception", err);
+      return { error: err?.message || "Erro de rede ao fazer login. Verifique sua conexão." };
     }
-    return { error: null };
   };
 
   const signOut = async () => {
