@@ -935,14 +935,21 @@ const Challenge = () => {
                                 {/* Import/Selection Action */}
                                 <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center gap-4">
                                    <Button 
-                                     onClick={() => {
-                                       const pType = selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta');
-                                       if (pType === 'planner') {
-                                         setPendingPlanSelection({ id: currentLesson.id, type: pType, title: currentLesson.title });
-                                       } else {
-                                         toggleItem(currentLesson.id, pType);
-                                       }
-                                     }}
+                                      onClick={() => {
+                                        const pType = selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta');
+                                        if (pType === 'planner') {
+                                          setPendingPlanSelection({ id: currentLesson.id, type: pType, title: currentLesson.title });
+                                        } else if ((currentLesson as any).isConfigDiet) {
+                                          importPlanMutation.mutate({
+                                            sourceId: currentLesson.id,
+                                            planType: 'diet',
+                                            planData: { is_config_diet: true, calories: (currentLesson as any).dietCalories, diet_index: (currentLesson as any).dietIndex },
+                                            planTitle: currentLesson.title,
+                                          });
+                                        } else {
+                                          toggleItem(currentLesson.id, pType);
+                                        }
+                                      }}
                                       className={cn("h-14 px-10 rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-2xl transition-all", 
                                         isAlreadyImported(currentLesson.id, selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta')) 
                                          ? "bg-green-500/10 text-green-500 hover:text-white hover:bg-green-500/80 border border-green-500/20" 
