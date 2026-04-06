@@ -30,6 +30,7 @@ import {
   Zap
 } from "lucide-react";
 import PlanilhaCorrida from "@/components/training/PlanilhaCorrida";
+import { ALL_DIETS } from "@/components/diet/DietPlanData";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -324,13 +325,31 @@ const Challenge = () => {
     const moduleType = selectedModule?.type;
     let list = [...moduleLessons];
 
-    if (moduleType === 'diets' || moduleType === 'workouts') {
-      const pItems = (moduleType === 'diets' ? dietPlans : trainingPlans).map(p => ({
+    if (moduleType === 'diets') {
+      // Inject hardcoded config diet plans
+      const configDiets = ALL_DIETS.map((d, idx) => ({
+        id: `config-diet-${d.totalCalories}`,
+        title: `Cardápio Personalizado - ${d.totalCalories} kcal`,
+        duration: "PLANO",
+        video_url: "",
+        description: `__CONFIG_DIET__${idx}`,
+        isPlan: true,
+        isConfigDiet: true,
+        dietIndex: idx,
+        dietCalories: d.totalCalories,
+      }));
+      configDiets.forEach(cd => {
+        if (!list.some(l => l.title === cd.title)) list.push(cd as any);
+      });
+    }
+
+    if (moduleType === 'workouts') {
+      const pItems = trainingPlans.map(p => ({
         id: p.id,
         title: p.title,
         duration: "PLANO",
         video_url: "",
-        description: (p as any).goal_description || (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
+        description: (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
         isPlan: true
       }));
       pItems.forEach(pi => {
@@ -827,6 +846,49 @@ const Challenge = () => {
                                         ));
                                     }
                                     
+                                    // Handle Config Diet Plans (hardcoded)
+                                    if ((currentLesson as any)?.isConfigDiet) {
+                                      const dietIdx = (currentLesson as any).dietIndex;
+                                      const diet = ALL_DIETS[dietIdx];
+                                      if (diet) {
+                                        return (
+                                          <div className="space-y-6">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <span className="text-xs font-black bg-accent/20 text-accent px-3 py-1 rounded-lg uppercase tracking-wider">
+                                                🔥 {diet.totalCalories} kcal
+                                              </span>
+                                            </div>
+                                            {diet.meals.map((meal, i) => (
+                                              <div key={i} className="space-y-2 pb-4 border-b border-border/30 last:border-0">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-0.5 rounded uppercase tracking-tighter">
+                                                    {meal.time}
+                                                  </span>
+                                                  <h4 className="text-sm font-bold text-foreground font-cinzel italic">{meal.name}</h4>
+                                                </div>
+                                                <div className="pl-2 space-y-1.5">
+                                                  {meal.options.slice(0, 1).map((opt, oi) => (
+                                                    <div key={oi}>
+                                                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">{opt.title}</p>
+                                                      <p className="text-[11px] text-foreground/80 leading-relaxed">{opt.principal}</p>
+                                                    </div>
+                                                  ))}
+                                                  {meal.options.length > 1 && (
+                                                    <p className="text-[10px] text-accent/60 italic">
+                                                      + {meal.options.length - 1} opção(ões) alternativa(s)
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                            <p className="text-[9px] text-accent/60 uppercase tracking-widest font-bold pt-2 italic">
+                                              * Selecione para ver o cardápio completo com substituições e lista de compras.
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
                                     // Handle JSON Diet Description
                                     if (selectedModule?.type === 'diets' && text.trim().startsWith('[')) {
                                       try {
@@ -834,7 +896,7 @@ const Challenge = () => {
                                         return (
                                           <div className="space-y-6">
                                             {meals.filter((m: any) => !m.refeicao?.includes("Opção 2") && !m.refeicao?.includes("Opção 3")).map((meal: any, i: number) => (
-                                              <div key={i} className="space-y-2 pb-4 border-b border-white/5 last:border-0">
+                                              <div key={i} className="space-y-2 pb-4 border-b border-border/30 last:border-0">
                                                 <div className="flex items-center gap-2">
                                                   <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-0.5 rounded uppercase tracking-tighter">
                                                     {meal.time || "HORÁRIO"}
@@ -873,14 +935,21 @@ const Challenge = () => {
                                 {/* Import/Selection Action */}
                                 <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center gap-4">
                                    <Button 
-                                     onClick={() => {
-                                       const pType = selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta');
-                                       if (pType === 'planner') {
-                                         setPendingPlanSelection({ id: currentLesson.id, type: pType, title: currentLesson.title });
-                                       } else {
-                                         toggleItem(currentLesson.id, pType);
-                                       }
-                                     }}
+                                      onClick={() => {
+                                        const pType = selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta');
+                                        if (pType === 'planner') {
+                                          setPendingPlanSelection({ id: currentLesson.id, type: pType, title: currentLesson.title });
+                                        } else if ((currentLesson as any).isConfigDiet) {
+                                          importPlanMutation.mutate({
+                                            sourceId: currentLesson.id,
+                                            planType: 'diet',
+                                            planData: { is_config_diet: true, calories: (currentLesson as any).dietCalories, diet_index: (currentLesson as any).dietIndex },
+                                            planTitle: currentLesson.title,
+                                          });
+                                        } else {
+                                          toggleItem(currentLesson.id, pType);
+                                        }
+                                      }}
                                       className={cn("h-14 px-10 rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-2xl transition-all", 
                                         isAlreadyImported(currentLesson.id, selectedModule?.type === 'workouts' ? 'treino' : (selectedModule?.type === 'planner' ? 'planner' : 'dieta')) 
                                          ? "bg-green-500/10 text-green-500 hover:text-white hover:bg-green-500/80 border border-green-500/20" 
