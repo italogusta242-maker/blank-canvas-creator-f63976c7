@@ -90,20 +90,86 @@ export const ModuleDrawer = ({
       .from('challenge-files')
       .getPublicUrl(filePath);
 
-    // Título extraído do nome do arquivo (remove extensão e normaliza)
-    const lessonTitle = file.name
+    // Título base extraído do nome do arquivo
+    const baseTitle = file.name
       .replace(/\.pdf$/i, '')
       .replace(/[-_]/g, ' ')
       .trim();
 
-    return {
-      id: `item-${Date.now()}-${Math.random()}`,
-      title: lessonTitle,
-      order_index: 0,
-      description: "PDF de treino.",
-      fileName: file.name,
-      pdf_url: publicUrl,
-    };
+    // Arquivos >8MB: apenas faz upload, sem IA
+    if (file.size > 8 * 1024 * 1024) {
+      toast.warning(`PDF "${file.name}" é muito grande (>8MB). Adicionado sem análise de IA.`);
+      return {
+        id: `item-${Date.now()}-${Math.random()}`,
+        title: baseTitle,
+        order_index: 0,
+        description: "Arquivo PDF.",
+        fileName: file.name,
+        pdf_url: publicUrl,
+      };
+    }
+
+    // Converte para base64
+    const fileBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const functionName = module.type === 'diets' ? "parse-diet-pdf" : "parse-training-pdf";
+
+    try {
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { fileBase64, fileName: file.name },
+        signal,
+      });
+
+      if (error) throw error;
+
+      let lessonTitle = baseTitle;
+      let lessonContent = "Conteúdo processado via PDF.";
+
+      if (data?.plan) {
+        const plan = data.plan;
+        if (module.type === 'diets' && plan.meals && Array.isArray(plan.meals)) {
+          lessonTitle = plan.title || lessonTitle;
+          lessonContent = JSON.stringify(plan.meals, null, 2);
+        } else if (plan.items && Array.isArray(plan.items)) {
+          lessonTitle = plan.items[0]?.title || lessonTitle;
+          lessonContent = plan.items.map((it: any) => `${it.title}\n${it.content}`).join("\n\n");
+        } else if (plan.title) {
+          lessonTitle = plan.title;
+        }
+      } else {
+        toast.warning(`PDF "${file.name}" não pôde ser analisado pela IA. Adicionado sem extração.`);
+      }
+
+      return {
+        id: `item-${Date.now()}-${Math.random()}`,
+        title: lessonTitle,
+        order_index: 0,
+        description: lessonContent,
+        fileName: file.name,
+        pdf_url: publicUrl,
+      };
+    } catch (err: any) {
+      if (err.name === 'AbortError') return null;
+      // Fallback: salva sem IA
+      console.error("Edge Function falhou, salvando sem IA:", err.message);
+      toast.warning(`PDF "${file.name}" salvo sem análise de IA.`);
+      return {
+        id: `item-${Date.now()}-${Math.random()}`,
+        title: baseTitle,
+        order_index: 0,
+        description: "PDF de treino.",
+        fileName: file.name,
+        pdf_url: publicUrl,
+      };
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

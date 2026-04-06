@@ -34,8 +34,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -60,7 +60,10 @@ serve(async (req) => {
       throw new Error("Unsupported content type");
     }
 
-    const base64 = encode(fileBytes);
+    // encode to base64 string for Gemini inline_data
+    let binary = "";
+    fileBytes.forEach((b) => (binary += String.fromCharCode(b)));
+    const base64 = btoa(binary);
 
     const systemPrompt = `Você é um especialista em nutrição que extrai dados de planos alimentares em PDF.
 
@@ -129,36 +132,36 @@ VALIDAÇÃO FINAL - Antes de responder, verifique que:
 ✅ Substitutos também têm porção e macros > 0
 Se algum valor estiver 0, ESTIME usando a TBCA/TACO`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:application/pdf;base64,${base64}`,
-                },
+    const geminiPayload = {
+      contents: [
+        {
+          parts: [
+            {
+              inline_data: {
+                mime_type: "application/pdf",
+                data: base64,
               },
-              {
-                type: "text",
-                text: "Extraia o plano alimentar completo deste PDF seguindo as instruções do sistema. IMPORTANTE: Todos os alimentos DEVEM ter porção definida e macros (calories, protein, carbs, fat) com valores maiores que zero. Responda APENAS com JSON válido.",
-              },
-            ],
-          },
-        ],
+            },
+            {
+              text: systemPrompt + "\n\nExtraia o plano alimentar completo deste PDF. IMPORTANTE: Todos os alimentos DEVEM ter porção definida e macros (calories, protein, carbs, fat) com valores maiores que zero. Responda APENAS com JSON válido.",
+            },
+          ],
+        },
+      ],
+      generationConfig: {
         temperature: 0.1,
-        response_format: { type: "json_object" },
-      }),
-    });
+        response_mime_type: "application/json",
+      },
+    };
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiPayload),
+      }
+    );
 
     if (!response.ok) {
       const errBody = await response.text();
@@ -167,8 +170,8 @@ Se algum valor estiver 0, ESTIME usando a TBCA/TACO`;
     }
 
     const data = await response.json();
-    const rawText = data.choices?.[0]?.message?.content;
-    if (!rawText) throw new Error("Empty response from AI");
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) throw new Error("Empty response from Gemini");
 
     let cleanJson = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     
