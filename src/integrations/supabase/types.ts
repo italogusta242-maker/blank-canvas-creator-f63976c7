@@ -1826,6 +1826,7 @@ export type Database = {
           created_at: string
           email: string | null
           faixa_etaria: string | null
+          full_name: string | null
           group_id: string | null
           hustle_points: number | null
           id: string
@@ -1834,13 +1835,12 @@ export type Database = {
           meta_peso: number | null
           must_change_password: boolean
           nascimento: string | null
-          nome: string | null
           onboarded: boolean
           peso: number | null
+          phone: string | null
           planner_type: string | null
           sexo: string | null
           status: string
-          telefone: string | null
           updated_at: string
         }
         Insert: {
@@ -1852,6 +1852,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           faixa_etaria?: string | null
+          full_name?: string | null
           group_id?: string | null
           hustle_points?: number | null
           id: string
@@ -1860,13 +1861,12 @@ export type Database = {
           meta_peso?: number | null
           must_change_password?: boolean
           nascimento?: string | null
-          nome?: string | null
           onboarded?: boolean
           peso?: number | null
+          phone?: string | null
           planner_type?: string | null
           sexo?: string | null
           status?: string
-          telefone?: string | null
           updated_at?: string
         }
         Update: {
@@ -1878,6 +1878,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           faixa_etaria?: string | null
+          full_name?: string | null
           group_id?: string | null
           hustle_points?: number | null
           id?: string
@@ -1886,13 +1887,12 @@ export type Database = {
           meta_peso?: number | null
           must_change_password?: boolean
           nascimento?: string | null
-          nome?: string | null
           onboarded?: boolean
           peso?: number | null
+          phone?: string | null
           planner_type?: string | null
           sexo?: string | null
           status?: string
-          telefone?: string | null
           updated_at?: string
         }
         Relationships: [
