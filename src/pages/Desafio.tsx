@@ -323,10 +323,9 @@ const Challenge = () => {
 
   const unifiedContent = useMemo(() => {
     const moduleType = selectedModule?.type;
-    let list = [...moduleLessons];
 
     if (moduleType === 'diets') {
-      // Inject hardcoded config diet plans
+      // Config diets come first, in order (1450, 1650, 1850, ...)
       const configDiets = ALL_DIETS.map((d, idx) => ({
         id: `config-diet-${d.totalCalories}`,
         title: `Cardápio Personalizado - ${d.totalCalories} kcal`,
@@ -338,10 +337,14 @@ const Challenge = () => {
         dietIndex: idx,
         dietCalories: d.totalCalories,
       }));
-      configDiets.forEach(cd => {
-        if (!list.some(l => l.title === cd.title)) list.push(cd as any);
-      });
+      // Add any non-duplicate lessons from DB after config diets
+      const dbLessons = moduleLessons.filter(l =>
+        !configDiets.some(cd => l.title?.includes(String(cd.dietCalories)))
+      );
+      return [...configDiets as any[], ...dbLessons];
     }
+
+    let list = [...moduleLessons];
 
     if (moduleType === 'workouts') {
       const pItems = trainingPlans.map(p => ({
