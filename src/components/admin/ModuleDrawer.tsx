@@ -76,12 +76,12 @@ export const ModuleDrawer = ({
     }
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `challenge-pdfs/${fileName}`;
+    const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+    const filePath = `challenge-pdfs/${safeFileName}`;
 
     const { error: storageError } = await supabase.storage
       .from('challenge-files')
-      .upload(filePath, file, { contentType: 'application/pdf' });
+      .upload(filePath, file, { contentType: 'application/pdf', upsert: false });
 
     if (storageError) throw storageError;
     if (signal.aborted) return null;
@@ -90,69 +90,20 @@ export const ModuleDrawer = ({
       .from('challenge-files')
       .getPublicUrl(filePath);
 
-    if (file.size > 8 * 1024 * 1024) {
-      toast.warning(`PDF "${file.name}" é muito grande para análise automática (>8MB). Adicionado apenas como arquivo.`);
-      return {
-        id: `item-${Date.now()}-${Math.random()}`,
-        title: file.name.replace('.pdf', ''),
-        order_index: 0,
-        description: "Arquivo PDF (muito grande para análise automática).",
-        fileName: file.name,
-        pdf_url: publicUrl,
-      };
-    }
+    // Título extraído do nome do arquivo (remove extensão e normaliza)
+    const lessonTitle = file.name
+      .replace(/\.pdf$/i, '')
+      .replace(/[-_]/g, ' ')
+      .trim();
 
-    let functionName = "parse-training-pdf";
-    if (module.type === 'diets') functionName = "parse-diet-pdf";
-
-    const fileBase64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-    try {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { fileBase64, fileName: file.name },
-        signal,
-      });
-
-      if (error) throw error;
-
-      let lessonTitle = file.name.replace('.pdf', '');
-      let lessonContent = "Conteúdo processado via PDF.";
-
-      if (data?.plan) {
-        const plan = data.plan;
-        if (module.type === 'diets' && plan.meals && Array.isArray(plan.meals)) {
-          lessonTitle = plan.title || lessonTitle;
-          lessonContent = JSON.stringify(plan.meals, null, 2);
-        } else if (plan.items && Array.isArray(plan.items)) {
-          lessonTitle = plan.items[0]?.title || lessonTitle;
-          lessonContent = plan.items.map((it: any) => `${it.title}\n${it.content}`).join("\n\n");
-        } else if (plan.title) {
-          lessonTitle = plan.title;
-        }
-      } else {
-        toast.warning(`PDF "${file.name}" não pôde ser analisado pela IA. Adicionado sem extração.`);
-      }
-
-      return {
-        id: `item-${Date.now()}-${Math.random()}`,
-        title: lessonTitle,
-        order_index: 0,
-        description: lessonContent,
-        fileName: file.name,
-        pdf_url: publicUrl,
-      };
-    } catch (err: any) {
-      if (err.name === 'AbortError') return null;
-      throw err;
-    }
+    return {
+      id: `item-${Date.now()}-${Math.random()}`,
+      title: lessonTitle,
+      order_index: 0,
+      description: "PDF de treino.",
+      fileName: file.name,
+      pdf_url: publicUrl,
+    };
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
