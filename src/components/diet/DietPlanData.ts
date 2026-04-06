@@ -433,7 +433,97 @@ export const DIET_2200: DietPlanType = {
   }
 };
 
-export const ALL_DIETS: DietPlanType[] = [DIET_1450, DIET_1650, DIET_1850, DIET_2000, DIET_2200];
+export const DIET_2400: DietPlanType = {
+  title: "Cardápio Personalizado - 2400 kcal (Bulking)",
+  totalCalories: 2400,
+  meals: [
+    {
+      time: "08:00",
+      name: "Café da Manhã",
+      options: [
+        {
+          title: "Opção 1: Pão com Ovo",
+          principal: "Café (80ml), 2 Ovos de galinha (110g) ou Peito de frango desfiado (50g), Mamão formosa (170g), Pasta de amendoim integral (20g), 2 Fatias de Pão de forma integral (50g) e 1 Fatia pequena de Queijo minas meia cura (20g).",
+          substitutions: "Chá preto (180ml); Melão (230g), Morango (200g) ou Banana prata (65g); Semente de chia (30g), Castanha-do-Brasil (16g) ou Castanha de caju (20g); Pão francês (50g), Cuscuz (90g) ou Goma de tapioca (40g); Muçarela (15g), Creme de ricota light (30g) ou Cottage (30g)."
+        },
+        {
+          title: "Opção 2: Smoothie",
+          principal: "Café (80ml), Banana prata (65g), Semente de chia (30g), Aveia em flocos (21g), Iogurte natural (170ml), Whey protein concentrado (25.5g) e Mel (15g).",
+          substitutions: "Morango (200g), Mamão (170g) ou Maracujá (100g); Semente de linhaça (30g), Pasta de amendoim integral (20g) ou Castanha-do-Brasil (16g); Farelo de aveia (30g) ou Granola caseira (22g); Leite desnatado (240ml); Whey protein isolado (22.5g) ou Proteína vegetal (30g)."
+        }
+      ]
+    },
+    {
+      time: "12:00",
+      name: "Almoço",
+      options: [
+        {
+          title: "Opção 1: Arroz e Feijão",
+          principal: "Alface (40g), Brócolis cozido (120g), Filé de frango grelhado (100g), Arroz branco/integral (175g), Feijão carioca (130g), Azeite de oliva (4ml), Suco de uva concentrado (240ml) e Doce de leite cremoso (25g).",
+          substitutions: "Rúcula (48g), Couve (40g) ou Espinafre (50g); Tomate (90g), Abóbora (110g) ou Cenoura crua (68g); Patinho moído (100g), Tilápia (120g) ou Filé mignon suíno (125g); Batata inglesa (350g-420g) ou Macarrão cozido (140g); Feijão preto (130g), Grão de bico (90g) ou Lentilha (70g); Suco de laranja (360ml)."
+        },
+        {
+          title: "Opção 2: Macarrão",
+          principal: "Alface (40g), Brócolis cozido (120g), Filé de frango grelhado (100g), Macarrão cozido (180g), Azeite de oliva (4ml), Extrato de tomate (30g), Suco de uva concentrado (240ml) e Doce de leite (25g).",
+          substitutions: "Mesmas opções de salada, vegetais e proteínas acima; Suco de laranja (360ml)."
+        }
+      ]
+    },
+    {
+      time: "16:00",
+      name: "Lanche da Tarde",
+      options: [
+        {
+          title: "Opção 1: Sanduíche",
+          principal: "Alface (20g), Tomate (45g), Maçã Fuji (90g), 2 Fatias de Pão de forma integral (50g), Queijo minas meia cura (20g), Frango desfiado (60g) e Pasta de amendoim integral (10g).",
+          substitutions: "Rúcula (24g), Cenoura (34g) ou Pepino (50g); Tangerina (135g), Manga (140g) ou Banana prata (65g); Pão francês (50g) ou Rap (40g); Muçarela (15g) ou Cottage (30g); Patinho moído (45g) ou Atum em conserva (55g); Semente de chia (15g), Castanha de caju (10g) ou Castanha-do-Brasil (8g)."
+        },
+        {
+          title: "Opção 2: Iogurte",
+          principal: "Uva (120g), Semente de chia (15g), Aveia em flocos (21g), Iogurte natural (170ml), Whey protein concentrado (34g) e Mel (7.5g).",
+          substitutions: "Maçã (90g), Morango (200g) ou Melão (230g); Pasta de amendoim (10g), Castanha de caju (10g) ou Castanha-do-Brasil (8g); Farelo de aveia (30g), Granola (22g) ou Bolacha de arroz (20g); Whey isolado (30g) ou Proteína vegetal (40g)."
+        },
+        {
+          title: "Opção 3: Panqueca",
+          principal: "1 Banana prata (65g), Farelo de aveia (30g), Whey protein concentrado (34g), Mel (15g) e 1 Ovo (50g) + Morango (200g) como extra.",
+          substitutions: "Aveia em flocos (21g) ou Farinha de aveia (18g); Whey isolado (30g) ou Proteína vegetal (40g); Geléia de frutas (22g), Uva (120g) ou outra Banana (65g) no lugar do morango extra."
+        }
+      ]
+    },
+    {
+      time: "20:00",
+      name: "Jantar",
+      options: [
+        {
+          title: "Opção 1: Comida",
+          principal: "Alface (40g), Brócolis cozido (120g), Filé de frango grelhado (100g), Arroz branco/integral (150g), Feijão carioca (97.5g) e Suco de uva concentrado (240ml).",
+          substitutions: "Rúcula (48g), Couve (40g) ou Espinafre (50g); Tomate (90g), Abóbora (110g) ou Cenoura (68g); Patinho moído (100g) ou Tilápia (120g); Batata inglesa (300g-360g) ou Batata doce (160g); Feijão preto (97.5g) ou Lentilha (52.5g); Suco de laranja (360ml)."
+        },
+        {
+          title: "Opção 2: Lanche (Crepioca/Wrap/Sanduíche)",
+          principal: "Alface (20g), Tomate (45g), 4 Ovos cozidos (220g) ou Frango desfiado (100g), Goma de tapioca (60g), Queijo minas meia cura (20g) e Suco de uva concentrado (240ml).",
+          substitutions: "Pepino (50g) ou Cenoura (34g); Patinho moído (100g) ou Atum sólido (120g); Pão integral (75g), Pão francês (75g) ou Rap (80g); Muçarela (15g) ou Requeijão light (30g); Suco de laranja (360ml)."
+        },
+        {
+          title: "Opção 3: Hambúrguer",
+          principal: "Alface (20g), Tomate (45g), 1 Pão de hambúrguer (50g), Queijo muçarela (30g), Patinho moído cru (150g) e Suco de uva concentrado (300ml).",
+          substitutions: "Cebola (20g) ou Pepino (50g); Pão integral (50g), Pão francês (50g) ou Rap (40g); Requeijão light (60g), Queijo minas (40g) ou Creme de ricota light (60g); Suco de laranja (450ml)."
+        }
+      ]
+    }
+  ],
+  shoppingList: {
+    "Proteínas": ["Ovos de galinha", "Filé de frango", "Peito de frango", "Patinho moído", "Filé de tilápia", "Atum em óleo", "Filé mignon suíno", "Whey protein"],
+    "Carboidratos": ["Arroz (branco/integral)", "Macarrão", "Feijão (carioca/preto)", "Goma de tapioca", "Aveia (flocos/farelo)", "Pão de hambúrguer", "Pão de forma integral", "Pão francês", "Batata (inglesa/doce)", "Pão tipo folha/rap"],
+    "Sementes e Gorduras": ["Azeite de oliva", "Pasta de amendoim integral", "Semente de chia", "Semente de linhaça", "Castanha-do-Brasil", "Castanha de caju"],
+    "Laticínios": ["Iogurte natural", "Queijo minas meia cura", "Queijo muçarela", "Creme de ricota light", "Leite desnatado"],
+    "Frutas e Bebidas": ["Banana prata", "Maçã Fuji", "Mamão formosa", "Manga", "Melão", "Morango", "Tangerina", "Uva", "Suco de uva concentrado", "Suco de laranja"],
+    "Vegetais e Folhas": ["Alface", "Brócolis", "Cebola", "Cenoura", "Couve", "Espinafre", "Pepino", "Rúcula", "Tomate"],
+    "Extras": ["Café", "Doce de leite cremoso (ou chocolate/paçoquinha)", "Extrato de tomate", "Mel"]
+  }
+};
+
+export const ALL_DIETS: DietPlanType[] = [DIET_1450, DIET_1650, DIET_1850, DIET_2000, DIET_2200, DIET_2400];
 
 // Backward compat
 export const DIET_DATA = DIET_1650;
