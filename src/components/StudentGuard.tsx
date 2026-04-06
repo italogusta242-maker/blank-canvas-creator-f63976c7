@@ -31,62 +31,28 @@ const StudentGuard = () => {
         supabase.from("profiles").select("status, must_change_password").eq("id", user!.id).single(),
       ]);
 
-    const check = async (attempt = 1) => {
+    const check = async () => {
       if (!user) {
-        const bypassEmail = localStorage.getItem("emergency_bypass_email");
-        if (bypassEmail) {
-          if (window.location.pathname !== "/cronometro") {
-            setRedirect("/cronometro");
-          } else {
-            setRedirect(null);
-          }
-        }
         if (active) setChecking(false);
         return;
       }
 
       try {
-        const [rolesResult, profileResult] = await Promise.race([
-          fetchRoleAndProfile(),
-          new Promise<never>((_, reject) =>
-            window.setTimeout(() => reject(new Error("GUARD_CHECK_TIMEOUT")), timeoutMs)
-          ),
-        ]);
-
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
         if (!active) return;
 
-        const roles = new Set((rolesResult.data ?? []).map((r) => r.role));
-        const profileStatus = profileResult.data?.status || "pendente_onboarding";
-        const mustChange = (profileResult.data as any)?.must_change_password === true;
+        const roleSet = new Set((roles ?? []).map((r) => r.role));
 
-        if (roles.has("admin")) { setRedirect("/admin"); return; }
-        if (roles.has("personal") || roles.has("nutricionista")) { setRedirect("/especialista"); return; }
-        if (roles.has("cs")) { setRedirect("/cs"); return; }
-        if (roles.has("closer")) { setRedirect("/closer"); return; }
+        // Redirect special roles
+        if (roleSet.has("admin")) { setRedirect("/admin"); return; }
+        if (roleSet.has("cs")) { setRedirect("/cs"); return; }
+        if (roleSet.has("closer")) { setRedirect("/closer"); return; }
 
-        // Gating por status de pagamento
-        if (profileStatus !== "ativo" && profileStatus !== "pendente_onboarding") {
-          setRedirect("/acesso-negado?reason=no_access");
-          return;
-        }
-
-        setMustChangePassword(mustChange);
-
+        // NO RULES: Everyone else is allowed
         setRedirect(null);
       } catch (error) {
-        console.error(`StudentGuard: erro ao validar acesso (tentativa ${attempt})`, error);
-        // Retry once before giving up
-        if (attempt === 1 && active) {
-          console.warn("StudentGuard: retrying…");
-          return check(2);
-        }
-        // On persistent failure, DON'T sign out — just allow through
-        // The user's session is valid; the failure is likely transient (network/RLS)
-        if (active) {
-          console.warn("StudentGuard: validation failed after retries, allowing through");
-          setRedirect(null);
-          setMustChangePassword(false);
-        }
+        console.error("StudentGuard: error", error);
+        setRedirect(null);
       } finally {
         if (active) setChecking(false);
       }

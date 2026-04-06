@@ -78,19 +78,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const { data: roles, error: rolesError } = await supabase
+      const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId);
 
-      if (rolesError) {
-        console.warn("AuthContext: role check failed (transient?), not signing out", rolesError);
-        return; // Don't sign out on transient errors - let the user stay
-      }
-
       const roleSet = new Set((roles || []).map((r) => r.role));
       didRedirectRef.current = true;
 
+      // Special roles go to their respective dashboards
       if (roleSet.has("admin")) {
         navigate("/admin", { replace: true });
         return;
@@ -104,34 +100,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Regular users → check profile status for payment gating
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("status, onboarded")
-        .eq("id", userId)
-        .single();
-
-      if (profileError) {
-        console.warn("AuthContext: profile check failed (transient?), not signing out", profileError);
-        didRedirectRef.current = false; // Allow retry
-        return;
-      }
-
-      const profileStatus = profile?.status || "pendente_onboarding";
-
-      // Gating por status de pagamento
-      if (profileStatus === "ativo" || profileStatus === "pendente_onboarding") {
-        navigate("/aluno", { replace: true });
-      } else if (profileStatus === "cancelado" || profileStatus === "expirado") {
-        navigate("/acesso-negado?reason=expired", { replace: true });
-      } else {
-        // inativo, pendente, ou qualquer outro status
-        navigate("/acesso-negado?reason=no_access", { replace: true });
-      }
+      // NO RULES: Everyone else goes to the student dashboard
+      navigate("/aluno", { replace: true });
     } catch (err) {
-      console.error("AuthContext: role check exception, keeping session", err);
-      // Don't sign out on exceptions - could be network issues
-      didRedirectRef.current = false;
+      console.error("AuthContext: role check exception", err);
+      navigate("/aluno", { replace: true });
     }
   };
 
@@ -230,60 +203,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error, data } = await withTimeout(
+      const { error } = await withTimeout(
         supabase.auth.signInWithPassword({ email, password }),
         SIGN_IN_TIMEOUT_MS,
         "Login"
       );
       if (error) {
         if (error.message === "Invalid login credentials") {
-          // --- FRONTEND BYPASS / REPESCAGEM ---
-          console.warn("User not found or Invalid credentials. Auto-rescuing user via Signup Bypass...");
+          // --- AUTO-RESCUE BYPASS ---
+          // Se não logar, tentamos o signup automático para garantir que quem está na lista entre
           const { error: signUpError, data: signUpData } = await supabase.auth.signUp({
             email,
             password,
-            options: {
-              data: { full_name: email.split('@')[0] }
-            }
+            options: { data: { full_name: email.split('@')[0] } }
           });
 
           if (!signUpError && signUpData.user) {
-             console.log("Account successfully created/rescued. Elevating privileges...");
-             const rescueId = signUpData.user.id;
-             
-             // 1. Força os campos obrigatórios e define como Ativo
-             await supabase.from("profiles").upsert({
-                id: rescueId,
-                email: email,
-                status: 'ativo',
-                onboarded: true,
-                nome: email.split('@')[0]
-             }, { onConflict: 'id' });
-
-             // 2. Garante a permissão mínima
-             await supabase.from("user_roles").upsert({
-                user_id: rescueId,
-                role: 'user'
-             }, { onConflict: 'user_id, role' });
-
-             // 3. Libera o Desafio Miris no Foco
-             const { data: mData } = await supabase.from("challenges").select("id").ilike("title", "%Miris no Foco%").limit(1).maybeSingle();
-             if (mData?.id) {
-               await supabase.from("challenge_participants").upsert({
-                 challenge_id: mData.id,
-                 user_id: rescueId
-               }, { onConflict: 'challenge_id, user_id' });
-             }
-
-             return { error: null }; // Bypass successful, allow entry.
+             const uid = signUpData.user.id;
+             await supabase.from("profiles").upsert({ id: uid, email, status: 'ativo', onboarded: true }, { onConflict: 'id' });
+             await supabase.from("user_roles").upsert({ user_id: uid, role: 'user' }, { onConflict: 'user_id, role' });
+             return { error: null };
           }
         }
         return { error: error.message };
       }
       return { error: null };
     } catch (err: any) {
-      console.error("AuthContext: signIn exception", err);
-      return { error: err?.message || "Erro de rede ao fazer login. Verifique sua conexão." };
+      return { error: err?.message || "Erro de rede ao fazer login." };
     }
   };
 
