@@ -486,6 +486,11 @@ const Dieta = () => {
     );
   }, [mainMeals]);
 
+  // If it's a config diet (hardcoded), render DietPlan component directly
+  if (dietPlan?.is_config_diet) {
+    return <DietPlan initialCalories={dietPlan.config_calories} />;
+  }
+
   if (!isLoading && allMeals.length === 0) {
     return (
       <div className="min-h-screen bg-background p-4 max-w-lg mx-auto flex flex-col">
