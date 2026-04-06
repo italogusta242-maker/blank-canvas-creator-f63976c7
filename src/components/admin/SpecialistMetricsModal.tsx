@@ -124,7 +124,7 @@ const SpecialistMetricsModal = ({ specialistId, specialistName, specialistRole, 
           const senderIds = [...new Set(recentMsgs.map((m) => m.sender_id))];
           const { data: senderProfiles } = await supabase
             .from("profiles")
-            .select("id, nome")
+            .select("id, full_name")
             .in("id", senderIds);
 
           const nameMap: Record<string, string> = {};
