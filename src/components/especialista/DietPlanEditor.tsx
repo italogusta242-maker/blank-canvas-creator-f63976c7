@@ -382,7 +382,7 @@ export default function DietPlanEditor({ open, onClose, students, editingPlan, e
       if (!selectedStudent) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("nome, peso, meta_peso, altura, sexo")
+        .select("full_name, peso, meta_peso, altura, sexo")
         .eq("id", selectedStudent)
         .maybeSingle();
       return data;
@@ -775,12 +775,12 @@ export default function DietPlanEditor({ open, onClose, students, editingPlan, e
         const { error } = await supabase.from("diet_plans").insert({
           user_id: selectedStudent,
           specialist_id: user.id,
+          name: title,
           title,
-          goal,
           goal_description: goalDescription || null,
           meals: cleanMeals as any,
           active: true,
-        });
+        } as any);
         if (error) throw error;
       }
     },

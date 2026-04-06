@@ -14,17 +14,16 @@ export const useProfile = () => {
       if (!user) throw new Error("Not authenticated");
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, status, phone")
+        .select("id, full_name, status, phone, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
       
-      // BYPASS ABSOLUTO: NUNCA DAR THROW
       if (error) {
         console.warn("Ignorando erro de schema no useProfile:", error);
-        return { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "" };
+        return { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "", avatar_url: null };
       }
       
-      return data ? { ...data, onboarded: true } : { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "" };
+      return data ? { ...data, onboarded: true } : { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "", avatar_url: null };
     },
     enabled: !!user || isMock,
   });

@@ -95,12 +95,12 @@ const EspecialistaDieta = () => {
 
       const [plansRes, profilesRes] = await Promise.all([
         supabase.from("diet_plans").select("*").in("user_id", studentIds).order("updated_at", { ascending: false }),
-        supabase.from("profiles").select("id, nome, email").in("id", studentIds),
+        supabase.from("profiles").select("id, full_name, email").in("id", studentIds),
       ]);
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
-      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.nome ?? p.email ?? "Sem nome"]));
+      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name ?? p.email ?? "Sem nome"]));
 
       // Keep only the most recent plan per student
       const latestPerStudent = new Map<string, typeof plansRes.data[number]>();
@@ -182,10 +182,10 @@ const EspecialistaDieta = () => {
   });
 
   const filteredStudentsWithoutDiet = searchTerm.trim()
-    ? studentsWithoutDiet.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    ? studentsWithoutDiet.filter((s) => s.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
     : studentsWithoutDiet;
 
-  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.name }));
+  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.full_name }));
 
   const handleEdit = (plan: DietPlanRow) => {
     setEditingPlan(plan);
@@ -373,7 +373,7 @@ const EspecialistaDieta = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano alimentar</p>
                           </div>
                         </div>
@@ -423,7 +423,7 @@ const EspecialistaDieta = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano alimentar</p>
                           </div>
                         </div>

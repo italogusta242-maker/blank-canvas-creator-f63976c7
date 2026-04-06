@@ -100,9 +100,9 @@ const SpecialistMetricsModal = ({ specialistId, specialistName, specialistRole, 
 
         const usersWithPlan = new Set((activePlans || []).map((p) => p.user_id));
 
-        students = (profiles || []).map((p) => ({
+        students = (profiles || []).map((p: any) => ({
           id: p.id,
-          name: p.nome || "Sem nome",
+          name: p.full_name || "Sem nome",
           status: p.status || "ativo",
           plan: usersWithPlan.has(p.id) ? "Ativo" : "Sem plano",
           lastActivity: "",
@@ -124,11 +124,11 @@ const SpecialistMetricsModal = ({ specialistId, specialistName, specialistRole, 
           const senderIds = [...new Set(recentMsgs.map((m) => m.sender_id))];
           const { data: senderProfiles } = await supabase
             .from("profiles")
-            .select("id, nome")
+            .select("id, full_name")
             .in("id", senderIds);
 
           const nameMap: Record<string, string> = {};
-          (senderProfiles || []).forEach((p) => { nameMap[p.id] = p.nome || "Sem nome"; });
+          (senderProfiles || []).forEach((p: any) => { nameMap[p.id] = p.full_name || "Sem nome"; });
 
           recentMessages = recentMsgs.map((m) => ({
             id: m.id,

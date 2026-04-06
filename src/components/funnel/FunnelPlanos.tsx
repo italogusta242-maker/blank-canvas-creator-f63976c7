@@ -60,9 +60,9 @@ const FunnelPlanos = () => {
     try {
       const { error } = await supabase.from("funnel_leads").upsert(
         {
-          full_name: user.full_name,
+          nome: user.full_name,
           email: user.email.toLowerCase(),
-          phone: user.phone || null,
+          telefone: user.phone || null,
           cupom: user.cupom || null,
           status: "pending",
           selected_plan_id: selectedPlan.id,

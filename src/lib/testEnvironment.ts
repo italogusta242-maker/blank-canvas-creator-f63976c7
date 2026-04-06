@@ -37,9 +37,10 @@ export async function injectMockGamificationData(userId: string) {
     await supabase.from("diet_plans").update({ active: false }).eq("user_id", userId);
     await supabase.from("diet_plans").insert({
       user_id: userId,
+      name: "Dieta Teste",
       active: true,
-      meals: mockMeals
-    });
+      meals: mockMeals,
+    } as any);
 
     // 3. Plano de treino (7 dias)
     const mockPlan = {

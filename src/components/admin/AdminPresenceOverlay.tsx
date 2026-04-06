@@ -95,11 +95,11 @@ const useCloserStats = () => {
 
       const stats: CloserStats[] = closerIds.map((cid) => {
         const closerInvites = invites?.filter((i) => i.created_by === cid) || [];
-        const profile = profiles?.find((p) => p.id === cid);
+        const profile = profiles?.find((p: any) => p.id === cid);
 
         return {
           id: cid,
-          name: profile?.nome || "Closer",
+          name: (profile as any)?.full_name || "Closer",
           charges: closerInvites.filter((i) => i.payment_status === "confirmed" || i.payment_status === "paid").length,
           closings: closerInvites.filter((i) => i.status === "used").length,
           cancellations: cancelMap[cid] || 0,
@@ -121,9 +121,9 @@ function OnlineUsersList({ users, maxShown, totalCount }: { users: OnlineUser[];
     queryKey: ["resolve-online-names", missingNameIds.sort().join(",")],
     queryFn: async () => {
       if (missingNameIds.length === 0) return {};
-      const { data } = await supabase.from("profiles").select("id, nome").in("id", missingNameIds);
+      const { data } = await supabase.from("profiles").select("id, full_name").in("id", missingNameIds);
       const map: Record<string, string> = {};
-      (data || []).forEach(p => { if (p.nome) map[p.id] = p.nome; });
+      (data || []).forEach(p => { if (p.full_name) map[p.id] = p.full_name; });
       return map;
     },
     enabled: missingNameIds.length > 0,
@@ -224,7 +224,7 @@ const AdminPresenceOverlay = () => {
         setOnlineCount(getOnlineCount(state));
         setOnlineUsers(getOnlineUsers(state).slice(0, 20));
       },
-      { name: profile?.nome || undefined, role: myRole || undefined }
+      { name: (profile as any)?.full_name || undefined, role: myRole || undefined }
     );
     return cleanup;
   }, [user?.id]);
@@ -232,8 +232,8 @@ const AdminPresenceOverlay = () => {
   // Re-track with updated name/role when profile loads (async)
   useEffect(() => {
     if (!user?.id) return;
-    updatePresenceMeta(user.id, { name: profile?.nome || undefined, role: myRole || undefined });
-  }, [profile?.nome, myRole, user?.id]);
+    updatePresenceMeta(user.id, { name: (profile as any)?.full_name || undefined, role: myRole || undefined });
+  }, [(profile as any)?.full_name, myRole, user?.id]);
 
   const roleLabel = (role?: string) => {
     const map: Record<string, string> = {

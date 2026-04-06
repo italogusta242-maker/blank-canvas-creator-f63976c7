@@ -115,12 +115,12 @@ const EspecialistaTreino = () => {
 
       const [plansRes, profilesRes] = await Promise.all([
         supabase.from("training_plans").select("*").in("user_id", studentIds),
-        supabase.from("profiles").select("id, nome, email").in("id", studentIds),
+        supabase.from("profiles").select("id, full_name, email").in("id", studentIds),
       ]);
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
-      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.nome ?? p.email ?? "Sem nome"]));
+      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name ?? p.email ?? "Sem nome"]));
 
       return (plansRes.data ?? []).map((p): TrainingPlanRow => ({
         id: p.id,
@@ -172,7 +172,7 @@ const EspecialistaTreino = () => {
     return true;
   });
 
-  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.name ?? "Aluno" }));
+  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.full_name ?? "Aluno" }));
 
   const handleEdit = (plan: TrainingPlanRow) => {
     setEditingPlan({
@@ -257,7 +257,7 @@ const EspecialistaTreino = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano de treino</p>
                           </div>
                         </div>
@@ -307,7 +307,7 @@ const EspecialistaTreino = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano de treino</p>
                           </div>
                         </div>

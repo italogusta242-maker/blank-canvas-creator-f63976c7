@@ -302,7 +302,7 @@ const StudentResumoContent = ({ aluno, specialty }: {
   <div className="space-y-5">
     <Section icon={User} title="Dados Pessoais">
       <Field label="Email" value={aluno.email} />
-      <Field label="Telefone" value={aluno.telefone ?? "—"} />
+      <Field label="Telefone" value={aluno.phone ?? "—"} />
       <Field label="Nascimento" value={aluno.nascimento ?? "—"} />
       <Field label="Sexo" value={aluno.sexo ?? "—"} />
     </Section>
@@ -323,7 +323,7 @@ const StudentResumoContent = ({ aluno, specialty }: {
           </div>
           <h4 className="font-cinzel text-sm font-bold text-foreground">Performance (7 dias)</h4>
         </div>
-        <StudentPerformancePanel studentId={aluno.id} studentName={aluno.name} />
+        <StudentPerformancePanel studentId={aluno.id} studentName={aluno.full_name} />
       </div>
     </>
     <div className="border-t border-border/50" />
@@ -433,7 +433,7 @@ const StudentSummaryDialog = ({ aluno, specialty, onEditTraining, onEditDiet }: 
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-border">
         <DialogHeader>
-          <DialogTitle className="font-cinzel text-lg gold-text-gradient">{aluno.name}</DialogTitle>
+          <DialogTitle className="font-cinzel text-lg gold-text-gradient">{aluno.full_name}</DialogTitle>
           <div className="flex gap-2 mt-1">
             <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", sc.bg, sc.text)}>{aluno.status}</span>
             {aluno.specialty && <Badge variant="outline" className="text-[10px]">{aluno.specialty}</Badge>}
@@ -452,7 +452,7 @@ const StudentSummaryDialog = ({ aluno, specialty, onEditTraining, onEditDiet }: 
             </TabsContent>
             {showTreino && (
               <TabsContent value="treino" className="mt-4">
-                <StudentTrainingTab studentId={aluno.id} studentName={aluno.name} canEdit={showTreino && !isAdmin ? true : !!isAdmin} onEditPlan={handleEditPlanFromSummary} />
+                <StudentTrainingTab studentId={aluno.id} studentName={aluno.full_name} canEdit={showTreino && !isAdmin ? true : !!isAdmin} onEditPlan={handleEditPlanFromSummary} />
               </TabsContent>
             )}
             {showDieta && (
@@ -542,14 +542,14 @@ const StudentCard = ({
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-secondary flex items-center justify-center ring-2 ring-[hsl(var(--glass-border))] shrink-0">
             {aluno.avatar_url ? (
-              <img src={aluno.avatar_url} alt={aluno.name} className="w-full h-full object-cover rounded-full" />
+              <img src={aluno.avatar_url} alt={aluno.full_name} className="w-full h-full object-cover rounded-full" />
             ) : (
               <User size={16} className="text-muted-foreground" />
             )}
             <div className={cn("absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-background z-20", sc.dot)} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground truncate text-xs sm:text-sm">{aluno.name}</p>
+            <p className="font-medium text-foreground truncate text-xs sm:text-sm">{aluno.full_name}</p>
             <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 flex-wrap">
               <span className={cn("px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-medium uppercase tracking-wider whitespace-nowrap", sc.bg, sc.text)}>
                 {aluno.status}
@@ -593,7 +593,7 @@ const StudentCard = ({
               {/* Dropdown items removed */}
 
               {perms.canEditVolume && (
-                <DropdownMenuItem onClick={() => onVolumeEdit(aluno.id, aluno.name)}>
+                <DropdownMenuItem onClick={() => onVolumeEdit(aluno.id, aluno.full_name)}>
                   <BarChart3 size={14} className="mr-2" /> Editar Volume
                 </DropdownMenuItem>
               )}
@@ -728,7 +728,7 @@ const StudentCard = ({
       {/* Expanded: adherence details */}
       {expanded && (
         <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-[hsl(var(--glass-border))] pt-3">
-          <StudentPerformancePanel studentId={aluno.id} studentName={aluno.name} />
+          <StudentPerformancePanel studentId={aluno.id} studentName={aluno.full_name} />
         </div>
       )}
     </div>
@@ -974,7 +974,7 @@ const EspecialistaAlunos = () => {
     }
   });
 
-  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.name }));
+  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.full_name }));
 
   const handleEditDiet = (plan: any) => {
     setEditingPlan(plan);
@@ -1003,7 +1003,7 @@ const EspecialistaAlunos = () => {
   };
 
   const filtered = (students ?? []).filter((a) => {
-    const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = a.full_name.toLowerCase().includes(search.toLowerCase());
     if (filterParam === "alerta") return matchesSearch && (a.status === "alerta" || a.status === "inativo");
     if (activeFilter === "ativos") return matchesSearch && a.status === "ativo";
     if (activeFilter === "sem-dieta") return matchesSearch && !dietPlanSet.has(a.id);
@@ -1134,7 +1134,7 @@ const EspecialistaAlunos = () => {
             <StudentCard
               key={aluno.id}
               aluno={aluno}
-              highlighted={alunoParam === aluno.name}
+              highlighted={alunoParam === aluno.full_name}
               specialty={mySpecialty ?? null}
               onVolumeEdit={(id, name) => setVolumeEditAluno({ id, name })}
               hasDiet={isNutricionista ? dietPlanSet.has(aluno.id) : undefined}
@@ -1159,7 +1159,7 @@ const EspecialistaAlunos = () => {
         open={!!volumeEditAluno}
         onOpenChange={(open) => !open && setVolumeEditAluno(null)}
         studentId={volumeEditAluno?.id ?? ""}
-        studentName={volumeEditAluno?.name ?? ""}
+        studentName={volumeEditAluno?.full_name ?? ""}
       />
 
       {isNutricionista && (

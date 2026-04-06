@@ -28,7 +28,7 @@ export const useSpecialistStudents = () => {
       if (isMock) {
         return MOCK_STUDENTS.map(s => ({
           id: s.id,
-          full_name: s.nome,
+          full_name: (s as any).nome || (s as any).full_name || s.id,
           email: `${s.id}@example.com`,
           status: s.status as any,
           specialty: "Consultoria",

@@ -32,7 +32,7 @@ export default function EditSpecialistModal({ open, onClose, specialist, onUpdat
       // Update profile name
       const { error: profileErr } = await supabase
         .from("profiles")
-        .update({ nome })
+        .update({ full_name: nome })
         .eq("id", specialist.userId);
 
       if (profileErr) throw profileErr;
