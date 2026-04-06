@@ -325,13 +325,31 @@ const Challenge = () => {
     const moduleType = selectedModule?.type;
     let list = [...moduleLessons];
 
-    if (moduleType === 'diets' || moduleType === 'workouts') {
-      const pItems = (moduleType === 'diets' ? dietPlans : trainingPlans).map(p => ({
+    if (moduleType === 'diets') {
+      // Inject hardcoded config diet plans
+      const configDiets = ALL_DIETS.map((d, idx) => ({
+        id: `config-diet-${d.totalCalories}`,
+        title: `Cardápio Personalizado - ${d.totalCalories} kcal`,
+        duration: "PLANO",
+        video_url: "",
+        description: `__CONFIG_DIET__${idx}`,
+        isPlan: true,
+        isConfigDiet: true,
+        dietIndex: idx,
+        dietCalories: d.totalCalories,
+      }));
+      configDiets.forEach(cd => {
+        if (!list.some(l => l.title === cd.title)) list.push(cd as any);
+      });
+    }
+
+    if (moduleType === 'workouts') {
+      const pItems = trainingPlans.map(p => ({
         id: p.id,
         title: p.title,
         duration: "PLANO",
         video_url: "",
-        description: (p as any).goal_description || (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
+        description: (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
         isPlan: true
       }));
       pItems.forEach(pi => {
