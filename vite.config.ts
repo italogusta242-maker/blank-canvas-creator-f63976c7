@@ -8,41 +8,39 @@ const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-
-  process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL;
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY =
-    env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY;
-
-  return ({
-  server: {
-    host: "::",
-    port: 3000,
-    hmr: {
-      overlay: false,
+  return {
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(FALLBACK_SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(FALLBACK_SUPABASE_PUBLISHABLE_KEY),
     },
-  },
-  plugins: [
-    react(),
-    mode === "development" && componentTagger(),
-  ].filter(Boolean),
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          ui: ['lucide-react', 'date-fns', 'zod', 'react-hook-form'],
-          supabase: ['@supabase/supabase-js'],
-          charts: ['recharts'],
-          motion: ['framer-motion']
+    server: {
+      host: "::",
+      port: 3000,
+      hmr: {
+        overlay: false,
+      },
+    },
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+    ].filter(Boolean),
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+            ui: ['lucide-react', 'date-fns', 'zod', 'react-hook-form'],
+            supabase: ['@supabase/supabase-js'],
+            charts: ['recharts'],
+            motion: ['framer-motion']
+          }
         }
       }
-    }
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
-  },
-  });
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+  };
 });
