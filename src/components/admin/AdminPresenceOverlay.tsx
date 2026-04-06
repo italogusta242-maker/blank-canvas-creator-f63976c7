@@ -224,7 +224,7 @@ const AdminPresenceOverlay = () => {
         setOnlineCount(getOnlineCount(state));
         setOnlineUsers(getOnlineUsers(state).slice(0, 20));
       },
-      { name: profile?.nome || undefined, role: myRole || undefined }
+      { name: (profile as any)?.full_name || undefined, role: myRole || undefined }
     );
     return cleanup;
   }, [user?.id]);
@@ -232,8 +232,8 @@ const AdminPresenceOverlay = () => {
   // Re-track with updated name/role when profile loads (async)
   useEffect(() => {
     if (!user?.id) return;
-    updatePresenceMeta(user.id, { name: profile?.nome || undefined, role: myRole || undefined });
-  }, [profile?.nome, myRole, user?.id]);
+    updatePresenceMeta(user.id, { name: (profile as any)?.full_name || undefined, role: myRole || undefined });
+  }, [(profile as any)?.full_name, myRole, user?.id]);
 
   const roleLabel = (role?: string) => {
     const map: Record<string, string> = {

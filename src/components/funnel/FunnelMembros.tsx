@@ -58,7 +58,7 @@ const FunnelMembros = () => {
             transition={{ delay: 0.2 }}
             className="text-lg font-bold text-foreground mb-1 font-sans"
           >
-            Bem-vinda, {user.nome.split(" ")[0] || "aluna"}! 🎉
+            Bem-vinda, {user.full_name.split(" ")[0] || "aluna"}! 🎉
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}

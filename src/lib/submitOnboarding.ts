@@ -57,12 +57,12 @@ export async function submitOnboarding(
       // Create Diet Plan
       await supabase.from("diet_plans").insert({
         user_id: user.id,
+        name: `Cardápio - ${planTitle}`,
         title: `Cardápio - ${planTitle}`,
         active: true,
-        daily_calories: obj === "emagrecer" ? 1600 : 2000,
-        water_goal_liters: 2.5,
+        calories: obj === "emagrecer" ? 1600 : 2000,
         meals: null,
-      });
+      } as any);
 
       // Set status to ATIVO direttamente
       await supabase.from("profiles").update({ status: "ativo" }).eq("id", user.id);

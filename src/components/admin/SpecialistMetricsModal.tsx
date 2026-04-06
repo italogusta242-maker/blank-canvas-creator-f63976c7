@@ -128,7 +128,7 @@ const SpecialistMetricsModal = ({ specialistId, specialistName, specialistRole, 
             .in("id", senderIds);
 
           const nameMap: Record<string, string> = {};
-          (senderProfiles || []).forEach((p) => { nameMap[p.id] = p.nome || "Sem nome"; });
+          (senderProfiles || []).forEach((p: any) => { nameMap[p.id] = p.full_name || "Sem nome"; });
 
           recentMessages = recentMsgs.map((m) => ({
             id: m.id,

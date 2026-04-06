@@ -27,12 +27,12 @@ const ForcePasswordChangeModal = ({ onComplete }: Props) => {
     if (user) {
       supabase
         .from("profiles")
-        .select("nome")
+        .select("full_name")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
-          if (data?.nome) {
-            const first = data.nome.split(" ")[0];
+          if (data?.full_name) {
+            const first = data.full_name.split(" ")[0];
             setUserName(first);
           }
         });

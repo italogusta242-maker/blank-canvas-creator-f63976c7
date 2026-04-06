@@ -51,9 +51,9 @@ const FunnelCadastro = () => {
       // 1. Save lead (upsert on email to avoid duplicates)
       const { error: leadError } = await supabase.from("funnel_leads").upsert(
         {
-          full_name: form.full_name,
+          nome: form.full_name,
           email: form.email.toLowerCase(),
-          phone: form.phone,
+          telefone: form.phone,
           cupom: form.cupom || null,
           status: "pending",
         },

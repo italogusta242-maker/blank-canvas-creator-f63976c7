@@ -775,12 +775,12 @@ export default function DietPlanEditor({ open, onClose, students, editingPlan, e
         const { error } = await supabase.from("diet_plans").insert({
           user_id: selectedStudent,
           specialist_id: user.id,
+          name: title,
           title,
-          goal,
           goal_description: goalDescription || null,
           meals: cleanMeals as any,
           active: true,
-        });
+        } as any);
         if (error) throw error;
       }
     },
