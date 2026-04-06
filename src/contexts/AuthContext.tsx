@@ -23,6 +23,17 @@ export const useAuth = () => {
 };
 
 const LOADING_TIMEOUT_MS = 8000;
+const SIGN_IN_TIMEOUT_MS = 12000;
+
+/** Race a promise against a timeout. If timeout wins, reject with a clear message. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label}: tempo limite excedido (${ms / 1000}s). Verifique sua conexão.`)), ms)
+    ),
+  ]);
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -160,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    void supabase.auth.getSession()
+    void withTimeout(supabase.auth.getSession(), LOADING_TIMEOUT_MS, "getSession")
       .then(({ data: { session: currentSession } }) => {
         if (cancelled) return;
         if (currentSession) {
@@ -170,7 +181,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Retry once after a short delay to let Supabase recover tokens.
           setTimeout(() => {
             if (cancelled) return;
-            void supabase.auth.getSession()
+            void withTimeout(supabase.auth.getSession(), LOADING_TIMEOUT_MS, "getSession-retry")
               .then(({ data: { session: retry } }) => {
                 if (cancelled) return;
                 void syncSessionState(retry, true);
@@ -198,14 +209,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, name?: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { nome: name },
-          emailRedirectTo: window.location.origin,
-        },
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { nome: name },
+            emailRedirectTo: window.location.origin,
+          },
+        }),
+        SIGN_IN_TIMEOUT_MS,
+        "Cadastro"
+      );
       return { error: error?.message ?? null };
     } catch (err: any) {
       console.error("AuthContext: signUp exception", err);
@@ -215,7 +230,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        SIGN_IN_TIMEOUT_MS,
+        "Login"
+      );
       if (error) {
         return { error: error.message };
       }
