@@ -255,7 +255,7 @@ const AdminDesafios = () => {
           cover_image: mod.cover_image,
           is_locked: mod.access_restricted ?? mod.is_locked ?? false
         };
-        if (!mod.id.startsWith('temp-')) base.id = mod.id;
+        if (mod.id && typeof mod.id === 'string' && !mod.id.startsWith('temp-')) base.id = mod.id;
         return base;
       });
 
