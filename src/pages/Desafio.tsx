@@ -418,6 +418,13 @@ const Challenge = () => {
 
     if (!latestRecord) return false;
 
+    // For config diets, match by calories in plan_data
+    const contentItem = unifiedContent.find(l => l.id === sourceId);
+    if ((contentItem as any)?.isConfigDiet) {
+      return latestRecord.plan_data?.is_config_diet === true && 
+             latestRecord.plan_data?.calories === (contentItem as any).dietCalories;
+    }
+
     const isRecordLesson = !!latestRecord.plan_data?.is_lesson;
     return latestRecord.source_plan_id === sourceId && isRecordLesson === isLessonInList;
   };
