@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
     }
 
     // Create user with email confirmed
+    let userId: string;
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -71,13 +72,37 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      const msg = createError.message.includes("already been registered")
-        ? "Este e-mail já está cadastrado no sistema. Use outro e-mail ou exclua a conta existente primeiro."
-        : createError.message;
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (createError.message.includes("already been registered") || createError.message.includes("already registered")) {
+        // User exists in Auth — find them and update password
+        const { data: listData } = await adminClient.auth.admin.listUsers({ perPage: 1, page: 1 });
+        const existing = listData?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+        if (!existing) {
+          // Try broader search
+          const { data: allUsers } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+          const found = allUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+          if (!found) {
+            return new Response(JSON.stringify({ error: "Usuário existe no Auth mas não foi encontrado. Tente excluí-lo primeiro." }), {
+              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          userId = found.id;
+        } else {
+          userId = existing.id;
+        }
+        // Update password and confirm email
+        await adminClient.auth.admin.updateUserById(userId, {
+          password,
+          email_confirm: true,
+          user_metadata: { nome },
+        });
+        console.log("Existing user updated:", userId);
+      } else {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      userId = newUser.user.id;
     }
 
     // Update profile with all provided data
