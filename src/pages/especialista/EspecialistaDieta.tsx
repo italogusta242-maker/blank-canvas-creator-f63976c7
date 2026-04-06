@@ -100,7 +100,7 @@ const EspecialistaDieta = () => {
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
-      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.nome ?? p.email ?? "Sem nome"]));
+      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name ?? p.email ?? "Sem nome"]));
 
       // Keep only the most recent plan per student
       const latestPerStudent = new Map<string, typeof plansRes.data[number]>();

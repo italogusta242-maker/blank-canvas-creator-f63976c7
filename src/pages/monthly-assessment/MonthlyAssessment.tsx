@@ -31,8 +31,8 @@ const MonthlyAssessment = () => {
   const [step, setStep] = useState<MonthlyStep>("dados");
   const [form, setForm] = useState<MonthlyFormData>({
     ...initialMonthlyFormData,
-    altura: profile?.altura ? String(profile.altura) : "",
-    peso: profile?.peso ? String(profile.peso) : "",
+    altura: (profile as any)?.altura ? String((profile as any).altura) : "",
+    peso: (profile as any)?.peso ? String((profile as any).peso) : "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prefilled, setPrefilled] = useState(false);

@@ -110,7 +110,7 @@ const EspecialistaPlanos = () => {
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
-      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.nome ?? p.email ?? "Sem nome"]));
+      const nameMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name ?? p.email ?? "Sem nome"]));
 
       return (plansRes.data ?? []).map((p): PlanRow => ({
         id: p.id,
