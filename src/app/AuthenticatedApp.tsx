@@ -81,6 +81,8 @@ const AppRoutes = () => {
         <Route path="/pagamento-sucesso" element={<PagamentoAprovado />} />
         <Route path="/aguardando-pagamento" element={<AguardandoPagamento />} />
         <Route path="/acesso-negado" element={<AcessoNegado />} />
+        {/* /dashboard redirects to /aluno for student users */}
+        <Route path="/dashboard" element={<Navigate to="/aluno" replace />} />
 
         <Route element={<StudentGuard />}>
           <Route path="/cronometro" element={<Cronometro />} />
