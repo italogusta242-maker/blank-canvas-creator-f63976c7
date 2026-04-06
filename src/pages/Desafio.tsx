@@ -846,6 +846,49 @@ const Challenge = () => {
                                         ));
                                     }
                                     
+                                    // Handle Config Diet Plans (hardcoded)
+                                    if ((currentLesson as any)?.isConfigDiet) {
+                                      const dietIdx = (currentLesson as any).dietIndex;
+                                      const diet = ALL_DIETS[dietIdx];
+                                      if (diet) {
+                                        return (
+                                          <div className="space-y-6">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <span className="text-xs font-black bg-accent/20 text-accent px-3 py-1 rounded-lg uppercase tracking-wider">
+                                                🔥 {diet.totalCalories} kcal
+                                              </span>
+                                            </div>
+                                            {diet.meals.map((meal, i) => (
+                                              <div key={i} className="space-y-2 pb-4 border-b border-border/30 last:border-0">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-0.5 rounded uppercase tracking-tighter">
+                                                    {meal.time}
+                                                  </span>
+                                                  <h4 className="text-sm font-bold text-foreground font-cinzel italic">{meal.name}</h4>
+                                                </div>
+                                                <div className="pl-2 space-y-1.5">
+                                                  {meal.options.slice(0, 1).map((opt, oi) => (
+                                                    <div key={oi}>
+                                                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">{opt.title}</p>
+                                                      <p className="text-[11px] text-foreground/80 leading-relaxed">{opt.principal}</p>
+                                                    </div>
+                                                  ))}
+                                                  {meal.options.length > 1 && (
+                                                    <p className="text-[10px] text-accent/60 italic">
+                                                      + {meal.options.length - 1} opção(ões) alternativa(s)
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                            <p className="text-[9px] text-accent/60 uppercase tracking-widest font-bold pt-2 italic">
+                                              * Selecione para ver o cardápio completo com substituições e lista de compras.
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
                                     // Handle JSON Diet Description
                                     if (selectedModule?.type === 'diets' && text.trim().startsWith('[')) {
                                       try {
@@ -853,7 +896,7 @@ const Challenge = () => {
                                         return (
                                           <div className="space-y-6">
                                             {meals.filter((m: any) => !m.refeicao?.includes("Opção 2") && !m.refeicao?.includes("Opção 3")).map((meal: any, i: number) => (
-                                              <div key={i} className="space-y-2 pb-4 border-b border-white/5 last:border-0">
+                                              <div key={i} className="space-y-2 pb-4 border-b border-border/30 last:border-0">
                                                 <div className="flex items-center gap-2">
                                                   <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-0.5 rounded uppercase tracking-tighter">
                                                     {meal.time || "HORÁRIO"}
