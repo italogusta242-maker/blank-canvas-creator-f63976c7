@@ -95,11 +95,11 @@ const useCloserStats = () => {
 
       const stats: CloserStats[] = closerIds.map((cid) => {
         const closerInvites = invites?.filter((i) => i.created_by === cid) || [];
-        const profile = profiles?.find((p) => p.id === cid);
+        const profile = profiles?.find((p: any) => p.id === cid);
 
         return {
           id: cid,
-          name: profile?.nome || "Closer",
+          name: (profile as any)?.full_name || "Closer",
           charges: closerInvites.filter((i) => i.payment_status === "confirmed" || i.payment_status === "paid").length,
           closings: closerInvites.filter((i) => i.status === "used").length,
           cancellations: cancelMap[cid] || 0,
