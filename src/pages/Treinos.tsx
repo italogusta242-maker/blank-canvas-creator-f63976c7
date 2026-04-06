@@ -16,7 +16,7 @@ import RestTimer from "@/components/training/RestTimer";
 import TrainingAnalysisCards from "@/components/training/TrainingAnalysisCards";
 import { TrainingObjectiveCard } from "@/components/training/TrainingObjectiveCard";
 import ExerciseVideoEmbed from "@/components/training/ExerciseVideoEmbed";
-import RunningSection from "@/components/training/RunningSection";
+import PlanilhaCorrida from "@/components/training/PlanilhaCorrida";
 import SetInputPicker from "@/components/training/SetInputPicker";
 
 const DAYS_OF_WEEK = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA"];
@@ -568,13 +568,7 @@ const Treinos = () => {
         </div>}
 
         {plan && activeTab === "extra" && (
-          <RunningSection 
-            workoutHistory={workoutHistory} 
-            onSaveSuccess={(durationSecs, distanceKm) => {
-              setRunningCapture({ durationSecs, distanceKm });
-              setView("share");
-            }}
-          />
+          <PlanilhaCorrida />
         )}
       </div>
     );

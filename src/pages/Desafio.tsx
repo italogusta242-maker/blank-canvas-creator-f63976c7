@@ -24,8 +24,12 @@ import {
   Loader2,
   FileText,
   CornerDownRight,
-  X
+  X,
+  Target,
+  Trophy,
+  Zap
 } from "lucide-react";
+import PlanilhaCorrida from "@/components/training/PlanilhaCorrida";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -693,6 +697,87 @@ const Challenge = () => {
                 const currentLesson = activeLesson;
                 const ytId = currentLesson?.video_url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)?.[1];
                 const moduleType = selectedModule?.type;
+
+                if (moduleType === 'running') {
+                  return (
+                    <div className="w-full p-4 md:p-8 min-h-[600px] overflow-x-hidden">
+                      <PlanilhaCorrida />
+                    </div>
+                  );
+                }
+
+                if (moduleType === 'planner') {
+                  return (
+                    <div className="w-full p-4 md:p-8 min-h-[600px] flex flex-col items-center justify-center space-y-12">
+                      <div className="text-center space-y-4 max-w-2xl mx-auto">
+                        <h2 className="text-3xl md:text-5xl font-cinzel font-black italic text-foreground uppercase tracking-tight">Ative sua Liga</h2>
+                        <p className="text-muted-foreground text-sm md:text-base italic">Selecione o nível que mais se adequa ao seu momento atual. Esta escolha definirá seu Planner diário e sua posição no Ranking.</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+                        {[
+                          { 
+                            id: 'essencial', 
+                            name: 'ESSENCIAL', 
+                            desc: 'Perfeito para iniciantes. Foco em criar o hábito e dominar os fundamentos.', 
+                            icon: Target, 
+                            color: 'text-blue-400',
+                            bg: 'bg-blue-400/10',
+                            border: 'border-blue-400/20'
+                          },
+                          { 
+                            id: 'constancia', 
+                            name: 'CONSTÂNCIA', 
+                            desc: 'Para quem já treina e busca evolução. Foco em volume e performance intermediária.', 
+                            icon: Zap, 
+                            color: 'text-accent',
+                            bg: 'bg-accent/10',
+                            border: 'border-accent/20'
+                          },
+                          { 
+                            id: 'elite', 
+                            name: 'ELITE', 
+                            desc: 'Nível avançado. Treinos intensos de alto volume e performance máxima.', 
+                            icon: Trophy, 
+                            color: 'text-amber-400',
+                            bg: 'bg-amber-400/10',
+                            border: 'border-amber-400/20'
+                          }
+                        ].map((liga) => {
+                          const isActive = userProfile.data?.planner_type === liga.id;
+                          return (
+                            <motion.div
+                              key={liga.id}
+                              whileHover={{ scale: 1.02 }}
+                              className={cn(
+                                "relative p-8 rounded-[2rem] border-2 transition-all flex flex-col items-center text-center space-y-6 bg-card/50 backdrop-blur-xl",
+                                isActive ? "border-accent shadow-glow" : "border-white/5 hover:border-white/20"
+                              )}
+                            >
+                              <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg", liga.bg)}>
+                                <liga.icon className={cn("w-8 h-8", liga.color)} />
+                              </div>
+                              <div className="space-y-2">
+                                <h3 className="font-cinzel font-bold text-xl tracking-widest">{liga.name}</h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{liga.desc}</p>
+                              </div>
+                              <Button
+                                disabled={isActive || isUpdatingPlanner}
+                                onClick={() => handleSelectPlanner(liga.id)}
+                                className={cn(
+                                  "w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] transition-all",
+                                  isActive ? "bg-green-500/20 text-green-500 border border-green-500/20" : "crimson-gradient text-white shadow-lg hover:scale-105"
+                                )}
+                              >
+                                {isUpdatingPlanner ? "ATIVANDO..." : isActive ? "LIGA ATIVA" : "ATIVAR LIGA"}
+                              </Button>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[600px]">
