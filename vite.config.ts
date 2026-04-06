@@ -8,11 +8,12 @@ const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  // Force correct Supabase project — override any stale .env values
+  const resolvedUrl = FALLBACK_SUPABASE_URL;
+  const resolvedKey = FALLBACK_SUPABASE_PUBLISHABLE_KEY;
 
-  process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL;
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY =
-    env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+  process.env.VITE_SUPABASE_URL = resolvedUrl;
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = resolvedKey;
 
   return ({
   server: {
