@@ -172,6 +172,5 @@ export function useTrainingPlan() {
       return { ...basePlan, groups: filteredGroups };
     },
     enabled: !!user,
-    refetchOnMount: "always",
   });
 }
