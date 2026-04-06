@@ -121,9 +121,9 @@ function OnlineUsersList({ users, maxShown, totalCount }: { users: OnlineUser[];
     queryKey: ["resolve-online-names", missingNameIds.sort().join(",")],
     queryFn: async () => {
       if (missingNameIds.length === 0) return {};
-      const { data } = await supabase.from("profiles").select("id, nome").in("id", missingNameIds);
+      const { data } = await supabase.from("profiles").select("id, full_name").in("id", missingNameIds);
       const map: Record<string, string> = {};
-      (data || []).forEach(p => { if (p.nome) map[p.id] = p.nome; });
+      (data || []).forEach(p => { if (p.full_name) map[p.id] = p.full_name; });
       return map;
     },
     enabled: missingNameIds.length > 0,
