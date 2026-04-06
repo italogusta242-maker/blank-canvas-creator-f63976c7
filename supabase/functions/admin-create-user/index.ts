@@ -23,9 +23,10 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Allow service role key as direct auth (for internal/system calls)
+    // Allow service role key or x-admin-secret as direct auth (for internal/system calls)
     const token = authHeader.replace("Bearer ", "");
-    const isServiceRole = token === serviceRoleKey;
+    const adminSecret = req.headers.get("x-admin-secret");
+    const isServiceRole = token === serviceRoleKey || adminSecret === serviceRoleKey;
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
