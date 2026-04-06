@@ -374,13 +374,13 @@ export const ChallengeView = ({
                              const ytId = vUrl?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)?.[1];
                              if (ytId) {
                                return (
-                                 <a href={`https://youtube.com/watch?v=${ytId}`} target="_blank" rel="noreferrer" className="w-full h-full relative group block">
-                                   <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-all">
-                                      <Play size={64} className="text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
-                                      <span className="absolute bottom-4 right-4 bg-black/80 px-3 py-1 text-[10px] font-black tracking-widest text-white rounded cursor-pointer">ASSISTIR (NOVA GUIA)</span>
-                                    </div>
-                                 </a>
+                                 <iframe
+                                   src={`https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0`}
+                                   className="w-full h-full border-0"
+                                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                   allowFullScreen
+                                   title="YouTube video player"
+                                 />
                                );
                              }
                              if (vUrl && (vUrl.includes('supabase.co') || vUrl.endsWith('.mp4'))) {

@@ -334,32 +334,30 @@ export default function DietPlanEditor({ open, onClose, students, editingPlan, e
       toast.error("Envie apenas arquivos PDF");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("O arquivo deve ter no máximo 10MB");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 8MB para análise automática.");
       return;
     }
     setPdfParsing(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Não autenticado");
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/parse-diet-pdf`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: formData,
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
 
-      const result = await res.json();
-      if (!res.ok || result.error) throw new Error(result.error || "Erro ao processar PDF");
+      const { data, error } = await supabase.functions.invoke("parse-diet-pdf", {
+        body: { fileBase64, fileName: file.name },
+      });
 
-      const plan = result.plan;
+      if (error) throw error;
+      if (!data?.plan) throw new Error("A IA não retornou um plano válido.");
+
+      const plan = data.plan;
       if (plan.title) setTitle(plan.title);
       if (plan.goal) setGoal(plan.goal as DietGoal);
       if (plan.meals?.length) {

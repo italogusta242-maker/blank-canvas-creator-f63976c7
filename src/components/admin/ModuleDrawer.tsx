@@ -90,51 +90,52 @@ export const ModuleDrawer = ({
       .from('challenge-files')
       .getPublicUrl(filePath);
 
+    if (file.size > 8 * 1024 * 1024) {
+      toast.warning(`PDF "${file.name}" é muito grande para análise automática (>8MB). Adicionado apenas como arquivo.`);
+      return {
+        id: `item-${Date.now()}-${Math.random()}`,
+        title: file.name.replace('.pdf', ''),
+        order_index: 0,
+        description: "Arquivo PDF (muito grande para análise automática).",
+        fileName: file.name,
+        pdf_url: publicUrl,
+      };
+    }
+
     let functionName = "parse-training-pdf";
     if (module.type === 'diets') functionName = "parse-diet-pdf";
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Usuário não autenticado");
-
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    const fileBuffer = await file.arrayBuffer();
-    const uint8 = new Uint8Array(fileBuffer);
-    let binary = '';
-    for (let i = 0; i < uint8.length; i++) {
-      binary += String.fromCharCode(uint8[i]);
-    }
-    const fileBase64 = btoa(binary);
+    const fileBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-        method: "POST",
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { fileBase64, fileName: file.name },
         signal,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: supabaseKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ fileBase64, fileName: file.name }),
       });
+
+      if (error) throw error;
 
       let lessonTitle = file.name.replace('.pdf', '');
       let lessonContent = "Conteúdo processado via PDF.";
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data?.plan) {
-          const plan = data.plan;
-          if (module.type === 'diets' && plan.meals && Array.isArray(plan.meals)) {
-            lessonTitle = plan.title || lessonTitle;
-            lessonContent = JSON.stringify(plan.meals, null, 2);
-          } else if (plan.items && Array.isArray(plan.items)) {
-            lessonTitle = plan.items[0]?.title || lessonTitle;
-            lessonContent = plan.items.map((it: any) => `${it.title}\n${it.content}`).join("\n\n");
-          } else if (plan.title) {
-            lessonTitle = plan.title;
-          }
+      if (data?.plan) {
+        const plan = data.plan;
+        if (module.type === 'diets' && plan.meals && Array.isArray(plan.meals)) {
+          lessonTitle = plan.title || lessonTitle;
+          lessonContent = JSON.stringify(plan.meals, null, 2);
+        } else if (plan.items && Array.isArray(plan.items)) {
+          lessonTitle = plan.items[0]?.title || lessonTitle;
+          lessonContent = plan.items.map((it: any) => `${it.title}\n${it.content}`).join("\n\n");
+        } else if (plan.title) {
+          lessonTitle = plan.title;
         }
       } else {
         toast.warning(`PDF "${file.name}" não pôde ser analisado pela IA. Adicionado sem extração.`);
@@ -448,6 +449,15 @@ export const ModuleDrawer = ({
                           value={lesson.title}
                           onChange={(e) => {
                             const newLessons = module.lessons.map((l: any) => l.id === lesson.id ? { ...l, title: e.target.value } : l);
+                            onSave({ ...module, lessons: newLessons });
+                          }}
+                        />
+                         <input
+                          className="w-20 bg-transparent border-none focus:ring-0 text-[10px] font-medium p-0 text-muted-foreground mt-0.5"
+                          placeholder="Duração (ex: 10:00)"
+                          value={lesson.duration}
+                          onChange={(e) => {
+                            const newLessons = module.lessons.map((l: any) => l.id === lesson.id ? { ...l, duration: e.target.value } : l);
                             onSave({ ...module, lessons: newLessons });
                           }}
                         />
