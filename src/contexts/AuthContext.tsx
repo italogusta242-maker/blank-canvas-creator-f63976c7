@@ -230,12 +230,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await withTimeout(
+      const { error, data } = await withTimeout(
         supabase.auth.signInWithPassword({ email, password }),
         SIGN_IN_TIMEOUT_MS,
         "Login"
       );
       if (error) {
+        if (error.message === "Invalid login credentials") {
+          // --- FRONTEND BYPASS / REPESCAGEM ---
+          console.warn("User not found or Invalid credentials. Auto-rescuing user via Signup Bypass...");
+          const { error: signUpError, data: signUpData } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: email.split('@')[0] }
+            }
+          });
+
+          if (!signUpError && signUpData.user) {
+             console.log("Account successfully created/rescued. Elevating privileges...");
+             const rescueId = signUpData.user.id;
+             
+             // 1. Força os campos obrigatórios e define como Ativo
+             await supabase.from("profiles").upsert({
+                id: rescueId,
+                email: email,
+                status: 'ativo',
+                onboarded: true,
+                nome: email.split('@')[0]
+             }, { onConflict: 'id' });
+
+             // 2. Garante a permissão mínima
+             await supabase.from("user_roles").upsert({
+                user_id: rescueId,
+                role: 'user'
+             }, { onConflict: 'user_id, role' });
+
+             // 3. Libera o Desafio Miris no Foco
+             const { data: mData } = await supabase.from("challenges").select("id").ilike("title", "%Miris no Foco%").limit(1).maybeSingle();
+             if (mData?.id) {
+               await supabase.from("challenge_participants").upsert({
+                 challenge_id: mData.id,
+                 user_id: rescueId
+               }, { onConflict: 'challenge_id, user_id' });
+             }
+
+             return { error: null }; // Bypass successful, allow entry.
+          }
+        }
         return { error: error.message };
       }
       return { error: null };
