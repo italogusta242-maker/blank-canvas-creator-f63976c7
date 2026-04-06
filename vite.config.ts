@@ -8,42 +8,39 @@ const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Force correct Supabase project — override any stale .env values
-  const resolvedUrl = FALLBACK_SUPABASE_URL;
-  const resolvedKey = FALLBACK_SUPABASE_PUBLISHABLE_KEY;
-
-  process.env.VITE_SUPABASE_URL = resolvedUrl;
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = resolvedKey;
-
-  return ({
-  server: {
-    host: "::",
-    port: 3000,
-    hmr: {
-      overlay: false,
+  return {
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(FALLBACK_SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(FALLBACK_SUPABASE_PUBLISHABLE_KEY),
     },
-  },
-  plugins: [
-    react(),
-    mode === "development" && componentTagger(),
-  ].filter(Boolean),
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          ui: ['lucide-react', 'date-fns', 'zod', 'react-hook-form'],
-          supabase: ['@supabase/supabase-js'],
-          charts: ['recharts'],
-          motion: ['framer-motion']
+    server: {
+      host: "::",
+      port: 3000,
+      hmr: {
+        overlay: false,
+      },
+    },
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+    ].filter(Boolean),
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+            ui: ['lucide-react', 'date-fns', 'zod', 'react-hook-form'],
+            supabase: ['@supabase/supabase-js'],
+            charts: ['recharts'],
+            motion: ['framer-motion']
+          }
         }
       }
-    }
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
-  },
-  });
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+  };
 });
