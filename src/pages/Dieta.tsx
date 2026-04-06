@@ -425,22 +425,23 @@ const Dieta = () => {
     const groups: GroupedMeal[] = [];
     const usedIndices = new Set<number>();
 
+    // Helper to get group key
+    const getGroupKey = (meal: ParsedMeal) => {
+      if (meal.time && meal.time.trim() !== "") return `time:${meal.time.trim()}`;
+      const cleanName = meal.label.replace(/^\d{1,2}:\d{2}\s*[–\-]\s*/, "");
+      return `name:${cleanName.split(/\s*[–\-]\s*/)[0].trim().toLowerCase()}`;
+    };
+
     allMeals.forEach((meal, idx) => {
       if (usedIndices.has(idx)) return;
-      if (isAlternativeMeal(meal.label)) return; // Will be picked up by parent
-
-      const baseName = getBaseMealName(meal.label);
+      
+      const baseKey = getGroupKey(meal);
       const alternatives: ParsedMeal[] = [];
 
-      // Find all alternatives for this meal
       allMeals.forEach((other, otherIdx) => {
         if (otherIdx === idx || usedIndices.has(otherIdx)) return;
-        if (!isAlternativeMeal(other.label)) return;
-        const otherBase = getBaseMealName(other.label);
-        // Match by base name (ignoring time prefix)
-        const cleanBase = baseName.replace(/^\d{1,2}:\d{2}\s*[–\-]\s*/, "").trim().toLowerCase();
-        const cleanOther = otherBase.replace(/^\d{1,2}:\d{2}\s*[–\-]\s*/, "").trim().toLowerCase();
-        if (cleanBase === cleanOther) {
+        const otherKey = getGroupKey(other);
+        if (baseKey === otherKey) {
           alternatives.push(other);
           usedIndices.add(otherIdx);
         }
@@ -448,13 +449,6 @@ const Dieta = () => {
 
       usedIndices.add(idx);
       groups.push({ main: meal, alternatives });
-    });
-
-    // Add any orphaned alternatives that didn't match
-    allMeals.forEach((meal, idx) => {
-      if (!usedIndices.has(idx)) {
-        groups.push({ main: meal, alternatives: [] });
-      }
     });
 
     return groups;
@@ -642,7 +636,7 @@ const Dieta = () => {
                         "text-sm font-medium text-foreground",
                         isCompleted && "line-through text-muted-foreground/50"
                       )}>
-                        {meal.time ? `${meal.time} – ` : ""}{meal.label.replace(/\s*[–\-]\s*Op[çc][ãa]o\s*\d+.*/i, "")}
+                        {meal.time ? `${meal.time} – ` : ""}{meal.label.replace(/^\d{1,2}:\d{2}\s*[–\-]\s*/, "").split(/\s*[–\-]\s*/)[0].trim()}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground font-bold uppercase">
                         <span className="text-accent">{displayMeal.calories} kcal</span>
@@ -692,7 +686,9 @@ const Dieta = () => {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-bold text-foreground">Opção Principal</p>
+                                <p className="text-xs font-bold text-foreground">
+                                  {meal.label.split(/\s*[–\-]\s*/).length > 1 ? meal.label.split(/\s*[–\-]\s*/).slice(1).join(" - ") : "Opção Principal"}
+                                </p>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{meal.calories} kcal</p>
                               </div>
                               {selectedAltIdx === undefined && <Check size={14} className="text-accent" />}
@@ -706,7 +702,9 @@ const Dieta = () => {
                             >
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-xs font-bold text-foreground">Opção {altIdx + 2}</p>
+                                  <p className="text-xs font-bold text-foreground">
+                                    {alt.label.split(/\s*[–\-]\s*/).length > 1 ? alt.label.split(/\s*[–\-]\s*/).slice(1).join(" - ") : `Opção ${altIdx + 2}`}
+                                  </p>
                                   <p className="text-[10px] text-muted-foreground mt-0.5">{alt.calories} kcal</p>
                                 </div>
                                 {selectedAltIdx === altIdx && <Check size={14} className="text-accent" />}
