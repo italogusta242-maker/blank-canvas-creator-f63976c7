@@ -169,7 +169,7 @@ const EspecialistaDashboard = () => {
 
   const totalStudents = students?.length ?? 0;
   const studentIds = (students ?? []).map((s) => s.id);
-  const studentNames = new Map((students ?? []).map((s) => [s.id, s.name]));
+  const studentNames = new Map((students ?? []).map((s) => [s.id, s.full_name]));
 
   // reviewStats kept for potential future use but efficiency is now alert-based
   const { data: proactiveAlerts, isLoading: alertsLoading } = useProactiveAlerts(specialty, studentIds, studentNames);
