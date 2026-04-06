@@ -17,49 +17,32 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { password, emails } = await req.json();
+    const { password, user_ids } = await req.json();
 
-    if (!password || !emails || !Array.isArray(emails)) {
+    if (!password || !user_ids || !Array.isArray(user_ids)) {
       return new Response(
-        JSON.stringify({ error: "Envie { password, emails: [...] }" }),
+        JSON.stringify({ error: "Envie { password, user_ids: [...] }" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const results: { email: string; status: string; error?: string }[] = [];
+    const results: { id: string; status: string; error?: string }[] = [];
 
-    for (const email of emails) {
+    for (const userId of user_ids) {
       try {
-        // Find user by email
-        const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000,
-        });
-
-        if (listErr) {
-          results.push({ email, status: "error", error: listErr.message });
-          continue;
-        }
-
-        const user = users?.find((u) => u.email === email);
-        if (!user) {
-          results.push({ email, status: "not_found" });
-          continue;
-        }
-
-        // Update password via Admin API (this sets the hash correctly)
+        // Update password directly by ID (skip listUsers)
         const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
-          user.id,
+          userId,
           { password }
         );
 
         if (updateErr) {
-          results.push({ email, status: "error", error: updateErr.message });
+          results.push({ id: userId, status: "error", error: updateErr.message });
         } else {
-          results.push({ email, status: "updated" });
+          results.push({ id: userId, status: "updated" });
         }
       } catch (e) {
-        results.push({ email, status: "error", error: String(e) });
+        results.push({ id: userId, status: "error", error: String(e) });
       }
     }
 
