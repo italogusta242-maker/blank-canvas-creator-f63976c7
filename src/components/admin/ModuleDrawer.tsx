@@ -126,7 +126,10 @@ export const ModuleDrawer = ({
         const data = await response.json();
         if (data?.plan) {
           const plan = data.plan;
-          if (plan.items && Array.isArray(plan.items)) {
+          if (module.type === 'diets' && plan.meals && Array.isArray(plan.meals)) {
+            lessonTitle = plan.title || lessonTitle;
+            lessonContent = JSON.stringify(plan.meals, null, 2);
+          } else if (plan.items && Array.isArray(plan.items)) {
             lessonTitle = plan.items[0]?.title || lessonTitle;
             lessonContent = plan.items.map((it: any) => `${it.title}\n${it.content}`).join("\n\n");
           } else if (plan.title) {
