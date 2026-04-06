@@ -21,17 +21,16 @@ export default function PDFGenerator() {
     setLoading(true);
     try {
       const userData = {
-        name: profile?.full_name || user.email?.split("@")[0] || "Aluno",
-        age: profile?.birth_date
+        name: profile?.nome || user.email?.split("@")[0] || "Aluno",
+        age: profile?.nascimento
           ? String(
               new Date().getFullYear() -
-                new Date(profile.birth_date).getFullYear()
+                new Date(profile.nascimento).getFullYear()
             )
           : undefined,
-        goal: profile?.goal || "Hipertrofia",
+        goal: "Hipertrofia",
         level: profile?.planner_type || "Intermediário",
         days: "5 dias",
-        notes: profile?.injuries || undefined,
       };
 
       const { data, error } = await supabase.functions.invoke(
