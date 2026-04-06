@@ -5,26 +5,23 @@ import { MOCK_PROFILE } from "@/lib/mockData";
 
 export const useProfile = () => {
   const { user } = useAuth();
-  const isMock = localStorage.getItem("USE_MOCK") === "true";
 
   return useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      if (isMock) return MOCK_PROFILE;
       if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, status, phone, avatar_url")
+        .select("id, full_name, status, phone, avatar_url, onboarded")
         .eq("id", user.id)
         .maybeSingle();
-      
-      if (error) {
-        console.warn("Ignorando erro de schema no useProfile:", error);
-        return { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "", avatar_url: null };
-      }
-      
-      return data ? { ...data, onboarded: true } : { id: user.id, full_name: "Aluna", status: "ativo", onboarded: true, phone: "", avatar_url: null };
+
+      if (error) throw error;
+      if (!data) throw new Error("Perfil não encontrado para o usuário autenticado.");
+
+      return data;
     },
-    enabled: !!user || isMock,
+    enabled: !!user,
   });
 };
