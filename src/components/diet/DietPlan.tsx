@@ -17,6 +17,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Vegetais": "🥦",
   "Vegetais e Folhas": "🥦",
   "Grãos, Pães e Outros": "🍞",
+  "Sementes e Fibras": "🌱",
+  "Extras": "🍫",
 };
 
 const DietPlan = () => {
