@@ -13,14 +13,14 @@ function buildEmailHtml(name: string, email: string, password: string, accessUrl
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bem-vindo ao Shape Insano</title>
+<title>Bem-vindo ao ANAAC Club</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#0a0a0a;">
 <tr><td align="center" style="padding:40px 16px;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;">
   <tr><td align="center" style="padding:0 0 24px;color:#ffffff;">
-    <img src="${logoUrl}" alt="Shape Insano" width="80" style="display:block;border:0;" />
+    <img src="${logoUrl}" alt="ANAAC Club" width="80" style="display:block;border:0;" />
   </td></tr>
   <tr><td style="padding:0 0 32px;">
     <div style="height:2px;background:linear-gradient(90deg,transparent,#FF6B00,#FBB707,#FF6B00,transparent);"></div>
@@ -89,7 +89,7 @@ function buildEmailHtml(name: string, email: string, password: string, accessUrl
   <tr><td style="padding:24px 0 0;text-align:center;">
     <p style="margin:0 0 4px;color:#444;font-size:11px;">Esta é uma mensagem automática. Por favor, não responda este e-mail.</p>
     <p style="margin:0 0 16px;color:#444;font-size:11px;">Em caso de dúvidas, utilize o chat de suporte dentro da plataforma.</p>
-    <p style="margin:0;color:#555;font-size:11px;">© 2026 <strong style="color:#FF6B00;">Shape Insano</strong>. Todos os direitos reservados.</p>
+    <p style="margin:0;color:#555;font-size:11px;">© 2026 <strong style="color:#FF6B00;">ANAAC Club</strong>. Todos os direitos reservados.</p>
     <p style="margin:8px 0 0;color:#333;font-size:10px;">SER INSANO É SER UM VENCEDOR</p>
   </td></tr>
 </table>
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
     // Get all profiles with email and CPF
     const { data: profiles, error: profErr } = await supabase
       .from("profiles")
-      .select("id, email, cpf, nome")
+      .select("id, email, cpf, full_name")
       .not("email", "is", null)
       .neq("email", "")
       .not("cpf", "is", null)
@@ -162,19 +162,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const accessUrl = "https://shapeinsano.lovable.app";
-    const logoUrl = "https://shapeinsano.lovable.app/insano-logo.png";
+    const accessUrl = "https://anaacclub.lovable.app";
+    const logoUrl = "https://anaacclub.lovable.app/anaac-logo.svg";
     const results = { sent: 0, errors: [] as string[] };
 
     for (const profile of profiles) {
       const cpf = profile.cpf?.replace(/\D/g, "");
       if (!cpf || cpf.length < 11) {
-        results.errors.push(`${profile.nome || profile.email}: CPF inválido`);
+        results.errors.push(`${profile.full_name || profile.email}: CPF inválido`);
         continue;
       }
 
       const htmlContent = buildEmailHtml(
-        profile.nome || "Atleta",
+        profile.full_name || "Atleta",
         profile.email!,
         cpf,
         accessUrl,
@@ -184,8 +184,8 @@ Deno.serve(async (req) => {
       try {
         const result = await sendEmail({
           to: profile.email!,
-          toName: profile.nome || profile.email!,
-          subject: "🔥 Seu acesso ao Shape Insano foi liberado!",
+          toName: profile.full_name || profile.email!,
+          subject: "🔥 Seu acesso ao ANAAC Club foi liberado!",
           htmlContent,
         });
 
@@ -193,10 +193,10 @@ Deno.serve(async (req) => {
           results.sent++;
           console.log(`[bulk-send-credentials] Sent to: ${profile.email}`);
         } else {
-          results.errors.push(`${profile.nome || profile.email}: ${result.error}`);
+          results.errors.push(`${profile.full_name || profile.email}: ${result.error}`);
         }
       } catch (emailErr: any) {
-        results.errors.push(`${profile.nome || profile.email}: ${emailErr.message}`);
+        results.errors.push(`${profile.full_name || profile.email}: ${emailErr.message}`);
       }
 
       // Small delay to avoid rate limiting

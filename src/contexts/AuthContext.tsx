@@ -187,7 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email,
           password,
           options: {
-            data: { full_name: name },
+            data: name ? { full_name: name } : {},
             emailRedirectTo: window.location.origin,
           },
         }),
@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: error?.message ?? null };
     } catch (err: any) {
       console.error("AuthContext: signUp exception", err);
-      return { error: err?.message || "Erro de rede ao criar conta. Verifique sua conexão." };
+      return { error: err?.message ?? "Erro ao criar conta." };
     }
   };
 
@@ -208,31 +208,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         SIGN_IN_TIMEOUT_MS,
         "Login"
       );
-      if (error) {
-        if (error.message === "Invalid login credentials" || error.message.includes("Invalid")) {
-          const { error: signUpError, data: signUpData } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: email.split('@')[0] } }
-          });
-
-          if (!signUpError && signUpData.user) {
-             const uid = signUpData.user.id;
-             try {
-               await supabase.from("profiles").upsert({ id: uid, email, full_name: email.split('@')[0], status: 'ativo' }, { onConflict: 'id' });
-               await supabase.from("user_roles").upsert({ user_id: uid, role: 'user' }, { onConflict: 'user_id, role' });
-             } catch (e) {
-               console.warn("Ignorando erro de banco no upsert", e);
-             }
-             return { error: null }; // FORÇAR ENTRADA MESMO COM ERRO DE SCHEMA
-          }
-        }
-        return { error: error.message };
-      }
-      return { error: null };
+      return { error: error?.message ?? null };
     } catch (err: any) {
-      console.warn("Bypass de erro fatal ativado. Deixando passar.");
-      return { error: null }; // NUNCA RETORNAR O ERRO DE SCHEMA PARA A TELA
+      console.error("AuthContext: signIn exception", err);
+      return { error: err?.message ?? "Erro ao fazer login." };
     }
   };
 

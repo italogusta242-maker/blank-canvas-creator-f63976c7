@@ -38,7 +38,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ ok: boolean; e
         console.log(`[email] Using fallback verified sender: ${anySender.email}`);
         // Use the verified sender instead
         const payload = {
-          sender: { name: "Shape Insano", email: anySender.email },
+          sender: { name: "ANAAC Club", email: anySender.email },
           to: [{ email: options.to, name: options.toName || options.to }],
           subject: options.subject,
           htmlContent: options.htmlContent,
@@ -71,7 +71,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ ok: boolean; e
   }
 
   const payload: Record<string, unknown> = {
-    sender: { name: "Shape Insano", email: gmailUser },
+    sender: { name: "ANAAC Club", email: gmailUser },
     to: [{ email: options.to, name: options.toName || options.to }],
     subject: options.subject,
     htmlContent: options.htmlContent,

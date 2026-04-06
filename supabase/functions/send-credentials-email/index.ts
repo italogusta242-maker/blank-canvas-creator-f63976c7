@@ -13,7 +13,7 @@ function buildEmailHtml(name: string, email: string, password: string, accessUrl
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bem-vindo ao Shape Insano</title>
+<title>Bem-vindo ao ANAAC Club</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#0a0a0a;">
@@ -23,7 +23,7 @@ function buildEmailHtml(name: string, email: string, password: string, accessUrl
 
   <!-- Logo -->
   <tr><td align="center" style="padding:0 0 24px;color:#ffffff;">
-    <img src="${logoUrl}" alt="Shape Insano" width="80" style="display:block;border:0;" />
+    <img src="${logoUrl}" alt="ANAAC Club" width="80" style="display:block;border:0;" />
   </td></tr>
 
   <!-- Divider gold -->
@@ -110,7 +110,7 @@ function buildEmailHtml(name: string, email: string, password: string, accessUrl
   <tr><td style="padding:24px 0 0;text-align:center;">
     <p style="margin:0 0 4px;color:#444;font-size:11px;">Esta é uma mensagem automática. Por favor, não responda este e-mail.</p>
     <p style="margin:0 0 16px;color:#444;font-size:11px;">Em caso de dúvidas, utilize o chat de suporte dentro da plataforma.</p>
-    <p style="margin:0;color:#555;font-size:11px;">© 2026 <strong style="color:#FF6B00;">Shape Insano</strong>. Todos os direitos reservados.</p>
+    <p style="margin:0;color:#555;font-size:11px;">© 2026 <strong style="color:#FF6B00;">ANAAC Club</strong>. Todos os direitos reservados.</p>
     <p style="margin:8px 0 0;color:#333;font-size:10px;">SER INSANO É SER UM VENCEDOR</p>
   </td></tr>
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const logoUrl = "https://shapeinsano.lovable.app/insano-logo.png";
+    const logoUrl = "https://anaacclub.lovable.app/anaac-logo.svg";
     const htmlContent = buildEmailHtml(
       to_name || "Atleta",
       login_email,
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     const result = await sendEmail({
       to: to_email,
       toName: to_name || to_email,
-      subject: "🔥 Seu acesso ao Shape Insano foi liberado!",
+      subject: "🔥 Seu acesso ao ANAAC Club foi liberado!",
       htmlContent,
     });
 
