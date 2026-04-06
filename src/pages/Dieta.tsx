@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Leaf, Clock, Flame, Check, AlertTriangle, ChevronDown, ChevronUp, ArrowLeftRight, MessageSquare, Target, Repeat2, ShoppingCart } from "lucide-react";
 import ShoppingList from "@/components/diet/ShoppingList";
+import DietPlan from "@/components/diet/DietPlan";
 import { Card, CardContent } from "@/components/ui/card";
 import { getToday } from "@/lib/dateUtils";
 import { useAuth } from "@/contexts/AuthContext";
