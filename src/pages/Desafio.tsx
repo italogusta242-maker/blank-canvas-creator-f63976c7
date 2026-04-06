@@ -418,6 +418,13 @@ const Challenge = () => {
 
     if (!latestRecord) return false;
 
+    // For config diets, match by calories in plan_data
+    const contentItem = unifiedContent.find(l => l.id === sourceId);
+    if ((contentItem as any)?.isConfigDiet) {
+      return latestRecord.plan_data?.is_config_diet === true && 
+             latestRecord.plan_data?.calories === (contentItem as any).dietCalories;
+    }
+
     const isRecordLesson = !!latestRecord.plan_data?.is_lesson;
     return latestRecord.source_plan_id === sourceId && isRecordLesson === isLessonInList;
   };
@@ -504,16 +511,37 @@ const Challenge = () => {
           throw profileErr;
         }
       }
-      const { error } = await supabase.from("user_selected_plans").upsert({
+      const isConfigDiet = planData?.is_config_diet === true;
+      
+      if (isConfigDiet) {
+        // Config diets use non-UUID ids — delete old entry then insert fresh
+        await supabase.from("user_selected_plans")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("plan_type", "diet");
+        
+        const { error } = await supabase.from("user_selected_plans").insert({
           user_id: user.id,
-          challenge_id: activeChallenge?.id || null, 
+          challenge_id: activeChallenge?.id || null,
           module_id: selectedModuleId,
           plan_type: normalizedType,
-          source_plan_id: sourceId,
-          plan_data: { ...(planData || {}), is_lesson: isLessonInList },
+          source_plan_id: null,
+          plan_data: { ...planData, is_lesson: false },
           created_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,plan_type,source_plan_id' });
-      if (error) { console.error("[importPlan] ❌ Plan upsert error:", error); throw error; }
+        });
+        if (error) { console.error("[importPlan] ❌ Plan insert error:", error); throw error; }
+      } else {
+        const { error } = await supabase.from("user_selected_plans").upsert({
+            user_id: user.id,
+            challenge_id: activeChallenge?.id || null, 
+            module_id: selectedModuleId,
+            plan_type: normalizedType,
+            source_plan_id: sourceId,
+            plan_data: { ...(planData || {}), is_lesson: isLessonInList },
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,plan_type,source_plan_id' });
+        if (error) { console.error("[importPlan] ❌ Plan upsert error:", error); throw error; }
+      }
       
       return { newPlannerType };
     },
