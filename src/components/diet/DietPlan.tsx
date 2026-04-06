@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Flame, Clock, ChevronDown, ShoppingCart, UtensilsCrossed, Check, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, Flame, Clock, ShoppingCart, UtensilsCrossed, Check, ArrowLeftRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { DIET_DATA } from "./DietPlanData";
+import { ALL_DIETS, type DietPlanType } from "./DietPlanData";
 
 const CATEGORY_ICONS: Record<string, string> = {
   "Proteínas": "🥩",
@@ -15,11 +15,16 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Laticínios": "🧀",
   "Frutas": "🍎",
   "Vegetais": "🥦",
+  "Vegetais e Folhas": "🥦",
+  "Grãos, Pães e Outros": "🍞",
 };
 
 const DietPlan = () => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const diet: DietPlanType = ALL_DIETS[selectedIdx];
 
   const toggleItem = (item: string) => {
     setCheckedItems(prev => {
@@ -30,8 +35,8 @@ const DietPlan = () => {
     });
   };
 
-  const totalItems = Object.values(DIET_DATA.shoppingList).flat().length;
-  const checkedCount = checkedItems.size;
+  const totalItems = Object.values(diet.shoppingList).flat().length;
+  const checkedCount = [...checkedItems].filter(i => Object.values(diet.shoppingList).flat().includes(i)).length;
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -52,13 +57,29 @@ const DietPlan = () => {
               <h1 className="font-cinzel text-xl font-black text-primary-foreground tracking-tight">Cardápio Diário</h1>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-4">
+
+          {/* Plan selector pills */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {ALL_DIETS.map((d, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedIdx(idx)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                  selectedIdx === idx
+                    ? "bg-white/25 backdrop-blur-sm text-primary-foreground border-white/30 shadow-md"
+                    : "bg-white/10 backdrop-blur-sm text-primary-foreground/60 border-white/10 hover:bg-white/15"
+                )}
+              >
+                <Flame size={13} />
+                {d.totalCalories} kcal
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 mt-3">
             <Badge className="bg-white/15 backdrop-blur-sm text-primary-foreground border-white/20 font-bold text-xs px-3 py-1.5 rounded-xl">
-              <Flame size={14} className="mr-1.5" />
-              {DIET_DATA.totalCalories} kcal
-            </Badge>
-            <Badge className="bg-white/15 backdrop-blur-sm text-primary-foreground border-white/20 font-bold text-xs px-3 py-1.5 rounded-xl">
-              4 refeições
+              {diet.meals.length} refeições
             </Badge>
           </div>
         </div>
@@ -84,13 +105,10 @@ const DietPlan = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* ────────────────────────────────── */}
-          {/* TAB: CARDÁPIO                      */}
-          {/* ────────────────────────────────── */}
+          {/* TAB: CARDÁPIO */}
           <TabsContent value="cardapio" className="mt-4 space-y-4">
-            {DIET_DATA.meals.map((meal, mealIdx) => (
+            {diet.meals.map((meal, mealIdx) => (
               <Card key={mealIdx} className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
-                {/* Meal header */}
                 <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                   <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                     <Clock size={16} className="text-primary" />
@@ -104,21 +122,15 @@ const DietPlan = () => {
                   </Badge>
                 </div>
 
-                {/* Options */}
                 <CardContent className="px-5 pb-5 pt-0 space-y-3">
                   {meal.options.map((option, optIdx) => (
                     <div key={optIdx} className="rounded-xl border border-border bg-muted/30 overflow-hidden">
-                      {/* Option title */}
                       <div className="px-4 py-2.5 border-b border-border/50 bg-muted/50">
                         <p className="text-xs font-black uppercase tracking-wider text-foreground/80">{option.title}</p>
                       </div>
-
-                      {/* Principal content */}
                       <div className="px-4 py-3">
                         <p className="text-sm text-foreground/90 leading-relaxed">{option.principal}</p>
                       </div>
-
-                      {/* Substitutions accordion */}
                       {option.substitutions && (
                         <Accordion type="single" collapsible>
                           <AccordionItem value={`sub-${mealIdx}-${optIdx}`} className="border-0">
@@ -146,11 +158,8 @@ const DietPlan = () => {
             ))}
           </TabsContent>
 
-          {/* ────────────────────────────────── */}
-          {/* TAB: LISTA DE COMPRAS              */}
-          {/* ────────────────────────────────── */}
+          {/* TAB: LISTA DE COMPRAS */}
           <TabsContent value="compras" className="mt-4 space-y-4">
-            {/* Progress */}
             <Card className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -166,7 +175,7 @@ const DietPlan = () => {
               </CardContent>
             </Card>
 
-            {Object.entries(DIET_DATA.shoppingList).map(([category, items]) => {
+            {Object.entries(diet.shoppingList).map(([category, items]) => {
               const categoryChecked = items.filter(i => checkedItems.has(i)).length;
               return (
                 <Card key={category} className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
