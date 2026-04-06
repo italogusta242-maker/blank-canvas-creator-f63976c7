@@ -24,6 +24,7 @@ const AuthPage = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [forceAdminLoading, setForceAdminLoading] = useState(false);
 
   // Bypass removido — redireciona para funnel
 
@@ -105,6 +106,89 @@ const AuthPage = () => {
     setResetLoading(false);
   };
 
+  const ensureAdminRecords = async (userId: string) => {
+    const profilePayload = {
+      id: userId,
+      full_name: "Administrador ANAAC",
+      email: "admin@anaac.club",
+      status: "ativo",
+      onboarded: true,
+    };
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(profilePayload, { onConflict: "id" });
+
+    if (profileError) {
+      throw new Error(`Falha ao sincronizar perfil: ${profileError.message}`);
+    }
+
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+
+    if (roleError) {
+      throw new Error(`Falha ao sincronizar permissão admin: ${roleError.message}`);
+    }
+  };
+
+  const handleForceAdminRegister = async () => {
+    setForceAdminLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: "admin@anaac.club",
+        password: "Admin@2026",
+        options: {
+          data: {
+            full_name: "Administrador ANAAC",
+            role: "admin",
+          },
+        },
+      });
+
+      const signupErrorMessage = error?.message?.toLowerCase() ?? "";
+      const shouldFallbackToSignIn = Boolean(
+        data?.user ||
+        signupErrorMessage.includes("already") ||
+        signupErrorMessage.includes("registered") ||
+        signupErrorMessage.includes("exists")
+      );
+
+      if (error && !shouldFallbackToSignIn) {
+        throw new Error(error.message);
+      }
+
+      let activeUserId = data?.user?.id ?? null;
+
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: "admin@anaac.club",
+        password: "Admin@2026",
+      });
+
+      if (signInError && !activeUserId) {
+        throw new Error(signInError.message);
+      }
+
+      activeUserId = signInData.user?.id ?? activeUserId;
+
+      if (!activeUserId) {
+        throw new Error("Não foi possível obter o usuário admin após cadastro/login.");
+      }
+
+      await ensureAdminRecords(activeUserId);
+
+      setEmail("admin@anaac.club");
+      setPassword("Admin@2026");
+      toast.success("Acesso admin sincronizado. Tente entrar agora.");
+    } catch (err: any) {
+      console.error("AuthPage: force admin register exception", err);
+      toast.error(err?.message ?? "Falha ao forçar o registro do admin.");
+    } finally {
+      setForceAdminLoading(false);
+    }
+  };
+
 
 
   return (
@@ -178,6 +262,17 @@ const AuthPage = () => {
               </div>
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={loading} className="w-full py-4 crimson-gradient text-white font-cinzel font-bold rounded-xl crimson-shadow tracking-wider text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading ? <><Loader2 size={18} className="animate-spin" /> ENTRANDO...</> : "ENTRAR"}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                onClick={handleForceAdminRegister}
+                disabled={forceAdminLoading}
+                className="w-full py-4 bg-destructive text-destructive-foreground font-cinzel font-bold rounded-xl shadow-lg tracking-wider text-sm disabled:opacity-50 flex items-center justify-center gap-2 border border-destructive/30"
+              >
+                {forceAdminLoading ? <><Loader2 size={18} className="animate-spin" /> FORÇANDO...</> : "FORÇAR REGISTRO ADMIN"}
               </motion.button>
             </motion.form>
 
