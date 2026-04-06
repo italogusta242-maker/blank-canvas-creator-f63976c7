@@ -218,6 +218,18 @@ const Dieta = () => {
         .maybeSingle()) as { data: any; error: any };
 
       if (selected?.source_plan_id) {
+        // Check for config diet (hardcoded plans from DietPlanData)
+        if (selected.plan_data?.is_config_diet) {
+          return {
+            id: selected.source_plan_id,
+            name: `Cardápio ${selected.plan_data.calories} kcal`,
+            active: true,
+            is_config_diet: true,
+            config_calories: selected.plan_data.calories,
+            meals: [],
+          } as any;
+        }
+
         const isLesson = selected.plan_data?.is_lesson === true;
         
         if (isLesson) {
@@ -228,14 +240,12 @@ const Dieta = () => {
             .maybeSingle();
           
           if (lesson) {
-            // Try JSON parsing first, then plain text fallback
             const jsonMeals = tryParseJsonMeals(lesson.description || "");
             let meals: any[];
 
             if (jsonMeals && jsonMeals.length > 0) {
               meals = jsonMeals.map((m, i) => ({ ...m, id: `sel-meal-${i}` }));
             } else {
-              // Plain text fallback — but NEVER show raw JSON
               const desc = (lesson.description || "").trim();
               const isLikelyJson = desc.startsWith("[") || desc.startsWith("{");
               const plainText = isLikelyJson ? "" : desc;
