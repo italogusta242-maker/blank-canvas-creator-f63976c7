@@ -99,13 +99,30 @@ const PaymentConciliationModal = ({ open, onOpenChange }: Props) => {
         body: { transactions },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      console.log("Response data:", data);
+
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+      if (!data) {
+        console.error("No data returned from function");
+        throw new Error("Nenhum dado retornado da função");
+      }
 
       setResult(data as ConciliationResult);
-      toast.success("Conciliação finalizada!");
-    } catch (err: any) {
-      toast.error(err.message || "Erro na conciliação");
+      toast.success("Conciliação concluída com sucesso");
+    } catch (error: any) {
+      console.error("Erro detalhado na conciliação:", error);
+      
+      let errorMessage = "Erro ao processar conciliação";
+      if (error.message?.includes("Failed to send a request")) {
+        errorMessage = "Falha de rede com a Edge Function. Verifique sua conexão ou se a função está ativa.";
+      } else if (error.context?.reason) {
+        errorMessage = `Erro: ${error.context.reason}`;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
       if (fileRef.current) fileRef.current.value = "";

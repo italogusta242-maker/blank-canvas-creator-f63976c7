@@ -67,21 +67,39 @@ Deno.serve(async (req) => {
     }
 
     // Fetch data
-    const { data: allProfiles } = await supabaseAdmin
+    // Fetch data with specific fields to save memory
+    const { data: allProfiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, nome, email, status");
-    const { data: allSubs } = await supabaseAdmin
-      .from("subscriptions")
-      .select("id, user_id, status, payment_status, plan_price");
-    const { data: allUserRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id, role")
-      .eq("role", "user");
-    const { data: allPayments } = await supabaseAdmin
-      .from("payments")
-      .select("id, user_id, gateway_transaction_id, amount");
+      .select("id, nome, email, status")
+      .eq("status", "ativo"); // Only active profiles for matching and Lista C. 
+                              // Wait, if a user is pending but in CSV, we need to find them.
+                              // So we need all profiles? No, let's fetch all but only basic fans.
+    
+    const { data: allPendingProfiles, error: pendErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, nome, email, status")
+      .neq("status", "ativo");
 
-    const profiles = allProfiles || [];
+    const { data: allSubs, error: subErr } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id, status, plan_price");
+      
+    const { data: allUserRoles, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "user");
+      
+    const { data: allPayments, error: payErr } = await supabaseAdmin
+      .from("payments")
+      .select("user_id, gateway_transaction_id")
+      .not("gateway_transaction_id", "is", null);
+
+    if (profErr || subErr || roleErr || payErr || pendErr) {
+      console.error("Fetch error:", { profErr, subErr, roleErr, payErr, pendErr });
+      throw new Error("Failed to fetch data from database");
+    }
+
+    const profiles = [...(allProfiles || []), ...(allPendingProfiles || [])];
     const subs = allSubs || [];
     const userRoles = allUserRoles || [];
     const payments = allPayments || [];
@@ -93,12 +111,13 @@ Deno.serve(async (req) => {
     }
 
     // Build lookup maps - STRICT matching only
-    const profilesByNormalizedName = new Map<string, any[]>();
+    const profilesByNormalizedName = new Map<string, { p: any; words: string[] }[]>();
     for (const p of profiles) {
       if (p.nome) {
         const key = normalizeStr(p.nome);
+        const words = key.split(/\s+/).filter(w => w.length > 1);
         if (!profilesByNormalizedName.has(key)) profilesByNormalizedName.set(key, []);
-        profilesByNormalizedName.get(key)!.push(p);
+        profilesByNormalizedName.get(key)!.push({ p, words });
       }
     }
 
@@ -155,9 +174,9 @@ Deno.serve(async (req) => {
           // 4a. Exact normalized name match
           const candidates = profilesByNormalizedName.get(key);
           if (candidates) {
-            const unmatched = candidates.filter((c: any) => !alreadyMatchedProfileIds.has(c.id));
+            const unmatched = candidates.filter((c: any) => !alreadyMatchedProfileIds.has(c.p.id));
             if (unmatched.length === 1) {
-              matchedProfile = unmatched[0];
+              matchedProfile = unmatched[0].p;
             }
           }
 
@@ -167,17 +186,14 @@ Deno.serve(async (req) => {
             if (csvWords.length >= 2) {
               const partialMatches: any[] = [];
               for (const [pKey, pList] of profilesByNormalizedName) {
-                const pWords = pKey.split(/\s+/).filter(w => w.length > 1);
-                if (pWords.length < 2) continue;
-                // Check if all words from the shorter name exist in the longer
-                const shorter = csvWords.length <= pWords.length ? csvWords : pWords;
-                const longer = csvWords.length <= pWords.length ? pWords : csvWords;
-                const allMatch = shorter.every(sw => longer.some(lw => lw === sw));
-                if (allMatch) {
-                  for (const p of pList) {
-                    if (!alreadyMatchedProfileIds.has(p.id)) {
-                      partialMatches.push(p);
-                    }
+                for (const item of pList) {
+                  if (item.words.length < 2) continue;
+                  // Check if all words from the shorter name exist in the longer
+                  const shorter = csvWords.length <= item.words.length ? csvWords : item.words;
+                  const longer = csvWords.length <= item.words.length ? item.words : csvWords;
+                  const allMatch = shorter.every(sw => longer.some(lw => lw === sw));
+                  if (allMatch && !alreadyMatchedProfileIds.has(item.p.id)) {
+                    partialMatches.push(item.p);
                   }
                 }
               }
@@ -261,18 +277,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Optimization: Return a smaller response by omitting nulls or redundant fields if possible
+    // but keeping current structure for frontend compatibility
+    const responseBody = JSON.stringify({
+      lista_a: listaA,
+      lista_b: listaB,
+      lista_c: listaC,
+      resumo: {
+        total_csv: transactions.length,
+        sucesso: listaA.length,
+        alerta: listaB.length,
+        investigar: listaC.length,
+      },
+    });
+
+    console.log(`Conciliation finished. Response size: ${Math.round(responseBody.length / 1024)} KB`);
+
     return new Response(
-      JSON.stringify({
-        lista_a: listaA,
-        lista_b: listaB,
-        lista_c: listaC,
-        resumo: {
-          total_csv: transactions.length,
-          sucesso: listaA.length,
-          alerta: listaB.length,
-          investigar: listaC.length,
-        },
-      }),
+      responseBody,
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

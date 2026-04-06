@@ -16,7 +16,7 @@ import { useStreak } from "@/hooks/useStreak";
 
 // ── Plan type map ──
 const PLAN_MAPPING: Record<string, { label: string; color: string }> = {
-  foco_essencial: { label: "Essencial",     color: "text-emerald-400" },
+  essencial: { label: "Essencial",     color: "text-emerald-400" },
   constancia:     { label: "Constância",    color: "text-blue-400" },
   elite:          { label: "Elite",         color: "text-rose-400" },
 };
@@ -106,7 +106,7 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
     enabled: !!user,
   });
 
-  const [category, setCategory] = useState<PlanCategory>("foco_essencial");
+  const [category, setCategory] = useState<PlanCategory>("essencial");
 
   // Sync state with profile once loaded
   useEffect(() => {
@@ -193,7 +193,7 @@ function RankingPrizes() {
   if (prizes.length === 0) return null;
 
   const categoryLabels: Record<string, { label: string; color: string }> = {
-    foco_essencial: { label: "Essencial", color: "text-emerald-400" },
+    essencial: { label: "Essencial", color: "text-emerald-400" },
     constancia: { label: "Constância", color: "text-blue-400" },
     elite: { label: "Elite", color: "text-rose-400" },
   };

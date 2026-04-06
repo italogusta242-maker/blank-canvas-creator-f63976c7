@@ -81,7 +81,7 @@ const getPlannerQuestions = (plannerType?: string): Question[] => {
     }];
   }
   
-  if (plannerType === "foco_essencial") {
+  if (plannerType === "essencial") {
     return [{
       id: "leitura",
       icon: Brain,

@@ -460,7 +460,7 @@ const Challenge = () => {
       let newPlannerType: string | null = null;
       
       if (lessonTitle.includes('essencial') || lessonTitle.includes('iniciante') || lessonTitle.includes('vital')) {
-        newPlannerType = 'foco_essencial';
+        newPlannerType = 'essencial';
       } else if (lessonTitle.includes('constância') || lessonTitle.includes('constancia') || lessonTitle.includes('intermediário') || lessonTitle.includes('intermediario') || lessonTitle.includes('pro')) {
         newPlannerType = 'constancia';
       } else if (lessonTitle.includes('elite') || lessonTitle.includes('avançado') || lessonTitle.includes('avancado') || lessonTitle.includes('hardcore')) {
@@ -518,7 +518,7 @@ const Challenge = () => {
          const lessonTitle = (variables.planTitle || "").toLowerCase().trim();
          let newPlannerType: string | null = null;
          if (lessonTitle.includes('essencial') || lessonTitle.includes('iniciante') || lessonTitle.includes('vital')) {
-           newPlannerType = 'foco_essencial';
+           newPlannerType = 'essencial';
          } else if (lessonTitle.includes('constância') || lessonTitle.includes('constancia') || lessonTitle.includes('intermediário') || lessonTitle.includes('intermediario') || lessonTitle.includes('pro')) {
            newPlannerType = 'constancia';
          } else if (lessonTitle.includes('elite') || lessonTitle.includes('avançado') || lessonTitle.includes('avancado') || lessonTitle.includes('hardcore')) {
@@ -607,7 +607,7 @@ const Challenge = () => {
   if (!profileLoaded || loadingChallenges) return <SkeletonLayout />;
 
   const formatPlannerName = (pType?: string) => {
-    if (pType === "foco_essencial") return "Essencial";
+    if (pType === "essencial") return "Essencial";
     if (pType === "constancia") return "Constância";
     if (pType === "elite") return "Elite";
     return "Liga Não Definida";

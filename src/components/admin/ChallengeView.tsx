@@ -93,6 +93,24 @@ export const ChallengeView = ({
     }
   };
 
+  const generateDefaultLeagues = () => {
+    if (!selectedModule || !onChange) return;
+    
+    const defaultLeagues = [
+      { id: `temp-l-${Date.now()}-1`, title: "Liga Essencial", description: "Foco em hábitos básicos e reeducação.", order_index: 0 },
+      { id: `temp-l-${Date.now()}-2`, title: "Liga Constância", description: "Foco em manter o ritmo e exercícios regulares.", order_index: 1 },
+      { id: `temp-l-${Date.now()}-3`, title: "Liga Elite", description: "Foco em alta performance e resultados máximos.", order_index: 2 },
+    ];
+
+    const updatedModules = challenge.modules.map((m: any) => 
+      m.id === selectedModule.id ? { ...m, lessons: defaultLeagues } : m
+    );
+
+    onChange({ modules: updatedModules });
+    // Set first one as active after generation
+    setActiveLessonId(defaultLeagues[0].id);
+  };
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground pb-32 transition-colors duration-500 max-w-7xl mx-auto px-6 pt-12 animate-in fade-in",
@@ -490,7 +508,23 @@ export const ChallengeView = ({
                           <h4 className="text-[10px] font-black uppercase text-accent tracking-widest mb-4">Conteúdo do Módulo</h4>
                           <div className="space-y-2">
                             {(!selectedModule.lessons || selectedModule.lessons.length === 0) ? (
-                               <p className="text-[10px] text-muted-foreground italic uppercase py-4">Nenhum item cadastrado</p>
+                               <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-border/30 rounded-2xl bg-muted/5 gap-4">
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground italic uppercase">Este módulo não possui ligas ou aulas</p>
+                                    <p className="text-[9px] text-muted-foreground/40 mt-1">Alunas não conseguirão ativar este módulo se estiver vazio.</p>
+                                  </div>
+                                  
+                                  {isEdit && (selectedModule.type === 'planner' || selectedModule.type === 'running') && (
+                                    <Button 
+                                      onClick={generateDefaultLeagues}
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="text-[10px] font-black uppercase tracking-widest gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                                    >
+                                      <Plus size={12} /> Gerar Ligas Padrão
+                                    </Button>
+                                  )}
+                               </div>
                             ) : (
                               selectedModule.lessons.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((lesson: any, i: number) => (
                                 <div 

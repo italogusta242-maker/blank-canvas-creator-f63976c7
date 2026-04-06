@@ -95,8 +95,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const GEMINI_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    if (!GEMINI_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+    const GEMINI_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    if (!GEMINI_KEY) throw new Error("API Key (LOVABLE_API_KEY, GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY) not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

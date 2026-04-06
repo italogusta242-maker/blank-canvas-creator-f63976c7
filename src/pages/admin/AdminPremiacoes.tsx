@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 // ── Constants ──
 const CATEGORIES = [
-  { key: "foco_essencial", label: "Essencial",   gradient: "from-emerald-600 to-emerald-400", icon: "🌱", color: "text-emerald-400", border: "border-emerald-500/30" },
+  { key: "essencial", label: "Essencial",   gradient: "from-emerald-600 to-emerald-400", icon: "🌱", color: "text-emerald-400", border: "border-emerald-500/30" },
   { key: "constancia",     label: "Constância",  gradient: "from-blue-600 to-blue-400",     icon: "⚡", color: "text-blue-400",    border: "border-blue-500/30" },
   { key: "elite",          label: "Elite",        gradient: "from-rose-600 to-rose-400",     icon: "🔥", color: "text-rose-400",    border: "border-rose-500/30" },
 ] as const;
@@ -64,7 +64,7 @@ function useSegmentLeaders() {
 
       // Plans per category
       const result: Record<CategoryKey, { leaders: any[]; isTie: boolean }> = {
-        foco_essencial: { leaders: [], isTie: false },
+        essencial: { leaders: [], isTie: false },
         constancia:     { leaders: [], isTie: false },
         elite:          { leaders: [], isTie: false },
       };

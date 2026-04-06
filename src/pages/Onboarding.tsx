@@ -347,22 +347,22 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
                       </div>
                     </button>
 
-                    {/* Foco Essencial */}
+                    {/* Essencial */}
                     <button 
-                      onClick={() => u("planner_type", "foco_essencial")}
+                      onClick={() => u("planner_type", "essencial")}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        userData.planner_type === "foco_essencial" 
+                        userData.planner_type === "essencial" 
                           ? "border-[#FF2768] bg-[#FF2768]/10" 
                           : "border-border bg-card hover:border-[#FF2768]/50"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${userData.planner_type === "foco_essencial" ? "bg-[#FF2768]/20" : "bg-secondary"}`}>
-                          <Brain className={userData.planner_type === "foco_essencial" ? "text-[#FF2768]" : "text-muted-foreground"} size={20} />
+                        <div className={`p-2 rounded-lg ${userData.planner_type === "essencial" ? "bg-[#FF2768]/20" : "bg-secondary"}`}>
+                          <Brain className={userData.planner_type === "essencial" ? "text-[#FF2768]" : "text-muted-foreground"} size={20} />
                         </div>
                         <div>
-                          <h4 className={`font-cinzel font-bold ${userData.planner_type === "foco_essencial" ? "text-[#FF2768]" : "text-foreground"}`}>
-                            Planner Foco Essencial
+                          <h4 className={`font-cinzel font-bold ${userData.planner_type === "essencial" ? "text-[#FF2768]" : "text-foreground"}`}>
+                            Planner Essencial
                           </h4>
                           <p className="text-[10px] text-muted-foreground">Equilíbrio e saúde. Foco na redução de industrializados, leitura e hidratação.</p>
                         </div>

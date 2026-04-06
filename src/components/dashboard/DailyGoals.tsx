@@ -238,7 +238,7 @@ const DailyGoals = ({
     >
       <div className="flex items-center justify-between mb-1 md:mb-4 px-2 pt-1 border-b border-border/50 pb-2">
         <div>
-          <h3 className="font-cinzel text-sm md:text-xl font-bold text-primary">Metas Diárias</h3>
+          <h3 className="font-cinzel text-sm md:text-xl font-bold text-primary">Planner Principal</h3>
           <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest font-bold mt-0.5">{phaseLabel}</p>
         </div>
         <button
