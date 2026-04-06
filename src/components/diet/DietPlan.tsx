@@ -18,6 +18,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Vegetais e Folhas": "🥦",
   "Grãos, Pães e Outros": "🍞",
   "Sementes e Fibras": "🌱",
+  "Frutas e Bebidas": "🍹",
   "Extras": "🍫",
 };
 
