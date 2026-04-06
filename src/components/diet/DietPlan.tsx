@@ -23,10 +23,21 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Extras": "🍫",
 };
 
-const DietPlan = () => {
+interface DietPlanProps {
+  initialCalories?: number;
+  hideHeader?: boolean;
+}
+
+const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(() => {
+    if (initialCalories) {
+      const idx = ALL_DIETS.findIndex(d => d.totalCalories === initialCalories);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  });
 
   const diet: DietPlanType = ALL_DIETS[selectedIdx];
 
