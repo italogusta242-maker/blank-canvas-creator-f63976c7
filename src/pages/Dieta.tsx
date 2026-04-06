@@ -218,19 +218,19 @@ const Dieta = () => {
         .limit(1)
         .maybeSingle()) as { data: any; error: any };
 
-      if (selected?.source_plan_id) {
-        // Check for config diet (hardcoded plans from DietPlanData)
-        if (selected.plan_data?.is_config_diet) {
-          return {
-            id: selected.source_plan_id,
-            name: `Cardápio ${selected.plan_data.calories} kcal`,
-            active: true,
-            is_config_diet: true,
-            config_calories: selected.plan_data.calories,
-            meals: [],
-          } as any;
-        }
+      // Check for config diet (hardcoded plans from DietPlanData)
+      if (selected?.plan_data?.is_config_diet) {
+        return {
+          id: selected.source_plan_id || `config-diet-${selected.plan_data.calories}`,
+          name: `Cardápio ${selected.plan_data.calories} kcal`,
+          active: true,
+          is_config_diet: true,
+          config_calories: selected.plan_data.calories,
+          meals: [],
+        } as any;
+      }
 
+      if (selected?.source_plan_id) {
         const isLesson = selected.plan_data?.is_lesson === true;
         
         if (isLesson) {
