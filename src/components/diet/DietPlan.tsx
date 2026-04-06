@@ -20,6 +20,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Sementes e Fibras": "🌱",
   "Frutas e Bebidas": "🍹",
   "Extras": "🍫",
+};
 
 const DietPlan = () => {
   const navigate = useNavigate();
