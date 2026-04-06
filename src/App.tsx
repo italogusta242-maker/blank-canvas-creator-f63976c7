@@ -66,11 +66,7 @@ const AuthenticatedApp = lazy(() => import("./app/AuthenticatedApp"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // Prevents massive API calls on tab switch
-      refetchOnReconnect: false,   // Prevents all queries firing instantly when network reconnects
-      staleTime: 5 * 60 * 1000,    // Keep data fresh for 5 minutes
-      gcTime: 60 * 60 * 1000,      // Keep cache in memory for 1 hour
-      retry: 1,                    // Only retry once to avoid infinite loops on dead endpoints
+      refetchOnWindowFocus: false, // Minimiza chamadas massivas, mas sem quebrar caches de outras páginas
     },
   },
 });
