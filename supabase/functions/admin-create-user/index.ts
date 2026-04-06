@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       const { error: anamneseError } = await adminClient
         .from("anamnese")
         .insert({
-          user_id: newUser.user.id,
+          user_id: userId,
           objetivo: objetivo || null,
           experiencia_treino: experiencia || null,
           local_treino: localTreino || null,
