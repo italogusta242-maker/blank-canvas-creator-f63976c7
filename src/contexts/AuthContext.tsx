@@ -119,6 +119,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }, LOADING_TIMEOUT_MS);
 
+    const ensureProfileExists = async (userId: string, email: string | undefined, meta: Record<string, any> | undefined) => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (error) {
+          console.warn("AuthContext: profile check failed", error.message);
+        }
+
+        if (!profile) {
+          console.warn("AuthContext: profile missing, auto-creating for", userId);
+          const fullName = meta?.full_name || meta?.nome || email?.split("@")[0] || "Usuário";
+          await supabase.from("profiles").upsert({
+            id: userId,
+            full_name: fullName,
+            email: email || "",
+            status: "ativo",
+            onboarded: true,
+          });
+          await supabase.from("user_roles").upsert(
+            { user_id: userId, role: "user" },
+            { onConflict: "user_id,role" }
+          );
+        }
+      } catch (e) {
+        console.error("AuthContext: ensureProfileExists error", e);
+      }
+    };
+
     const syncSessionState = async (newSession: Session | null, shouldRedirect: boolean) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -128,6 +160,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!cancelled) setLoading(false);
         return;
       }
+
+      // Auto-recover missing profile
+      await ensureProfileExists(
+        newSession.user.id,
+        newSession.user.email,
+        newSession.user.user_metadata
+      );
 
       setOnboarded(true);
 
