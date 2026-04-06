@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     if (role && role !== "user") {
       const { error: roleError } = await adminClient
         .from("user_roles")
-        .insert({ user_id: newUser.user.id, role });
+        .insert({ user_id: userId, role });
       if (roleError) {
         console.error("Role insert error:", roleError);
       }
