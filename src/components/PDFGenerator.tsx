@@ -10,7 +10,7 @@ export default function PDFGenerator() {
   const [loading, setLoading] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { data: profile } = useProfile() as { data: any };
 
   const handleGenerate = async () => {
     if (!user) {
