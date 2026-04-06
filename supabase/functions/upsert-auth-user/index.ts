@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, nome } = await req.json();
+    const { email, password, nome, full_name, create_if_missing } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Email e senha são obrigatórios" }), {
@@ -48,10 +48,34 @@ Deno.serve(async (req) => {
     }
 
     if (!authUser) {
-      // User doesn't exist in auth — nothing to update
+      if (create_if_missing) {
+        // Create user in auth
+        const displayName = full_name || nome || normalizedEmail.split("@")[0];
+        const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          email: normalizedEmail,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: displayName },
+        });
+        if (createErr) {
+          return new Response(JSON.stringify({ error: createErr.message }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Create profile
+        await supabaseAdmin.from("profiles").upsert({
+          id: newUser.user.id,
+          full_name: displayName,
+          email: normalizedEmail,
+          status: "ativo",
+          onboarded: true,
+        });
+        return new Response(JSON.stringify({ action: "created", userId: newUser.user.id }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ action: "not_found", message: "Usuário não encontrado no Auth" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

@@ -1159,7 +1159,7 @@ const EspecialistaAlunos = () => {
         open={!!volumeEditAluno}
         onOpenChange={(open) => !open && setVolumeEditAluno(null)}
         studentId={volumeEditAluno?.id ?? ""}
-        studentName={volumeEditAluno?.full_name ?? ""}
+        studentName={volumeEditAluno?.name ?? ""}
       />
 
       {isNutricionista && (

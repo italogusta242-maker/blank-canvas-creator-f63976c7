@@ -23,33 +23,41 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller is admin using their token
-    const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Allow service role key or x-admin-secret as direct auth (for internal/system calls)
+    const token = authHeader.replace("Bearer ", "");
+    const adminSecret = req.headers.get("x-admin-secret");
+    const isServiceRole = token === serviceRoleKey || adminSecret === serviceRoleKey;
 
-    const { data: { user: caller } } = await callerClient.auth.getUser();
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await adminClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "admin")
-      .maybeSingle();
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Apenas administradores podem criar contas" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!isServiceRole) {
+      // Verify caller is admin using their token
+      const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
       });
+
+      const { data: { user: caller } } = await callerClient.auth.getUser();
+      if (!caller) {
+        return new Response(JSON.stringify({ error: "Não autorizado" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check admin role
+      const { data: roleData } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", caller.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!roleData) {
+        return new Response(JSON.stringify({ error: "Apenas administradores podem criar contas" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Parse request body
