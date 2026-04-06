@@ -73,24 +73,34 @@ const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
             </div>
           </div>
 
-          {/* Plan selector pills */}
-          <div className="flex gap-2 mt-4 flex-wrap">
-            {ALL_DIETS.map((d, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedIdx(idx)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
-                  selectedIdx === idx
-                    ? "bg-white/25 backdrop-blur-sm text-primary-foreground border-white/30 shadow-md"
-                    : "bg-white/10 backdrop-blur-sm text-primary-foreground/60 border-white/10 hover:bg-white/15"
-                )}
-              >
-                <Flame size={13} />
-                {d.totalCalories} kcal
-              </button>
-            ))}
-          </div>
+          {/* Plan selector pills — only show if no specific plan was pre-selected */}
+          {!initialCalories && (
+            <div className="flex gap-2 mt-4 flex-wrap">
+              {ALL_DIETS.map((d, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedIdx(idx)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                    selectedIdx === idx
+                      ? "bg-white/25 backdrop-blur-sm text-primary-foreground border-white/30 shadow-md"
+                      : "bg-white/10 backdrop-blur-sm text-primary-foreground/60 border-white/10 hover:bg-white/15"
+                  )}
+                >
+                  <Flame size={13} />
+                  {d.totalCalories} kcal
+                </button>
+              ))}
+            </div>
+          )}
+          {initialCalories && (
+            <div className="flex gap-2 mt-4">
+              <Badge className="bg-white/25 backdrop-blur-sm text-primary-foreground border-white/30 font-bold text-xs px-3 py-1.5 rounded-xl shadow-md">
+                <Flame size={13} className="mr-1.5" />
+                {diet.totalCalories} kcal
+              </Badge>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 mt-3">
             <Badge className="bg-white/15 backdrop-blur-sm text-primary-foreground border-white/20 font-bold text-xs px-3 py-1.5 rounded-xl">
