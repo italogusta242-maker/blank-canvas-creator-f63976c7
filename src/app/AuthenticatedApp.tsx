@@ -28,7 +28,6 @@ const ConviteAcesso = lazy(() => import("@/pages/ConviteAcesso"));
 const BattleMode = lazy(() => import("@/pages/BattleMode"));
 const Treinos = lazy(() => import("@/pages/Treinos"));
 const Dieta = lazy(() => import("@/pages/Dieta"));
-const DietPlan = lazy(() => import("@/components/diet/DietPlan"));
 const Desafio = lazy(() => import("@/pages/Desafio"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminUsuarios = lazy(() => import("@/pages/admin/AdminUsuarios"));
@@ -91,7 +90,7 @@ const AppRoutes = () => {
             <Route index element={<Suspense fallback={<DashboardSkeleton />}><Dashboard /></Suspense>} />
             <Route path="desafio" element={<Suspense fallback={<DesafioSkeleton />}><Desafio /></Suspense>} />
             <Route path="treinos" element={<Suspense fallback={<TreinosSkeleton />}><Treinos /></Suspense>} />
-            <Route path="dieta" element={<Suspense fallback={<DietaSkeleton />}><DietPlan /></Suspense>} />
+            <Route path="dieta" element={<Suspense fallback={<DietaSkeleton />}><Dieta /></Suspense>} />
             <Route path="comunidade" element={<Suspense fallback={<ComunidadeSkeleton />}><Comunidade /></Suspense>} />
             <Route path="perfil/:userId?" element={<Suspense fallback={<PerfilSkeleton />}><Perfil /></Suspense>} />
             <Route path="batalha" element={<Suspense fallback={<DashboardSkeleton />}><BattleMode /></Suspense>} />
