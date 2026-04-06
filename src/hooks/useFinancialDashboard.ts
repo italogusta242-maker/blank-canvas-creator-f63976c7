@@ -115,17 +115,17 @@ export const useFinancialDashboard = () => {
       }
 
       const userIds = [...new Set(allSubs.map((s) => s.user_id))];
-      const profiles: Record<string, { nome: string | null; email: string | null; status: string }> = {};
+      const profiles: Record<string, { full_name: string | null; email: string | null; status: string }> = {};
 
       // Batch fetch profiles in chunks of 500
       for (let i = 0; i < userIds.length; i += 500) {
         const chunk = userIds.slice(i, i + 500);
         const { data: pData } = await supabase
           .from("profiles")
-          .select("id, nome, email, status")
+          .select("id, full_name, email, status")
           .in("id", chunk);
         (pData || []).forEach((p) => {
-          profiles[p.id] = { nome: p.nome, email: p.email, status: p.status };
+          profiles[p.id] = { full_name: p.full_name, email: p.email, status: p.status };
         });
       }
 
@@ -160,7 +160,7 @@ export const useFinancialDashboard = () => {
         return {
           subscriptionId: s.id,
           userId: s.user_id,
-          userName: profile.nome,
+          userName: profile.full_name,
           userEmail: profile.email,
           profileStatus: profile.status,
           rawPrice,

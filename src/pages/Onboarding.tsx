@@ -62,9 +62,9 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
       if (profile) {
         setUserData(prev => ({
           ...prev,
-          nome: profile.nome || prev.nome,
+          full_name: profile.full_name || prev.full_name,
           email: profile.email || prev.email,
-          telefone: profile.telefone || prev.telefone,
+          phone: profile.phone || prev.phone,
           cpf: profile.cpf || prev.cpf,
         }));
       }
@@ -75,7 +75,7 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
         if (invite) {
           setUserData(prev => ({
             ...prev,
-            nome: prev.nome || invite.name || "",
+            full_name: prev.full_name || invite.name || "",
             cpf: prev.cpf || invite.cpf || "",
           }));
         }
@@ -218,10 +218,10 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
           <motion.div key="cadastro" {...stepMotion} className="max-w-lg w-full space-y-5 pb-8">
             <SectionHeader icon={User} title="Seus Dados" subtitle="Preencha seu perfil" />
             <div className="space-y-4">
-              <div><Label className="text-muted-foreground text-xs">Nome completo (igual ao RG) <span className="text-primary">*</span></Label><Input className={`${fc} ${errorBorder("nome")}`} value={userData.nome} onChange={(e) => u("nome", e.target.value)} placeholder="Marcus Aurelius" disabled={!!userData.nome && !!user} /></div>
+              <div><Label className="text-muted-foreground text-xs">Nome completo (igual ao RG) <span className="text-primary">*</span></Label><Input className={`${fc} ${errorBorder("full_name")}`} value={userData.full_name} onChange={(e) => u("full_name", e.target.value)} placeholder="Marcus Aurelius" disabled={!!userData.full_name && !!user} /></div>
               <div><Label className="text-muted-foreground text-xs">Email mais utilizado <span className="text-primary">*</span></Label><Input type="email" className={`${fc} ${errorBorder("email")}`} value={userData.email} onChange={(e) => u("email", e.target.value)} placeholder="marcus@roma.com" disabled={!!userData.email && !!user} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-muted-foreground text-xs">Telefone/WhatsApp <span className="text-primary">*</span></Label><Input className={`${fc} ${errorBorder("telefone")}`} value={userData.telefone} onChange={(e) => u("telefone", e.target.value)} placeholder="(61) 99999-9999" /></div>
+                <div><Label className="text-muted-foreground text-xs">Telefone/WhatsApp <span className="text-primary">*</span></Label><Input className={`${fc} ${errorBorder("phone")}`} value={userData.phone} onChange={(e) => u("phone", e.target.value)} placeholder="(61) 99999-9999" /></div>
                 <div><Label className="text-muted-foreground text-xs">Data de nascimento <span className="text-primary">*</span></Label><Input type="date" className={`${fc} ${errorBorder("nascimento")}`} value={userData.nascimento} onChange={(e) => u("nascimento", e.target.value)} /></div>
               </div>
               <div><Label className="text-muted-foreground text-xs">CPF</Label><Input className={fc} value={userData.cpf} disabled /></div>

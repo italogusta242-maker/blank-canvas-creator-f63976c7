@@ -4,9 +4,9 @@ import { create } from "zustand";
 export type FunnelStep = "modern" | "vsl" | "cadastro" | "planos" | "membros";
 
 export interface FunnelUser {
-  nome: string;
+  full_name: string;
   email: string;
-  telefone: string;
+  phone: string;
   senha: string;
   cupom: string;
 }
@@ -132,7 +132,7 @@ export const getPlans = (discountPercent: number | null): FunnelPlan[] => {
 
 export const DEFAULT_PLANS = getPlans(null);
 
-const initialUser: FunnelUser = { nome: "", email: "", telefone: "", senha: "", cupom: "" };
+const initialUser: FunnelUser = { full_name: "", email: "", phone: "", senha: "", cupom: "" };
 const STORAGE_KEY = "funnel_checkout_state";
 
 export const useFunnelStore = create<FunnelState>((set, get) => ({

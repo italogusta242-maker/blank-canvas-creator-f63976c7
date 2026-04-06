@@ -120,7 +120,7 @@ function PhotoGrid({ userId }: { userId?: string }) {
           created_at, 
           content,
           user_id,
-          profiles (id, nome, avatar_url, is_verified),
+          profiles (id, full_name, avatar_url, is_verified),
           community_reactions (id),
           post_comments (id)
         `)
@@ -284,7 +284,7 @@ const Perfil = () => {
   const { setOpen: setPwOpen, ChangePasswordSheet } = useChangePasswordTrigger();
 
   const avatarUrl = profile?.avatar_url ?? null;
-  const nome = profile?.nome ?? "Usuário";
+  const full_name = profile?.full_name ?? "Usuário";
 
   const { data: socialCounts } = useQuery({
     queryKey: ["social-counts", targetUserId],
@@ -320,15 +320,15 @@ const Perfil = () => {
   const { data: streakData } = useStreak(targetUserId);
   const streakNum = Number(streakData?.streak || 0);
 
-  const [editForm, setEditForm] = useState({ nome: "" });
+  const [editForm, setEditForm] = useState({ full_name: "" });
   useEffect(() => {
-    if (profile && isOwnProfile) setEditForm({ nome: profile.nome || "" });
+    if (profile && isOwnProfile) setEditForm({ full_name: profile.full_name || "" });
   }, [profile, isOwnProfile]);
 
   const handleSave = async () => {
     if (!currentUser) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ nome: editForm.nome.trim() }).eq("id", currentUser.id);
+    const { error } = await supabase.from("profiles").update({ full_name: editForm.full_name.trim() }).eq("id", currentUser.id);
     setSaving(false);
     if (error) {
       toast.error("Erro ao salvar perfil");
@@ -379,7 +379,7 @@ const Perfil = () => {
               </button>
             )}
             <h1 className="font-cinzel text-xl font-bold text-foreground">
-              {isOwnProfile ? "Perfil" : nome}
+              {isOwnProfile ? "Perfil" : full_name}
             </h1>
           </div>
           {isOwnProfile && (
@@ -436,7 +436,7 @@ const Perfil = () => {
            </div>
            
            <div className="text-center space-y-1">
-             <h2 className="font-cinzel text-xl font-bold text-foreground leading-tight">{nome}</h2>
+             <h2 className="font-cinzel text-xl font-bold text-foreground leading-tight">{full_name}</h2>
              <p className="text-xs text-muted-foreground uppercase tracking-widest">Aluno ANAAC · Desde {memberSince}</p>
            </div>
            
@@ -587,7 +587,7 @@ const Perfil = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome de Exibição</Label>
-              <Input value={editForm.nome} onChange={(e) => setEditForm({...editForm, nome: e.target.value})} />
+              <Input value={editForm.full_name} onChange={(e) => setEditForm({...editForm, full_name: e.target.value})} />
             </div>
             <Button onClick={handleSave} className="w-full" disabled={saving}>Salvar</Button>
           </div>

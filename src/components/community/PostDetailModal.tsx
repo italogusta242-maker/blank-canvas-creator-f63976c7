@@ -73,7 +73,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
       const uniqueUserIds = [...new Set(rawComments.map((c) => c.user_id))];
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, nome, avatar_url, is_verified")
+        .select("id, full_name, avatar_url, is_verified")
         .in("id", uniqueUserIds);
 
       const profileMap = new Map(
@@ -83,7 +83,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
       // Step 3: merge profiles into comments
       return rawComments.map((c) => ({
         ...c,
-        profiles: profileMap.get(c.user_id) || { nome: "Usuário", avatar_url: null, is_verified: false },
+        profiles: profileMap.get(c.user_id) || { full_name: "Usuário", avatar_url: null, is_verified: false },
       }));
     },
     enabled: !!post?.id && isOpen,
@@ -157,7 +157,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
         content: replyingTo ? `[reply:${replyingTo.id}] ${text}` : text,
         created_at: new Date().toISOString(),
         user_id: user?.id,
-        profiles: { nome: "Você", avatar_url: null, is_verified: false },
+        profiles: { full_name: "Você", avatar_url: null, is_verified: false },
       };
       queryClient.setQueryData(["post-comments-detail", post?.id], (old: any[] = []) => [...old, optimistic]);
       return { prev };
@@ -208,7 +208,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
                 </Avatar>
                 <div>
                   <p className="text-xs font-black font-cinzel uppercase flex items-center gap-1.5 leading-none">
-                    {post.profiles?.nome || "Usuário"}
+                    {post.profiles?.full_name || "Usuário"}
                     {post.profiles?.is_verified && <BadgeCheck size={14} className="text-blue-500 fill-blue-500/20" />}
                   </p>
                   <p className="text-[9px] text-muted-foreground mt-1">
@@ -231,7 +231,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
                   </Avatar>
                   <p className="text-[11px] leading-relaxed flex items-center gap-1 flex-wrap mt-0.5">
                     <span className="font-black font-cinzel uppercase mr-1 flex items-center gap-1">
-                      {post.profiles?.nome}:
+                      {post.profiles?.full_name}:
                       {post.profiles?.is_verified && <BadgeCheck size={12} className="text-blue-500 fill-blue-500/20" />}
                     </span>
                     {post.content}
@@ -254,10 +254,10 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
                         </Avatar>
                         <div className="flex-1 space-y-1">
                           <p className="text-[11px] leading-snug flex items-center gap-1 flex-wrap">
-                            <span className="font-black font-cinzel uppercase mr-1 flex items-center gap-1">
-                              {comment.profiles?.nome}:
-                              {comment.profiles?.is_verified && <BadgeCheck size={12} className="text-blue-500 fill-blue-500/20" />}
+                            <span className="font-cinzel text-sm font-bold text-foreground">
+                              {comment.profiles?.full_name || "Usuário"}
                             </span>
+                            {comment.profiles?.is_verified && <BadgeCheck size={12} className="text-blue-500 fill-blue-500/20" />}
                             {comment.content}
                           </p>
                           <div className="flex items-center gap-3 opacity-60">

@@ -5,11 +5,11 @@ import { MOCK_STUDENTS } from "@/lib/mockData";
 
 export interface StudentWithDetails {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
   status: "ativo" | "alerta" | "inativo";
   specialty: string;
-  telefone: string | null;
+  phone: string | null;
   nascimento: string | null;
   sexo: string | null;
   peso: string | null;
@@ -28,11 +28,11 @@ export const useSpecialistStudents = () => {
       if (isMock) {
         return MOCK_STUDENTS.map(s => ({
           id: s.id,
-          name: s.nome,
+          full_name: s.nome,
           email: `${s.id}@example.com`,
           status: s.status as any,
           specialty: "Consultoria",
-          telefone: "11999999999",
+          phone: "11999999999",
           nascimento: "1990-01-01",
           sexo: "Masculino",
           peso: "80kg",
@@ -55,7 +55,7 @@ export const useSpecialistStudents = () => {
 
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, nome, email, telefone, nascimento, sexo, peso, altura, avatar_url, status, created_at")
+        .select("id, full_name, email, phone, nascimento, sexo, peso, altura, avatar_url, status, created_at")
         .in("id", studentIds);
 
       if (profilesError) throw profilesError;
@@ -69,11 +69,11 @@ export const useSpecialistStudents = () => {
 
         return {
           id: p.id,
-          name: p.nome ?? p.email ?? "Sem nome",
+          full_name: p.full_name ?? p.email ?? "Sem nome",
           email: p.email ?? "",
           status,
           specialty: specMap.get(p.id) ?? "",
-          telefone: p.telefone,
+          phone: p.phone,
           nascimento: p.nascimento,
           sexo: p.sexo,
           peso: String(p.peso ?? ""),

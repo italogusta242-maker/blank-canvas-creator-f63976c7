@@ -39,7 +39,7 @@ function useRanking(period: RankPeriod, plannerType?: string) {
       if (period === "alltime") {
         let q = supabase
           .from("profiles")
-          .select("id, nome, avatar_url, hustle_points")
+          .select("id, full_name, avatar_url, hustle_points")
           .gt("hustle_points", 0)
           
         if (plannerType) q = q.eq("planner_type", plannerType);
@@ -48,7 +48,7 @@ function useRanking(period: RankPeriod, plannerType?: string) {
         if (error) throw error;
         return (data || []).map((p: any, i: number) => ({
           user_id: p.id,
-          nome: p.nome || "Aluna",
+          nome: p.full_name || "Aluna",
           avatar_url: p.avatar_url,
           points: p.hustle_points ?? 0,
           position: i + 1,
@@ -59,7 +59,7 @@ function useRanking(period: RankPeriod, plannerType?: string) {
       // For weekly/monthly — use hustle_points table with inner join on profiles to filter planner
       let query: any = supabase
         .from("hustle_points")
-        .select("user_id, points, profiles!inner(nome, avatar_url, planner_type)");
+        .select("user_id, points, profiles!inner(full_name, avatar_url, planner_type)");
 
       if (plannerType) {
         query = query.eq("profiles.planner_type", plannerType);
@@ -79,7 +79,7 @@ function useRanking(period: RankPeriod, plannerType?: string) {
         if (!acc[uid]) {
           acc[uid] = {
             user_id: uid,
-            nome: curr.profiles?.nome || "Aluna",
+            nome: curr.profiles?.full_name || "Aluna",
             avatar_url: curr.profiles?.avatar_url,
             points: 0,
             isMe: uid === user?.id,

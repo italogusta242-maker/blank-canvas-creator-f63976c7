@@ -30,7 +30,7 @@ interface CommunityPost {
   created_at: string;
   user_id: string;
   isOptimistic?: boolean;
-  profiles?: { nome: string; avatar_url?: string };
+  profiles?: { full_name: string; avatar_url?: string };
   community_reactions?: { user_id: string; reaction_type: string }[];
 }
 
@@ -60,7 +60,7 @@ function useSegmentedRanking(category: PlanCategory) {
       // 2. Fetch users in this category via profiles.planner_type
       const { data: profiledUsers, error: profErr } = await supabase
         .from("profiles")
-        .select("id, nome, avatar_url")
+        .select("id, full_name, avatar_url")
         .eq("planner_type", category);
 
       if (profErr) throw profErr;
@@ -78,7 +78,7 @@ function useSegmentedRanking(category: PlanCategory) {
       // 4. Combine and sort by monthly score
       const combined: PodiumEntry[] = (profiledUsers || []).map((p: any) => ({
         user_id: p.id,
-        nome: p.nome || "Miri",
+        full_name: p.full_name || "Miri",
         avatar_url: p.avatar_url,
         score: monthlyPoints[p.id] ?? 0,
         streak: flameMap[p.id] ?? 0,

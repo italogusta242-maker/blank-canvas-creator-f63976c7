@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { user_id, nome, email, telefone, cpf, password, status, subscription_plan_id, flame_streak } = await req.json();
+    const { user_id, full_name, email, phone, cpf, password, status, subscription_plan_id, flame_streak } = await req.json();
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id é obrigatório" }), {
@@ -82,9 +82,9 @@ Deno.serve(async (req) => {
 
     // Update profile fields
     const profileUpdate: Record<string, any> = {};
-    if (nome !== undefined) profileUpdate.nome = nome;
+    if (full_name !== undefined) profileUpdate.full_name = full_name;
     if (email !== undefined) profileUpdate.email = email;
-    if (telefone !== undefined) profileUpdate.telefone = telefone;
+    if (phone !== undefined) profileUpdate.phone = phone;
     if (cpf !== undefined) profileUpdate.cpf = cpf;
     if (status !== undefined) profileUpdate.status = status;
 

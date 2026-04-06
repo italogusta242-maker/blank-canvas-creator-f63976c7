@@ -33,7 +33,7 @@ const AdminDashboard = () => {
   const { data: profiles = [], isLoading: loadingProfiles } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, nome, email, status, created_at");
+      const { data } = await supabase.from("profiles").select("id, full_name, email, status, created_at");
       return data || [];
     },
   });
@@ -85,14 +85,14 @@ const AdminDashboard = () => {
       if (!rolesData || rolesData.length === 0) return [];
       const specIds = rolesData.map(r => r.user_id);
       const [profilesRes, studentsRes] = await Promise.all([
-        supabase.from("profiles").select("id, nome, email").in("id", specIds),
+        supabase.from("profiles").select("id, full_name, email").in("id", specIds),
         supabase.from("student_specialists").select("specialist_id").in("specialist_id", specIds),
       ]);
       const profilesData = profilesRes.data || [];
       const studentsData = studentsRes.data || [];
       return profilesData.map(p => ({
         id: p.id,
-        nome: p.nome,
+        nome: p.full_name,
         email: p.email,
         studentCount: studentsData.filter(s => s.specialist_id === p.id).length
       }));
@@ -221,7 +221,7 @@ const AdminDashboard = () => {
       const lastW = userLastWorkout.get(p.id);
       const daysSince = lastW ? differenceInDays(today, parseISO(lastW)) : 999;
       const lastAccess = lastW ? format(parseISO(lastW), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null;
-      return { id: p.id, name: p.nome || "Sem nome", email: p.email || "", days: daysSince, lastAccess, role: "Aluno" };
+      return { id: p.id, name: p.full_name || "Sem nome", email: p.email || "", days: daysSince, lastAccess, role: "Aluno" };
     })
     .sort((a, b) => b.days - a.days);
 
@@ -231,7 +231,7 @@ const AdminDashboard = () => {
       case "ativos":
         return activeProfiles.map(p => ({
           id: p.id,
-          title: p.nome || "Sem nome",
+          title: p.full_name || "Sem nome",
           subtitle: p.email || "",
           badge: "Ativo",
           badgeVariant: "success" as const,
@@ -247,7 +247,7 @@ const AdminDashboard = () => {
           const hasDiet = lastD && differenceInDays(today, parseISO(lastD)) <= 7;
           return {
             id: p.id,
-            title: p.nome || "Sem nome",
+            title: p.full_name || "Sem nome",
             subtitle: `Treino: ${hasWorkout ? "✅" : "❌"} · Dieta: ${hasDiet ? "✅" : "❌"} · Nota: ${score}/100`,
             badge: score >= 100 ? "Excelente" : score >= 50 ? "Parcial" : "Baixo",
             badgeVariant: score >= 100 ? "success" as const : score >= 50 ? "warning" as const : "danger" as const,

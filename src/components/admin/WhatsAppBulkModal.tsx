@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 interface Lead {
   id: string;
-  nome: string | null;
+  full_name: string | null;
   email: string | null;
-  telefone: string | null;
+  phone: string | null;
 }
 
 interface WhatsAppBulkModalProps {
@@ -26,9 +26,9 @@ const formatPhone = (phone: string): string => {
   return digits;
 };
 
-const firstName = (nome: string | null): string => {
-  if (!nome) return "Cliente";
-  return nome.trim().split(/\s+/)[0];
+const firstName = (full_name: string | null): string => {
+  if (!full_name) return "Cliente";
+  return full_name.trim().split(/\s+/)[0];
 };
 
 const WhatsAppBulkModal = ({ open, onOpenChange, leads }: WhatsAppBulkModalProps) => {
@@ -40,15 +40,15 @@ const WhatsAppBulkModal = ({ open, onOpenChange, leads }: WhatsAppBulkModalProps
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
 
   const validLeads = useMemo(
-    () => leads.filter((l) => l.telefone && l.telefone.replace(/\D/g, "").length >= 10),
+    () => leads.filter((l) => l.phone && l.phone.replace(/\D/g, "").length >= 10),
     [leads]
   );
 
   const currentLead = validLeads[currentIndex] ?? null;
 
   const buildUrl = (lead: Lead): string => {
-    const phone = formatPhone(lead.telefone!);
-    const text = message.replace(/\{\{nome\}\}/gi, firstName(lead.nome));
+    const phone = formatPhone(lead.phone!);
+    const text = message.replace(/\{\{nome\}\}/gi, firstName(lead.full_name));
     return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
   };
 
@@ -123,8 +123,8 @@ const WhatsAppBulkModal = ({ open, onOpenChange, leads }: WhatsAppBulkModalProps
               <div className="max-h-40 overflow-y-auto divide-y divide-border">
                 {validLeads.slice(0, 20).map((l) => (
                   <div key={l.id} className="py-1.5 flex items-center justify-between text-sm">
-                    <span className="text-foreground">{l.nome || "Sem nome"}</span>
-                    <span className="text-muted-foreground text-xs">{l.telefone}</span>
+                    <span className="text-foreground">{l.full_name || "Sem nome"}</span>
+                    <span className="text-muted-foreground text-xs">{l.phone}</span>
                   </div>
                 ))}
                 {validLeads.length > 20 && (
@@ -162,9 +162,9 @@ const WhatsAppBulkModal = ({ open, onOpenChange, leads }: WhatsAppBulkModalProps
               <div className="rounded-lg border border-border p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-foreground text-lg">{currentLead.nome || "Sem nome"}</p>
+                    <p className="font-semibold text-foreground text-lg">{currentLead.full_name || "Sem nome"}</p>
                     <p className="text-sm text-muted-foreground">{currentLead.email}</p>
-                    <p className="text-sm text-muted-foreground">{currentLead.telefone}</p>
+                    <p className="text-sm text-muted-foreground">{currentLead.phone}</p>
                   </div>
                   <Badge
                     className={cn(
@@ -178,7 +178,7 @@ const WhatsAppBulkModal = ({ open, onOpenChange, leads }: WhatsAppBulkModalProps
                 </div>
 
                 <div className="bg-muted/50 rounded-md p-3 text-sm text-foreground whitespace-pre-wrap">
-                  {message.replace(/\{\{nome\}\}/gi, firstName(currentLead.nome))}
+                  {message.replace(/\{\{nome\}\}/gi, firstName(currentLead.full_name))}
                 </div>
 
                 <div className="flex gap-2">

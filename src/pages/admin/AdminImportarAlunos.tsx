@@ -9,9 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface CsvRow {
-  nome: string;
+  full_name: string;
   email: string;
-  telefone: string;
+  phone: string;
   plano_id: string;
   data_compra: string;
 }
@@ -22,7 +22,7 @@ interface ImportResult {
   errors: string[];
 }
 
-const EXPECTED_HEADERS = ["nome", "email", "telefone", "plano_id", "data_compra"];
+const EXPECTED_HEADERS = ["full_name", "email", "phone", "plano_id", "data_compra"];
 
 function parseCsv(text: string): CsvRow[] {
   const lines = text.trim().split(/\r?\n/);
@@ -160,7 +160,7 @@ const AdminImportarAlunos = () => {
               Upload do CSV
             </CardTitle>
             <CardDescription>
-              Colunas esperadas: <code className="text-xs bg-muted px-1 py-0.5 rounded">nome, email, telefone, plano_id, data_compra</code>
+              Colunas esperadas: <code className="text-xs bg-muted px-1 py-0.5 rounded">full_name, email, phone, plano_id, data_compra</code>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -230,9 +230,9 @@ const AdminImportarAlunos = () => {
                       {csvRows.slice(0, 20).map((r, i) => (
                         <tr key={i} className="hover:bg-muted/30">
                           <td className="p-2 text-muted-foreground">{i + 1}</td>
-                          <td className="p-2 text-foreground">{r.nome}</td>
+                          <td className="p-2 text-foreground">{r.full_name}</td>
                           <td className="p-2 text-foreground">{r.email}</td>
-                          <td className="p-2 text-muted-foreground">{r.telefone || "—"}</td>
+                          <td className="p-2 text-muted-foreground">{r.phone || "—"}</td>
                           <td className="p-2 font-mono text-xs text-muted-foreground">{r.plano_id || <span className="text-amber-500">padrão</span>}</td>
                           <td className="p-2 text-muted-foreground">{r.data_compra}</td>
                         </tr>

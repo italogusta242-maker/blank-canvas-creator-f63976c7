@@ -20,7 +20,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("nome, avatar_url")
+        .select("full_name, avatar_url")
         .eq("id", user!.id)
         .maybeSingle();
       return data;
@@ -41,7 +41,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
       {!collapsed && (
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground truncate">
-            {profile?.nome ?? "Usuário"}
+            {profile?.full_name ?? "Usuário"}
           </p>
         </div>
       )}

@@ -75,7 +75,7 @@ const AuthPage = () => {
     setResetLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("reset-password-verify", {
-        body: { email: resetEmail.toLowerCase().trim(), telefone: resetPhone, newPassword },
+        body: { email: resetEmail.toLowerCase().trim(), phone: resetPhone, newPassword },
       });
 
       console.log("reset-password-verify response:", { data, error });

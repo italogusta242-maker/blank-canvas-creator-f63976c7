@@ -33,7 +33,7 @@ function usePremiacoes() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("premiacoes")
-        .select("*, profiles:campeã_user_id (nome, avatar_url)")
+        .select("*, profiles:campeã_user_id (full_name, avatar_url)")
         .eq("mes_referencia", currentMonthRef());
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -80,7 +80,7 @@ function useSegmentLeaders() {
 
         const { data: profiles } = await (supabase as any)
           .from("profiles")
-          .select("id, nome, avatar_url")
+          .select("id, full_name, avatar_url")
           .in("id", userIds);
 
         const { data: flames } = await supabase
@@ -94,7 +94,7 @@ function useSegmentLeaders() {
         const sorted = (profiles || [])
           .map((p: any) => ({
             user_id: p.id,
-            nome: p.nome || "Miri",
+            nome: p.full_name || "Miri",
             avatar_url: p.avatar_url,
             score: monthly[p.id] ?? 0,
             streak: flameMap[p.id] ?? 0,
@@ -249,7 +249,7 @@ function KitConfigCard({ category, premiacaoData, onRefresh }: {
             <Crown size={20} className="text-yellow-400 shrink-0" />
             <div>
               <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Campeã do Mês</p>
-              <p className="text-sm font-black text-foreground">{premiacaoData.profiles.nome}</p>
+              <p className="text-sm font-black text-foreground">{premiacaoData.profiles.full_name}</p>
             </div>
             {premiacaoData.profiles.avatar_url && (
               <img src={premiacaoData.profiles.avatar_url} className="w-10 h-10 rounded-full object-cover ml-auto border-2 border-yellow-400" alt="" />

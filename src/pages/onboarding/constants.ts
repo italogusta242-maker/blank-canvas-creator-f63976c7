@@ -96,9 +96,9 @@ export const faixasSalariais = [
 
 export interface UserData {
   // Cadastro
-  nome: string;
+  full_name: string;
   email: string;
-  telefone: string;
+  phone: string;
   nascimento: string;
   cpf: string;
   cep: string;
@@ -178,7 +178,7 @@ export interface UserData {
 }
 
 export const initialUserData: UserData = {
-  nome: "", email: "", telefone: "", nascimento: "", cpf: "", cep: "", logradouro: "", bairro: "", cidade_estado: "",
+  full_name: "", email: "", phone: "", nascimento: "", cpf: "", cep: "", logradouro: "", bairro: "", cidade_estado: "",
   sexo: "", tempo_acompanha: "", altura: "", fatores_escolha: "", peso: "", meta_peso: "", como_chegou: "",
   indicacao: "", indicacao_nome: "", indicacao_telefone: "",
   objetivo: "", objetivo_outro: "", fisiculturismo: "", influenciador_favorito: "",
@@ -203,7 +203,7 @@ export const initialUserData: UserData = {
 // Validation rules per step
 export const stepValidation: Partial<Record<Step, (data: UserData) => string[]>> = {
   cadastro: (d) => {
-    const required: (keyof UserData)[] = ["nome", "email", "telefone", "nascimento", "cidade_estado", "sexo", "altura", "peso", "tempo_acompanha", "fatores_escolha", "indicacao", "como_chegou"];
+    const required: (keyof UserData)[] = ["full_name", "email", "phone", "nascimento", "cidade_estado", "sexo", "altura", "peso", "tempo_acompanha", "fatores_escolha", "indicacao", "como_chegou"];
     return required.filter(k => {
       const v = d[k];
       return !v || (typeof v === "string" && v.trim() === "");

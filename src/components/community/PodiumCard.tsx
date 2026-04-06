@@ -3,7 +3,7 @@ import { User, Crown, Flame, Trophy } from "lucide-react";
 
 export interface PodiumEntry {
   user_id: string;
-  nome: string;
+  full_name: string;
   avatar_url?: string;
   score: number;
   streak: number;
@@ -70,7 +70,7 @@ function PodiumBar({ entry, tier, onClick }: {
         tier.rank === 2 ? "border-gray-400" : "border-amber-700"
       } group-hover:scale-110 transition-transform`}>
         {entry.avatar_url ? (
-          <img src={entry.avatar_url} alt={entry.nome} className="w-full h-full object-cover" />
+          <img src={entry.avatar_url} alt={entry.full_name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-secondary flex items-center justify-center">
             <User size={20} className="text-muted-foreground" />
@@ -80,7 +80,7 @@ function PodiumBar({ entry, tier, onClick }: {
 
       {/* Name */}
       <p className="text-[10px] font-bold text-foreground truncate max-w-[80px] text-center leading-tight">
-        {entry.nome.split(" ")[0]}
+        {entry.full_name.split(" ")[0]}
       </p>
 
       {/* Bar */}
@@ -161,7 +161,7 @@ export function PodiumCard({ entries, onAvatarClick, scoreLabel = "pts" }: Podiu
                 )}
               </div>
               <span className="flex-1 text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                {entry.nome}
+                {entry.full_name}
               </span>
               <div className="flex items-center gap-2 shrink-0">
                 {entry.streak > 0 && (

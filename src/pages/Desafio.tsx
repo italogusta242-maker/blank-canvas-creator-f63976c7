@@ -96,7 +96,7 @@ interface Comment {
   created_at: string;
   user_id: string;
   profiles?: {
-    nome: string;
+    full_name: string;
     avatar_url: string;
   };
 }
@@ -347,7 +347,7 @@ const Challenge = () => {
     queryKey: ["challenge-comments", challengeCommentKey, allLessonIds],
     queryFn: async () => {
       if (allLessonIds.length === 0) return [];
-      const { data, error } = await supabase.from("lesson_comments").select(`id, content, created_at, user_id, profiles ( nome, avatar_url )`).in("lesson_id", allLessonIds).order("created_at", { ascending: false }).limit(50);
+      const { data, error } = await supabase.from("lesson_comments").select(`id, content, created_at, user_id, profiles ( full_name, avatar_url )`).in("lesson_id", allLessonIds).order("created_at", { ascending: false }).limit(50);
       if (error) throw error;
       return data as any as Comment[];
     },

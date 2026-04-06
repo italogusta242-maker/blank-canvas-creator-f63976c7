@@ -8,7 +8,7 @@ export const MOCK_USER_ID = "e5e762f7-6e07-46ef-94e9-0ab1955f3a91";
 
 export const MOCK_PROFILE = {
   id: MOCK_USER_ID,
-  nome: "Admin Italo",
+  full_name: "Admin Italo",
   email: "italogusta242@gmail.com",
   onboarded: true,
   classe: "centurio",
@@ -44,7 +44,7 @@ export const MOCK_REVENUE_HISTORY = [
 export const MOCK_STUDENTS = [
   { 
     id: "s1", 
-    nome: "Carlos Silva", 
+    full_name: "Carlos Silva", 
     status: "active", 
     ultimo_treino: "2024-03-15", 
     flame_status: 85,
@@ -52,7 +52,7 @@ export const MOCK_STUDENTS = [
   },
   { 
     id: "s2", 
-    nome: "Mariana Costa", 
+    full_name: "Mariana Costa", 
     status: "warning", 
     ultimo_treino: "2024-03-10", 
     flame_status: 45,
@@ -60,7 +60,7 @@ export const MOCK_STUDENTS = [
   },
   { 
     id: "s3", 
-    nome: "Roberto Junior", 
+    full_name: "Roberto Junior", 
     status: "inactive", 
     ultimo_treino: "2024-02-28", 
     flame_status: 0,

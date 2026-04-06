@@ -15,7 +15,7 @@ export type ProfileStatus = "pendente_onboarding" | "pendente" | "ativo" | "inat
 /** Minimal profile shape used across dashboards */
 export interface ProfileSummary {
   id: string;
-  nome: string | null;
+  full_name: string | null;
   email: string | null;
   status: ProfileStatus;
   avatar_url?: string | null;

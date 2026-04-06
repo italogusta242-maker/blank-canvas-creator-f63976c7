@@ -9,9 +9,9 @@ const FunnelCadastro = () => {
   const { setUser, next } = useFunnelStore();
 
   const [form, setForm] = useState({
-    nome: "",
+    full_name: "",
     email: "",
-    telefone: "",
+    phone: "",
     senha: "",
     cupom: "",
   });
@@ -27,16 +27,16 @@ const FunnelCadastro = () => {
   };
 
   const handleChange = (field: string, value: string) => {
-    if (field === "telefone") value = formatPhone(value);
+    if (field === "phone") value = formatPhone(value);
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.nome.trim()) e.nome = "Informe seu nome";
+    if (!form.full_name.trim()) e.full_name = "Informe seu nome";
     if (!form.email.includes("@")) e.email = "Email inválido";
-    if (form.telefone.replace(/\D/g, "").length < 10) e.telefone = "Telefone inválido";
+    if (form.phone.replace(/\D/g, "").length < 10) e.phone = "Telefone inválido";
     if (form.senha.length < 6) e.senha = "Mínimo 6 caracteres";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -51,9 +51,9 @@ const FunnelCadastro = () => {
       // 1. Save lead (upsert on email to avoid duplicates)
       const { error: leadError } = await supabase.from("funnel_leads").upsert(
         {
-          nome: form.nome,
+          full_name: form.full_name,
           email: form.email.toLowerCase(),
-          telefone: form.telefone,
+          phone: form.phone,
           cupom: form.cupom || null,
           status: "pending",
         },
@@ -66,7 +66,7 @@ const FunnelCadastro = () => {
         email: form.email,
         password: form.senha,
         options: {
-          data: { nome: form.nome },
+          data: { full_name: form.full_name },
         },
       });
 
@@ -75,7 +75,7 @@ const FunnelCadastro = () => {
           // User exists — sync password via edge function (with security guardrail)
           try {
             const { data: upsertData, error: upsertError } = await supabase.functions.invoke("upsert-auth-user", {
-              body: { email: form.email.toLowerCase(), password: form.senha, nome: form.nome },
+              body: { email: form.email.toLowerCase(), password: form.senha, full_name: form.full_name },
             });
             if (upsertError || upsertData?.error) {
               const msg = upsertData?.error || upsertError?.message || "Erro ao sincronizar conta";
@@ -98,10 +98,10 @@ const FunnelCadastro = () => {
         }
       }
 
-      // 3. If user was created, update profile with telefone and status pendente
+      // 3. If user was created, update profile with phone and status pendente
       if (authData?.user?.id) {
         await supabase.from("profiles").update({
-          telefone: form.telefone,
+          phone: form.phone,
           status: "pendente",
         }).eq("id", authData.user.id);
       }
@@ -123,9 +123,9 @@ const FunnelCadastro = () => {
   };
 
   const inputFields = [
-    { key: "nome", label: "Nome completo", type: "text", icon: User, autoComplete: "name" },
+    { key: "full_name", label: "Nome completo", type: "text", icon: User, autoComplete: "name" },
     { key: "email", label: "Email", type: "email", icon: Mail, autoComplete: "email" },
-    { key: "telefone", label: "Telefone", type: "tel", icon: Phone, autoComplete: "tel" },
+    { key: "phone", label: "Telefone", type: "tel", icon: Phone, autoComplete: "tel" },
     { key: "senha", label: "Senha", type: showPassword ? "text" : "password", icon: Lock, autoComplete: "new-password", hasToggle: true },
   ];
 

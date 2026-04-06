@@ -16,7 +16,7 @@ interface CommunityPost {
   created_at: string;
   user_id: string;
   isOptimistic?: boolean;
-  profiles?: { nome: string; avatar_url?: string; is_verified?: boolean };
+  profiles?: { full_name: string; avatar_url?: string; is_verified?: boolean };
   community_reactions?: { user_id: string; reaction_type: string }[];
 }
 
@@ -136,14 +136,14 @@ export function PostCard({ post, onAvatarClick }: { post: CommunityPost; onAvata
           <button className="flex items-center gap-3 text-left" onClick={() => !post.isOptimistic && onAvatarClick(post.user_id)}>
             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-primary/20">
               {post.profiles?.avatar_url ? (
-                <img src={post.profiles.avatar_url} alt={post.profiles.nome} className="w-full h-full object-cover" />
+                <img src={post.profiles.avatar_url} alt={post.profiles.full_name} className="w-full h-full object-cover" />
               ) : (
                 <User size={20} className="text-muted-foreground" />
               )}
             </div>
             <div>
               <p className="text-sm font-bold font-cinzel text-foreground leading-tight flex items-center gap-1.5">
-                {post.profiles?.nome || "Anônimo"}
+                {post.profiles?.full_name || "Anônimo"}
                 {post.profiles?.is_verified && (
                   <BadgeCheck size={14} className="text-blue-500 fill-blue-500/20" />
                 )}

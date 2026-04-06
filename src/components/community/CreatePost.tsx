@@ -39,7 +39,7 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
          created_at: new Date().toISOString(),
          user_id: user.id,
          isOptimistic: true, 
-         profiles: { nome: profile?.nome, avatar_url: profile?.avatar_url },
+         profiles: { full_name: profile?.full_name, avatar_url: profile?.avatar_url },
          community_reactions: []
       };
       

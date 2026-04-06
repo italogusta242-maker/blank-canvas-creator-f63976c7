@@ -26,7 +26,7 @@ const EspecialistaPerfil = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("nome, email, telefone, avatar_url")
+        .select("full_name, email, phone, avatar_url")
         .eq("id", user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -55,8 +55,8 @@ const EspecialistaPerfil = () => {
   const [formName, setFormName] = useState<string | null>(null);
   const [formPhone, setFormPhone] = useState<string | null>(null);
 
-  const displayName = formName ?? profile?.nome ?? "";
-  const displayPhone = formPhone ?? profile?.telefone ?? "";
+  const displayName = formName ?? profile?.full_name ?? "";
+  const displayPhone = formPhone ?? profile?.phone ?? "";
   const specialtyLabel = rawSpecialty?.toLowerCase().includes("nutri") ? "Nutricionista" : rawSpecialty?.toLowerCase().includes("preparador") || rawSpecialty?.toLowerCase().includes("fisico") ? "Preparador Físico" : rawSpecialty ?? "Especialista";
 
   const handleSave = async () => {
@@ -64,7 +64,7 @@ const EspecialistaPerfil = () => {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ nome: displayName, telefone: displayPhone })
+      .update({ full_name: displayName, phone: displayPhone })
       .eq("id", user.id);
     setSaving(false);
     if (error) {
@@ -105,7 +105,7 @@ const EspecialistaPerfil = () => {
               invalidateKeys={[["specialist-profile", user!.id]]}
             />
             <div>
-              <h2 className="text-lg font-bold text-foreground">{profile?.nome ?? "Especialista"}</h2>
+              <h2 className="text-lg font-bold text-foreground">{profile?.full_name ?? "Especialista"}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <Badge className="text-[10px] bg-accent/10 text-accent border-accent/20 gap-1">
                   <Award size={10} /> {specialtyLabel}

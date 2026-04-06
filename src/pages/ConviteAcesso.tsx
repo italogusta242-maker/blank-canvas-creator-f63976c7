@@ -69,7 +69,7 @@ const ConviteAcesso = () => {
       email: invite.email,
       password: cpfPassword,
       options: {
-        data: { nome: invite.name },
+        data: { full_name: invite.name },
         emailRedirectTo: window.location.origin,
       },
     });

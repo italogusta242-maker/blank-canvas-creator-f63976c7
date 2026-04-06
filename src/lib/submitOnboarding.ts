@@ -13,9 +13,9 @@ export async function submitOnboarding(
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
-        nome: userData.nome,
+        full_name: userData.full_name,
         email: userData.email,
-        telefone: userData.telefone,
+        phone: userData.phone,
         nascimento: userData.nascimento,
         cpf: userData.cpf,
         cidade_estado: userData.cidade_estado,

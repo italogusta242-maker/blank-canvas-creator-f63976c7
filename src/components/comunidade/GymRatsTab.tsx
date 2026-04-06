@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // ── Types ──
 interface RankedUser {
   id: string;
-  nome: string;
+  full_name: string;
   avatar_url?: string;
   hustle_points: number;
   streak: number;
@@ -62,7 +62,7 @@ export function GymRatsTab() {
       // 1. Fetch profiles with hustle_points
       const { data: profiles, error } = await (supabase as any)
         .from("profiles")
-        .select("id, nome, avatar_url, hustle_points")
+        .select("id, full_name, avatar_url, hustle_points")
         .order("hustle_points", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -90,7 +90,7 @@ export function GymRatsTab() {
       // 4. Build combined array
       let combined: RankedUser[] = (profiles || []).map((p: any) => ({
         id: p.id,
-        nome: p.nome || "Miri",
+        full_name: p.full_name || "Miri",
         avatar_url: p.avatar_url,
         hustle_points: p.hustle_points ?? 0,
         streak: flameMap.get(p.id) || 0,
@@ -204,7 +204,7 @@ export function GymRatsTab() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-foreground text-sm truncate flex items-center gap-2">
-                {entry.nome}
+                {entry.full_name}
                 {entry.id === user?.id && (
                   <span className="text-[9px] bg-primary text-white px-1.5 rounded">VOCÊ</span>
                 )}
@@ -257,7 +257,7 @@ export function GymRatsTab() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">{selectedUser.nome}</h3>
+                  <h3 className="text-lg font-bold text-foreground">{selectedUser.full_name}</h3>
                   <InlineBadge level={selectedUser.level} />
                 </div>
               </div>
@@ -314,10 +314,10 @@ function PodiumSeat({
           {user.avatar_url ? (
             <img src={user.avatar_url} className="w-full h-full object-cover" alt="" />
           ) : (
-            <span className="font-cinzel font-bold text-foreground">{user.nome.charAt(0)}</span>
+            <span className="font-cinzel font-bold text-foreground">{user.full_name.charAt(0)}</span>
           )}
         </div>
-        <p className="font-bold text-foreground text-xs mt-1 truncate w-20 text-center">{user.nome}</p>
+        <p className="font-bold text-foreground text-xs mt-1 truncate w-20 text-center">{user.full_name}</p>
         <InlineBadge level={user.level} />
       </div>
       <div className={`w-full ${height} ${accentColors[accent]} rounded-t-xl border-t border-l border-r flex flex-col items-center justify-start pt-3 relative overflow-hidden`}>

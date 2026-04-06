@@ -53,10 +53,10 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, nome, telefone, nascimento, peso, altura, objetivo, experiencia, localTreino, plano, skipOnboarding, cpf, role } = await req.json();
+    const { email, password, full_name, phone, nascimento, peso, altura, objetivo, experiencia, localTreino, plano, skipOnboarding, cpf, role } = await req.json();
 
-    if (!email || !password || !nome) {
-      return new Response(JSON.stringify({ error: "Email, senha e nome são obrigatórios" }), {
+    if (!email || !password || !full_name) {
+      return new Response(JSON.stringify({ error: "Email, senha e nome completo são obrigatórios" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { nome },
+      user_metadata: { full_name },
     });
 
     if (createError) {
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         await adminClient.auth.admin.updateUserById(userId, {
           password,
           email_confirm: true,
-          user_metadata: { nome },
+          user_metadata: { full_name },
         });
         console.log("Existing user updated:", userId);
       } else {
@@ -106,8 +106,8 @@ Deno.serve(async (req) => {
     }
 
     // Update profile with all provided data
-    const profileUpdate: Record<string, any> = { nome, email };
-    if (telefone) profileUpdate.telefone = telefone;
+    const profileUpdate: Record<string, any> = { full_name, email };
+    if (phone) profileUpdate.phone = phone;
     if (cpf) profileUpdate.cpf = cpf;
     if (nascimento) profileUpdate.nascimento = nascimento;
     if (peso) profileUpdate.peso = peso;
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           to_email: email,
-          to_name: nome,
+          to_name: full_name,
           access_url: publishedUrl,
           login_email: email,
           login_password: password,

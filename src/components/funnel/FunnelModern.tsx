@@ -22,9 +22,9 @@ const FunnelModern = () => {
 
   const [subStep, setSubStep] = useState<"plans" | "register">("plans");
   const [form, setForm] = useState({
-    nome: funnelUser.nome || "",
+    full_name: funnelUser.full_name || "",
     email: funnelUser.email || "",
-    telefone: funnelUser.telefone || "",
+    phone: funnelUser.phone || "",
     senha: "anaac123", // Default internal password
     cupom: funnelUser.cupom || "",
   });
@@ -72,16 +72,16 @@ const FunnelModern = () => {
   };
 
   const handleChange = (field: string, value: string) => {
-    if (field === "telefone") value = formatPhone(value);
+    if (field === "phone") value = formatPhone(value);
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.nome.trim()) e.nome = "Informe seu nome";
+    if (!form.full_name.trim()) e.full_name = "Informe seu nome";
     if (!form.email.includes("@")) e.email = "Email inválido";
-    if (form.telefone.replace(/\D/g, "").length < 10) e.telefone = "Telefone inválido";
+    if (form.phone.replace(/\D/g, "").length < 10) e.phone = "Telefone inválido";
     // senha check removed as requested
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -102,9 +102,9 @@ const FunnelModern = () => {
       // 1. Save lead (Final status)
       await supabase.from("funnel_leads").upsert(
         {
-          nome: form.nome,
+          full_name: form.full_name,
           email: form.email.toLowerCase(),
-          telefone: form.telefone,
+          phone: form.phone,
           cupom: form.cupom || null,
           status: "pending",
           selected_plan_id: currentPlan.id,
@@ -117,13 +117,13 @@ const FunnelModern = () => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.senha,
-        options: { data: { nome: form.nome } },
+        options: { data: { full_name: form.full_name } },
       });
 
       if (authError) {
         if (authError.message?.includes("already registered")) {
           await supabase.functions.invoke("upsert-auth-user", {
-            body: { email: form.email.toLowerCase(), password: form.senha, nome: form.nome },
+            body: { email: form.email.toLowerCase(), password: form.senha, full_name: form.full_name },
           });
         } else {
           setErrors({ email: authError.message });
@@ -135,7 +135,7 @@ const FunnelModern = () => {
       // 3. Profiles update
       if (authData?.user?.id) {
         await supabase.from("profiles").update({
-          telefone: form.telefone,
+          phone: form.phone,
           status: "pendente",
         }).eq("id", authData.user.id);
       }
@@ -171,9 +171,9 @@ const FunnelModern = () => {
         try {
             await supabase.from("funnel_leads").upsert(
                 {
-                    nome: form.nome,
+                    full_name: form.full_name,
                     email: form.email.toLowerCase(),
-                    telefone: form.telefone,
+                    phone: form.phone,
                     cupom: form.cupom || null,
                     status: "pre-cadastro", // Identify as abandonment lead
                     selected_plan_id: selectedPlan?.id || null,
@@ -187,7 +187,7 @@ const FunnelModern = () => {
     }, 2000); // 2s debounce
 
     return () => clearTimeout(timer);
-  }, [form.nome, form.email, form.telefone, form.cupom, selectedPlan?.id]);
+  }, [form.full_name, form.email, form.phone, form.cupom, selectedPlan?.id]);
 
   return (
     <div className="w-full h-full bg-white pb-20 overflow-y-auto overflow-x-hidden font-sans text-[#111]">
@@ -351,9 +351,9 @@ const FunnelModern = () => {
 
                 <div className="space-y-4">
                   {[
-                    { key: "nome", label: "Nome completo", type: "text", icon: User },
+                    { key: "full_name", label: "Nome completo", type: "text", icon: User },
                     { key: "email", label: "E-mail para login", type: "email", icon: Mail },
-                    { key: "telefone", label: "WhatsApp (com DDD)", type: "tel", icon: Phone },
+                    { key: "phone", label: "WhatsApp (com DDD)", type: "tel", icon: Phone },
                   ].map((field) => (
                     <div key={field.key} className="space-y-1">
                       <div className="relative">

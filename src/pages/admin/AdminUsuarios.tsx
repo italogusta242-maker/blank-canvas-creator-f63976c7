@@ -77,9 +77,9 @@ const GroupDetailPanel = ({
   const nonMembers = allAlunos
     .filter((a) => a.group_id !== group.id)
     .filter((a) => 
-      a.nome?.toLowerCase().includes(addStudentSearch.toLowerCase()) || 
+      a.full_name?.toLowerCase().includes(addStudentSearch.toLowerCase()) || 
       a.email?.toLowerCase().includes(addStudentSearch.toLowerCase()) ||
-      a.telefone?.includes(addStudentSearch)
+      a.phone?.includes(addStudentSearch)
     );
 
   const fetchChallenges = async () => {
@@ -160,7 +160,7 @@ const GroupDetailPanel = ({
                   ) : nonMembers.slice(0, 20).map((a) => (
                     <div key={a.id} className="py-2 flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{a.nome || "Sem nome"}</p>
+                        <p className="text-sm font-medium text-foreground">{a.full_name || "Sem nome"}</p>
                         <p className="text-xs text-muted-foreground">{a.email}</p>
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => handleAddStudent(a.id)}>
@@ -181,10 +181,10 @@ const GroupDetailPanel = ({
                 <div key={m.id} className="py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
-                      {(m.nome || "?")[0]?.toUpperCase()}
+                      {(m.full_name || "?")[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{m.nome || "Sem nome"}</p>
+                      <p className="text-sm font-medium text-foreground">{m.full_name || "Sem nome"}</p>
                       <p className="text-xs text-muted-foreground">{m.email}</p>
                     </div>
                   </div>
@@ -281,14 +281,14 @@ const AdminUsuarios = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({
-    nome: "", email: "", password: "", telefone: "",
+    full_name: "", email: "", password: "", phone: "",
     role: "user" as string, plano: "",
   });
 
   // Create Profissional
   const [createProOpen, setCreateProOpen] = useState(false);
   const [newPro, setNewPro] = useState({
-    nome: "", email: "", password: "", role: "personal" as string, especialidade: ""
+    full_name: "", email: "", password: "", role: "personal" as string, especialidade: ""
   });
 
   const [profissionais, setProfissionais] = useState<any[]>([]);
@@ -306,8 +306,8 @@ const AdminUsuarios = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignStudentId, setAssignStudentId] = useState<string | null>(null);
   const [assignStudentName, setAssignStudentName] = useState("");
-  const [personalList, setPersonalList] = useState<{ id: string; nome: string }[]>([]);
-  const [nutriList, setNutriList] = useState<{ id: string; nome: string }[]>([]);
+  const [personalList, setPersonalList] = useState<{ id: string; full_name: string }[]>([]);
+  const [nutriList, setNutriList] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedPersonal, setSelectedPersonal] = useState("");
   const [selectedNutri, setSelectedNutri] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -322,7 +322,7 @@ const AdminUsuarios = () => {
   // ── Edit User Modal state ──
   const [editOpen, setEditOpen] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
-  const [editNome, setEditNome] = useState("");
+  const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPlanId, setEditPlanId] = useState("");
@@ -434,10 +434,10 @@ const AdminUsuarios = () => {
     const loadFilter = async () => {
       const [{ data: ss }, { data: profile }] = await Promise.all([
         supabase.from("student_specialists").select("student_id").eq("specialist_id", specialistFilter),
-        supabase.from("profiles").select("nome").eq("id", specialistFilter).single(),
+        supabase.from("profiles").select("full_name").eq("id", specialistFilter).single(),
       ]);
       setSpecialistStudentIds(ss?.map(s => s.student_id) || []);
-      setSpecialistFilterName(profile?.nome || "Especialista");
+      setSpecialistFilterName(profile?.full_name || "Especialista");
     };
     loadFilter();
   }, [specialistFilter]);
@@ -523,10 +523,10 @@ const AdminUsuarios = () => {
             const specIds = [...new Set(ssData.map(s => s.specialist_id))];
             const { data: specProfiles } = await supabase
               .from("profiles")
-              .select("id, nome")
+              .select("id, full_name")
               .in("id", specIds);
 
-            const specNameMap = new Map(specProfiles?.map(p => [p.id, p.nome]) || []);
+            const specNameMap = new Map(specProfiles?.map(p => [p.id, p.full_name]) || []);
             const sMap: Record<string, { display: string; personal?: string; personalName?: string; nutri?: string; nutriName?: string }> = {};
             ssData.forEach(s => {
               const name = specNameMap.get(s.specialist_id) || "Especialista";
@@ -651,7 +651,7 @@ const AdminUsuarios = () => {
 
       if (rolesData && rolesData.length > 0) {
         const userIds = rolesData.map(r => r.user_id);
-        const { data: profilesData } = await supabase.from("profiles").select("id, nome, email, status").in("id", userIds);
+        const { data: profilesData } = await supabase.from("profiles").select("id, full_name, email, status").in("id", userIds);
 
         if (profilesData) {
           const merged = profilesData.map(p => {
@@ -672,7 +672,7 @@ const AdminUsuarios = () => {
   };
 
   const handleCreatePro = async () => {
-    if (!newPro.nome || !newPro.email || !newPro.password || !newPro.role) {
+    if (!newPro.full_name || !newPro.email || !newPro.password || !newPro.role) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -680,7 +680,7 @@ const AdminUsuarios = () => {
     try {
       toast.success("Profissional registrado com sucesso!");
       setCreateProOpen(false);
-      setNewPro({ nome: "", email: "", password: "", role: "personal", especialidade: "" });
+      setNewPro({ full_name: "", email: "", password: "", role: "personal", especialidade: "" });
       fetchProfissionais();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar profissional");
@@ -708,16 +708,16 @@ const AdminUsuarios = () => {
       const specIds = [...new Set(rolesData.map(r => r.user_id))];
       const { data: specProfiles } = await supabase
         .from("profiles")
-        .select("id, nome")
+        .select("id, full_name")
         .in("id", specIds);
 
-      const nameMap = new Map(specProfiles?.map(p => [p.id, p.nome || "Sem nome"]) || []);
+      const nameMap = new Map(specProfiles?.map(p => [p.id, p.full_name || "Sem nome"]) || []);
 
       setPersonalList(
-        rolesData.filter(r => r.role === "personal").map(r => ({ id: r.user_id, nome: nameMap.get(r.user_id) || "Sem nome" }))
+        rolesData.filter(r => r.role === "personal").map(r => ({ id: r.user_id, full_name: nameMap.get(r.user_id) || "Sem nome" }))
       );
       setNutriList(
-        rolesData.filter(r => r.role === "nutricionista").map(r => ({ id: r.user_id, nome: nameMap.get(r.user_id) || "Sem nome" }))
+        rolesData.filter(r => r.role === "nutricionista").map(r => ({ id: r.user_id, full_name: nameMap.get(r.user_id) || "Sem nome" }))
       );
     } else {
       setPersonalList([]);
@@ -760,9 +760,9 @@ const AdminUsuarios = () => {
     }
     if (search) {
       list = list.filter(a => 
-        a.nome?.toLowerCase().includes(search.toLowerCase()) || 
+        a.full_name?.toLowerCase().includes(search.toLowerCase()) || 
         a.email?.toLowerCase().includes(search.toLowerCase()) ||
-        a.telefone?.includes(search)
+        a.phone?.includes(search)
       );
     }
     if (statusFilter !== "todos") {
@@ -819,7 +819,7 @@ const AdminUsuarios = () => {
     }
     const header = "Nome,Email,Telefone,Status,Criado em";
     const rows = alunosPendentes.map(a =>
-      `"${(a.nome || "").replace(/"/g, '""')}","${a.email || ""}","${a.telefone || ""}","${a.status}","${new Date(a.created_at).toLocaleDateString("pt-BR")}"`
+      `"${(a.full_name || "").replace(/"/g, '""')}","${a.email || ""}","${a.phone || ""}","${a.status}","${new Date(a.created_at).toLocaleDateString("pt-BR")}"`
     );
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -833,7 +833,7 @@ const AdminUsuarios = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.nome || !newUser.email || !newUser.password) {
+    if (!newUser.full_name || !newUser.email || !newUser.password) {
       toast.error("Nome, email e senha são obrigatórios");
       return;
     }
@@ -846,8 +846,8 @@ const AdminUsuarios = () => {
         body: {
           email: newUser.email,
           password: newUser.password,
-          nome: newUser.nome,
-          telefone: newUser.telefone || undefined,
+          full_name: newUser.full_name,
+          phone: newUser.phone || undefined,
           role: newUser.role,
           skipOnboarding: true,
           plano: newUser.plano || undefined,
@@ -860,7 +860,7 @@ const AdminUsuarios = () => {
 
       toast.success("Aluno criado com sucesso!");
       setCreateOpen(false);
-      setNewUser({ nome: "", email: "", password: "", telefone: "", role: "user", plano: "" });
+      setNewUser({ full_name: "", email: "", password: "", phone: "", role: "user", plano: "" });
       fetchAlunos();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
@@ -872,7 +872,7 @@ const AdminUsuarios = () => {
   // ── Open Edit Modal ──
   const openEditModal = async (aluno: any) => {
     setEditUser(aluno);
-    setEditNome(aluno.nome || "");
+    setEditFullName(aluno.full_name || "");
     setEditEmail(aluno.email || "");
     setEditStatus(aluno.status || "pendente");
     setEditPlanId(userSubs[aluno.id] || "none");
@@ -893,7 +893,7 @@ const AdminUsuarios = () => {
       if (!session) throw new Error("Sessão expirada");
 
       const body: any = { user_id: editUser.id };
-      if (editNome !== editUser.nome) body.nome = editNome;
+      if (editFullName !== editUser.full_name) body.full_name = editFullName;
       if (editEmail !== editUser.email) body.email = editEmail;
       if (editStatus !== editUser.status) body.status = editStatus;
       if (editFlameStreak !== "") body.flame_streak = parseInt(editFlameStreak, 10);
@@ -1030,16 +1030,16 @@ const AdminUsuarios = () => {
   const [conciliationOpen, setConciliationOpen] = useState(false);
   const [editLeadOpen, setEditLeadOpen] = useState(false);
   const [editLead, setEditLead] = useState<any>(null);
-  const [editLeadNome, setEditLeadNome] = useState("");
+  const [editLeadFullName, setEditLeadFullName] = useState("");
   const [editLeadEmail, setEditLeadEmail] = useState("");
-  const [editLeadTelefone, setEditLeadTelefone] = useState("");
+  const [editLeadPhone, setEditLeadPhone] = useState("");
   const [savingLead, setSavingLead] = useState(false);
 
   const openEditLeadModal = (lead: any) => {
     setEditLead(lead);
-    setEditLeadNome(lead.nome || "");
+    setEditLeadFullName(lead.full_name || "");
     setEditLeadEmail(lead.email || "");
-    setEditLeadTelefone(lead.telefone || "");
+    setEditLeadPhone(lead.phone || "");
     setEditLeadOpen(true);
   };
 
@@ -1048,9 +1048,9 @@ const AdminUsuarios = () => {
     setSavingLead(true);
     try {
       const { error } = await supabase.from("funnel_leads").update({
-        nome: editLeadNome,
+        full_name: editLeadFullName,
         email: editLeadEmail.toLowerCase(),
-        telefone: editLeadTelefone || null,
+        phone: editLeadPhone || null,
       }).eq("id", editLead.id);
       if (error) throw error;
       toast.success("Lead atualizado!");
@@ -1659,7 +1659,7 @@ const AdminUsuarios = () => {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Excluir usuário "{aluno.nome}"?</AlertDialogTitle>
+                                    <AlertDialogTitle>Excluir usuário "{aluno.full_name}"?</AlertDialogTitle>
                                     <AlertDialogDescription>
                                       Essa ação é irreversível. O usuário será removido do sistema de autenticação, perfil e todas as assinaturas serão apagadas.
                                     </AlertDialogDescription>
@@ -1797,7 +1797,7 @@ const AdminUsuarios = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Nenhum</SelectItem>
-                  {personalList.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  {personalList.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1809,7 +1809,7 @@ const AdminUsuarios = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Nenhum</SelectItem>
-                  {nutriList.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  {nutriList.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1830,8 +1830,8 @@ const AdminUsuarios = () => {
             <div className="space-y-2">
               <Label>Nome Completo*</Label>
               <Input
-                value={newUser.nome}
-                onChange={(e) => setField("nome", e.target.value)}
+                value={newUser.full_name}
+                onChange={(e) => setField("full_name", e.target.value)}
                 className="bg-background border-border"
                 placeholder="Ex: Maria Silva"
               />
@@ -1860,8 +1860,8 @@ const AdminUsuarios = () => {
               <div className="space-y-2">
                 <Label>Telefone (Opcional)</Label>
                 <Input
-                  value={newUser.telefone}
-                  onChange={(e) => setField("telefone", e.target.value)}
+                  value={newUser.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
                   className="bg-background border-border"
                   placeholder="(00) 00000-0000"
                 />
@@ -1901,8 +1901,8 @@ const AdminUsuarios = () => {
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <Input
-                  value={editNome}
-                  onChange={(e) => setEditNome(e.target.value)}
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
                   className="bg-background border-border"
                 />
               </div>
@@ -1977,7 +1977,7 @@ const AdminUsuarios = () => {
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Nome</Label>
-                <Input value={editLeadNome} onChange={(e) => setEditLeadNome(e.target.value)} className="bg-background border-border" />
+                <Input value={editLeadFullName} onChange={(e) => setEditLeadFullName(e.target.value)} className="bg-background border-border" />
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
@@ -1985,7 +1985,7 @@ const AdminUsuarios = () => {
               </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>
-                <Input value={editLeadTelefone} onChange={(e) => setEditLeadTelefone(e.target.value)} className="bg-background border-border" />
+                <Input value={editLeadPhone} onChange={(e) => setEditLeadPhone(e.target.value)} className="bg-background border-border" />
               </div>
               <Button className="w-full" onClick={handleSaveLeadEdit} disabled={savingLead}>
                 {savingLead ? <><Loader2 size={14} className="animate-spin mr-2" /> Salvando...</> : "Salvar Alterações"}
@@ -2000,14 +2000,14 @@ const AdminUsuarios = () => {
         open={whatsappModalOpen}
         onOpenChange={setWhatsappModalOpen}
         leads={[
-          ...alunosPendentes.map((a) => ({ id: a.id, nome: a.nome, email: a.email, telefone: a.telefone })),
-          ...funnelLeads.map((l) => ({ id: l.id, nome: l.nome, email: l.email, telefone: l.telefone })),
+          ...alunosPendentes.map((a) => ({ id: a.id, full_name: a.full_name, email: a.email, phone: a.phone })),
+          ...funnelLeads.map((l) => ({ id: l.id, full_name: l.nome, email: l.email, phone: l.telefone })),
         ]}
       />
       <WhatsAppBulkModal
         open={whatsappAtivosModalOpen}
         onOpenChange={setWhatsappAtivosModalOpen}
-        leads={alunosAtivos.map((a) => ({ id: a.id, nome: a.nome, email: a.email, telefone: a.telefone }))}
+        leads={alunosAtivos.map((a) => ({ id: a.id, full_name: a.full_name, email: a.email, phone: a.phone }))}
       />
     </div>
   );

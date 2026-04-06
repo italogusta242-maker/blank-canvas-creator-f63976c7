@@ -73,7 +73,7 @@ const EspecialistaChat = () => {
     addOptimistic, replaceOptimistic, removeOptimistic,
   } = useChatMessages(activeConvId);
 
-  const myName = profile?.nome || "Especialista";
+  const myName = profile?.full_name || "Especialista";
   const { typingUsers, sendTyping, stopTyping } = useTypingIndicator(activeConvId, user?.id, myName);
   const { isOnline } = usePresence(activeConvId, user?.id);
   const { isRead } = useReadReceipts(activeConvId, user?.id);
@@ -100,7 +100,7 @@ const EspecialistaChat = () => {
       // Parallel: profiles + conversations + all participants + last messages (single RPC)
       const [profilesRes, convsRes, allPartsRes, lastMsgsRes] = await Promise.all([
         studentIds.length > 0
-          ? supabase.from("profiles").select("id, nome, avatar_url").in("id", studentIds)
+          ? supabase.from("profiles").select("id, full_name, avatar_url").in("id", studentIds)
           : Promise.resolve({ data: [] }),
         convIds.length > 0
           ? supabase.from("conversations").select("*").in("id", convIds)
@@ -123,9 +123,9 @@ const EspecialistaChat = () => {
 
       // Get profiles for other participants
       const otherIds = [...new Set(allParts.filter((p) => p.user_id !== user.id).map((p) => p.user_id))];
-      let otherProfiles: { id: string; nome: string | null; avatar_url: string | null }[] = [];
+      let otherProfiles: { id: string; full_name: string | null; avatar_url: string | null }[] = [];
       if (otherIds.length > 0) {
-        const { data } = await supabase.from("profiles").select("id, nome, avatar_url").in("id", otherIds);
+        const { data } = await supabase.from("profiles").select("id, full_name, avatar_url").in("id", otherIds);
         otherProfiles = data || [];
       }
 
@@ -143,7 +143,7 @@ const EspecialistaChat = () => {
           convItems.push({
             id: c.id,
             type: "direct",
-            name: other?.nome || "Aluno",
+            name: other?.full_name || "Aluno",
             studentId: otherId,
             avatarUrl: other?.avatar_url,
             lastMessage: lastMsg?.content,
@@ -153,7 +153,7 @@ const EspecialistaChat = () => {
         } else {
           const groupStudentIds = cParts.map((p) => p.user_id);
           const groupStudentNames = groupStudentIds
-            .map((sid) => (otherProfiles.find((p) => p.id === sid) || studentProfiles.find((p) => p.id === sid))?.nome || null)
+            .map((sid) => (otherProfiles.find((p) => p.id === sid) || studentProfiles.find((p) => p.id === sid))?.full_name || null)
             .filter(Boolean) as string[];
 
           convItems.push({
@@ -173,7 +173,7 @@ const EspecialistaChat = () => {
           convItems.push({
             id: `student-${sp.id}`,
             type: "new" as const,
-            name: sp.nome || "Aluno",
+            name: sp.full_name || "Aluno",
             studentId: sp.id,
             avatarUrl: sp.avatar_url,
             unread: 0,
