@@ -355,7 +355,7 @@ const Dashboard = () => {
             <div>
               <p className={`text-[10px] font-sans font-semibold tracking-widest text-muted-foreground mb-0.5 uppercase`}>BEM-VINDA AO ANAAC CLUB</p>
               <h1 className="font-sans text-lg font-bold flex items-center gap-2">
-                <span className="text-foreground">{profile?.nome?.split(' ')[0] || "ATLETA"}</span>
+                <span className="text-foreground">{(profile as any)?.full_name?.split(' ')[0] || "ATLETA"}</span>
               </h1>
             </div>
           </div>
@@ -455,7 +455,7 @@ const Dashboard = () => {
            <div>
             <p className="text-xs font-sans font-semibold tracking-widest text-muted-foreground uppercase mb-1">BEM-VINDA AO ANAAC CLUB</p>
             <h1 className="font-sans text-3xl font-bold flex items-center">
-              <span className="text-foreground">{profile?.nome?.toUpperCase() || "MIRI"}</span>
+              <span className="text-foreground">{(profile as any)?.full_name?.toUpperCase() || "MIRI"}</span>
             </h1>
           </div>
         </div>

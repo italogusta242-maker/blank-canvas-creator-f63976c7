@@ -14,11 +14,11 @@ export const useProfile = () => {
       if (!user) throw new Error("Not authenticated");
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, full_name, status, phone")
         .eq("id", user.id)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      return data ? { ...data, onboarded: true } : null;
     },
     enabled: !!user || isMock,
   });

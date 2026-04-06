@@ -445,7 +445,9 @@ const AdminUsuarios = () => {
   const fetchAlunos = async () => {
     setLoadingAlunos(true);
     try {
-      const { data: profilesData, error: profilesError } = await supabase.from("profiles").select("*");
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, status, phone, created_at, avatar_url, group_id, planner_type");
       if (profilesError) throw profilesError;
 
       const { data: rolesData, error: rolesError } = await supabase.from("user_roles").select("user_id, role");

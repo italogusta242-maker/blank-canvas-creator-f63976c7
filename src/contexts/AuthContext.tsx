@@ -220,7 +220,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (!signUpError && signUpData.user) {
              const uid = signUpData.user.id;
-             await supabase.from("profiles").upsert({ id: uid, email, status: 'ativo', onboarded: true }, { onConflict: 'id' });
+             // Use explicit columns: id, email, full_name, status
+             // onboarded is removed as it might not exist in the new schema
+             await supabase.from("profiles").upsert({ 
+                id: uid, 
+                email, 
+                full_name: email.split('@')[0],
+                status: 'ativo' 
+             }, { onConflict: 'id' });
+             
              await supabase.from("user_roles").upsert({ user_id: uid, role: 'user' }, { onConflict: 'user_id, role' });
              return { error: null };
           }

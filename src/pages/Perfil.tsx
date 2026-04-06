@@ -269,7 +269,11 @@ const Perfil = () => {
     queryKey: ["profile", targetUserId],
     queryFn: async () => {
       if (!targetUserId) return null;
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", targetUserId).single();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, status, phone, avatar_url, created_at, bio, instagram_handle, is_verified, planner_type")
+        .eq("id", targetUserId)
+        .single();
       if (error) throw error;
       return data;
     },
