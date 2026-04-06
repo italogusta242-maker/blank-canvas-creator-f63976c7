@@ -95,7 +95,7 @@ const EspecialistaDieta = () => {
 
       const [plansRes, profilesRes] = await Promise.all([
         supabase.from("diet_plans").select("*").in("user_id", studentIds).order("updated_at", { ascending: false }),
-        supabase.from("profiles").select("id, nome, email").in("id", studentIds),
+        supabase.from("profiles").select("id, full_name, email").in("id", studentIds),
       ]);
       if (plansRes.error) throw plansRes.error;
       if (profilesRes.error) throw profilesRes.error;
