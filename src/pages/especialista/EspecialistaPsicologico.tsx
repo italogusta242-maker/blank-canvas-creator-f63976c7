@@ -74,7 +74,7 @@ const EspecialistaPsicologico = () => {
 
       if (error) throw error;
 
-      const nameMap = new Map((students ?? []).map((s) => [s.id, s.name]));
+      const nameMap = new Map((students ?? []).map((s) => [s.id, s.full_name]));
 
       // Group by student
       const grouped = new Map<string, typeof data>();
@@ -109,7 +109,7 @@ const EspecialistaPsicologico = () => {
         if (!grouped.has(s.id)) {
           results.push({
             studentId: s.id,
-            studentName: s.name,
+            studentName: s.full_name,
             latestMood: 0,
             latestStress: 0,
             latestSleepHours: null,

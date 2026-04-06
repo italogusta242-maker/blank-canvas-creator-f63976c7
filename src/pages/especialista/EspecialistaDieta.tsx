@@ -182,10 +182,10 @@ const EspecialistaDieta = () => {
   });
 
   const filteredStudentsWithoutDiet = searchTerm.trim()
-    ? studentsWithoutDiet.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    ? studentsWithoutDiet.filter((s) => s.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
     : studentsWithoutDiet;
 
-  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.name }));
+  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.full_name }));
 
   const handleEdit = (plan: DietPlanRow) => {
     setEditingPlan(plan);
@@ -373,7 +373,7 @@ const EspecialistaDieta = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano alimentar</p>
                           </div>
                         </div>
@@ -423,7 +423,7 @@ const EspecialistaDieta = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano alimentar</p>
                           </div>
                         </div>

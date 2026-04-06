@@ -172,7 +172,7 @@ const EspecialistaTreino = () => {
     return true;
   });
 
-  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.name ?? "Aluno" }));
+  const studentOptions = (students ?? []).map((s) => ({ id: s.id, name: s.full_name ?? "Aluno" }));
 
   const handleEdit = (plan: TrainingPlanRow) => {
     setEditingPlan({
@@ -257,7 +257,7 @@ const EspecialistaTreino = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano de treino</p>
                           </div>
                         </div>
@@ -307,7 +307,7 @@ const EspecialistaTreino = () => {
                             <UserX size={16} className="text-amber-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{s.name}</p>
+                            <p className="font-medium text-foreground">{s.full_name}</p>
                             <p className="text-xs text-muted-foreground">Sem plano de treino</p>
                           </div>
                         </div>
