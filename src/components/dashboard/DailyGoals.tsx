@@ -208,8 +208,8 @@ const DailyGoals = ({
 
   const isGoalDone = (key: GoalKey): boolean => {
     switch (key) {
-      case "agua": return waterDone;
-      case "sono": return sleepDone;
+      case "agua": return waterDone || completedGoals.has("agua");
+      case "sono": return sleepDone || completedGoals.has("sono");
       case "treino": {
         // Count days with training in the last 7 days
         const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
