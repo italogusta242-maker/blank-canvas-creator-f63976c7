@@ -226,9 +226,62 @@ Mas lembre-se que o treino não substitui um acompanhamento individualizado que 
   ],
 };
 
+export const TRAINING_CASA: TrainingPlanConfig = {
+  id: "config-training-casa",
+  title: "Treino em Casa",
+  emoji: "🏠",
+  level: "Todos os níveis",
+  frequency: "4x na semana",
+  description: "Treino funcional para fazer em casa com materiais simples.",
+  about: `Orientações Gerais:
+
+• Utilize potes de produtos de limpeza com água ou areia como carga.
+• Ajuste o peso de acordo com sua capacidade, mantendo boa execução.
+• Respeite os tempos de descanso indicados.`,
+  workouts: [
+    {
+      name: "Treino 1 — Membros Inferiores",
+      exercises: [
+        { name: "Agachamento", sets: 5, reps: "12", notes: "12 repetições descendo em 3 segundos e subindo em 3 segundos + 12 repetições diretas." },
+        { name: "Afundo com Base Parada + Afundo com Chute", sets: 4, reps: "10 + 10", notes: "10 rep de afundo com base parada. Com a mesma perna, faça mais 10 rep de afundo com chute. Descanso: 1 minuto e 30 segundos. Após o descanso, troque a perna." },
+        { name: "Avanço com Peso à Frente do Corpo", sets: 4, reps: "15", notes: "Pernas alternadas (como uma passada)." },
+        { name: "Agachamento Sumô com Isometria Progressiva", sets: 4, reps: "10 + 10", notes: "A cada repetição, aumente o tempo de isometria no fundo do movimento: 1ª rep: 1s, 2ª rep: 2s, ... 10ª rep: 10s. Após completar as 10 rep com isometria, faça mais 10 rep diretas." },
+      ],
+    },
+    {
+      name: "Treino 2 — Membros Superiores",
+      exercises: [
+        { name: "Flexão de Braço (Joelhos Apoiados em uma Toalha)", sets: 3, reps: "8 a 10", notes: "Descanso: 1 minuto e 30 segundos." },
+        { name: "Desenvolvimento com Peso", sets: 4, reps: "20" },
+        { name: "Remada com Peso + Crucifixo Inverso", sets: 3, reps: "20 + 20", notes: "20 rep de remada + 20 rep de crucifixo inverso." },
+        { name: "Burpee + Abdominal + Flexão com Joelhos Apoiados", sets: 4, reps: "10 cada", notes: "Faça 10 rep de cada exercício, sem descanso entre eles. Ao finalizar os 3 movimentos, descanse 2 minutos." },
+        { name: "Triset + Cardio", sets: 3, reps: "12 + 12 + 12 + 1min", notes: "12 rep de crucifixo + 12 rep de supino fechado reto + 12 rep de tríceps coice. Em seguida: 1 minuto de cardio (burpee saltando fora e dentro do step ou outro objetivo similar)." },
+      ],
+    },
+    {
+      name: "Treino 3 — Posterior e Glúteos",
+      exercises: [
+        { name: "Sequência Unilateral – Elevação Pélvica", sets: 3, reps: "15 (cada perna)", notes: "15 rep de elevação pélvica unilateral + 15 segundos de isometria no topo." },
+        { name: "Flexão de Joelho + Stiff", sets: 3, reps: "30s + 12", notes: "30 segundos de flexão de joelho com meia + 12 rep de stiff com halter (descendo em 4 segundos)." },
+        { name: "Sequência de Agachamentos + Retrocesso", sets: 4, reps: "variado", notes: "5 rep de agachamento (desce em 5 / sobe em 5) + 10 rep de agachamento com insistência + 12 rep de retrocesso no step com halter nos ombros. Perna direita, depois perna esquerda." },
+        { name: "Stiff + Good Morning", sets: 4, reps: "10 + 10", notes: "10 rep de stiff com halteres (desce em 3 / segura 1 / sobe direto) + 10 rep de good morning com barra nas costas ou cabo de vassoura." },
+      ],
+    },
+    {
+      name: "Treino 4 — Glúteos + Cardio",
+      exercises: [
+        { name: "Agachamento Sumô no Step + Afundos", sets: 4, reps: "12 + 10 + 10", notes: "12 rep de agachamento sumô com pés sobre o step (desce em 3). Perna direita: 10 rep de afundo com halteres (desce em 2) + 10 rep de afundo contralateral. Solte o peso de uma das mãos para o afundo contralateral." },
+        { name: "Goblet + Búlgaro + Agachamento", sets: 3, reps: "10 + 10 + 10", notes: "10 rep de goblet com joelho semi-flexionado + 10 rep por perna de búlgaro insistido com saltinho curto (sem carga) + 10 rep de agachamento com insistência. Descanso: 1 minuto." },
+        { name: "Finalizador", sets: 4, reps: "variado", notes: "1 minuto de burpee + 20 agachamentos + 15 retrocessos. Descanso: 2 minutos." },
+      ],
+    },
+  ],
+};
+
 /** All available training plans, ordered for display */
 export const ALL_TRAININGS: TrainingPlanConfig[] = [
   TRAINING_INICIANTES_ACADEMIA,
   TRAINING_INTERMEDIARIO_ACADEMIA,
   TRAINING_AVANCADO_ACADEMIA,
+  TRAINING_CASA,
 ];
