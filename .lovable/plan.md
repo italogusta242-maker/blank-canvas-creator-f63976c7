@@ -1,40 +1,75 @@
 
 
-## Correções: Adesão, Nome do Planner, e Auto-check de Treino
+## Plano: Sincronização Financeira Completa
 
-### Problema 1: Adesão (círculo hero) não bate com Score de Evolução
+### Resumo
 
-**Causa**: `calculateAdherence()` em `useFlameState.ts` calcula apenas `dias_treinados / 7 * 100`. O score de evolução usa o composto `Treino(40) + Dieta(40) + Metas(20) = 100`. São métricas completamente diferentes.
+Cruzar o CSV InfinitePay com o banco de dados, criar os 6 planos, registrar pagamentos/assinaturas retroativos, corrigir status, e gerar relatório de auditoria.
 
-**Solução**: Substituir a adesão do círculo pelo `performanceScore` do `useRealPerformance()`. Assim, o que aparece no círculo do hero será exatamente o score de hoje (mesmo valor do gráfico).
+### Observações do Usuário
+- **Victor Gabriel Viana Neri** → teste do dono da InfinitePay, **excluir** do cruzamento
+- **Nomes masculinos** (Anísio, Pietro) → sinalizar, verificar com a aluna depois
+- **2 alunas sem match** → provavelmente os pagamentos restantes são delas (dedução por eliminação)
 
-**Arquivo**: `src/pages/Dashboard.tsx`
-- Em vez de usar `adherenceReal` do `useFlameState()`, usar `performanceScore` do `useRealPerformance()` como valor de adesão passado ao `DashboardHero`
-- Manter o `useFlameState` apenas para streak e flame state
+### Estado Atual do Banco
 
-### Problema 2: Nome "Planner Principal" em vez de "Metas Diárias"
+| Dado | Valor |
+|------|-------|
+| Perfis ativo/active | 90 (85 + 5) |
+| `subscription_plans` | 0 |
+| `payments` | 0 |
+| `subscriptions` | 0 |
 
-**Arquivo**: `src/components/dashboard/DailyGoals.tsx` (linha 241)
-- Trocar `"Planner Principal"` por `"Metas Diárias"`
+### Etapas
 
-### Problema 3: Treinamento marca como feito incorretamente
+**1. Criar os 6 planos em `subscription_plans`** (migration)
 
-**Causa**: `isGoalDone("treino")` verifica se o último dia do array `performanceData` tem `training > 0`. Isso significa que se a aluna treinou ontem, hoje mostra como feito. Mas o planner diz "X treinos na semana" — deveria checar se o total de treinos na semana atingiu a meta semanal.
+| Nome | Preço | Meses | Cupom |
+|------|-------|-------|-------|
+| Mensal | R$ 39,90 | 1 | - |
+| Trimestral | R$ 109,00 | 3 | - |
+| Semestral | R$ 197,00 | 6 | - |
+| Mensal ANAAC10 | R$ 35,90 | 1 | ANAAC10 |
+| Trimestral ANAAC10 | R$ 98,00 | 3 | ANAAC10 |
+| Semestral ANAAC10 | R$ 177,00 | 6 | ANAAC10 |
 
-**Solução**: Mudar a lógica do `treino` para contar dias com treino nos últimos 7 dias e comparar com a meta do planner (ex: Elite = 5 treinos/semana, Essencial = 2, etc.).
+**2. Corrigir status `active` → `ativo`** (insert tool)
 
-**Arquivo**: `src/components/dashboard/DailyGoals.tsx`
-- Extrair o número de treinos exigidos do `description` do goal (ex: "2 treinos" → 2, "5 treinos" → 5)
-- Contar dias únicos com `training > 0` nos últimos 7 dias do `performanceData`
-- Marcar como feito apenas se `diasTreinados >= metaSemanal`
+5 perfis: `admin@anaac.com`, `villarinara@icloud.com`, `anaac.master@gmail.com`, `malulira9@gmail.com`, `aline_spok@hotmail.com`
 
----
+**3. Script Python de cruzamento** (exec)
 
-### Resumo de Arquivos
+- Usuário reenvia o CSV (ou uso os dados já extraídos da análise anterior)
+- Normaliza nomes do CSV e do banco
+- Exclui Victor Gabriel Viana Neri (teste InfinitePay)
+- Mapeia valores CSV → plano (3990→Mensal, 3590→Mensal ANAAC10, 3748→Mensal ANAAC10 cartão, 10900→Trimestral, 9800→Trimestral ANAAC10, 10230→Trimestral ANAAC10 cartão, 19700→Semestral, 18476→Semestral ANAAC10 cartão)
+- Sinaliza nomes masculinos como "verificar com aluna"
+- Alunas sem match no CSV → dedução por eliminação (associar pagamentos órfãos)
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/pages/Dashboard.tsx` | Passar `performanceScore` como adesão ao hero em vez de `adherenceReal` |
-| `src/components/dashboard/DailyGoals.tsx` | Renomear "Planner Principal" → "Metas Diárias"; corrigir auto-check de treino para contar treinos semanais |
-| `src/hooks/useFlameState.ts` | Sem alteração (mantém streak/state, adesão não é mais usada no hero) |
+**4. Gerar relatório** → `/mnt/documents/auditoria_completa.csv`
+
+Colunas: Nome DB, Email, Telefone, Status DB, Nome CSV, Valor Pago, Plano Inferido, Meio, Data, Resultado (PAREADO / SEM_PAGAMENTO_CSV / PAGAMENTO_SEM_PERFIL / REMARKETING / TESTE_EXCLUIDO / TERCEIRO_VERIFICAR)
+
+**5. Criar registros retroativos** (insert tool, após aprovação)
+
+- `subscriptions`: 1 por aluna pareada, vinculada ao plano correto
+- `payments`: 1 por transação aprovada, com `gateway_transaction_id` = NSU
+
+**6. Lista de remarketing**
+
+Transações negadas/canceladas do CSV → sinalizadas no relatório para ação comercial
+
+### Pré-requisito
+
+Preciso que o CSV seja reenviado (o upload anterior não persistiu no sistema de arquivos). Assim que receber, executo tudo de uma vez.
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| Migration SQL | Criar `subscription_plans` com 6 planos |
+| Insert SQL | Corrigir 5 perfis `active` → `ativo` |
+| Script Python `/tmp/` | Cruzamento CSV × DB |
+| `/mnt/documents/auditoria_completa.csv` | Relatório final |
+| Insert SQL (pós-aprovação) | Criar `subscriptions` + `payments` retroativos |
 
