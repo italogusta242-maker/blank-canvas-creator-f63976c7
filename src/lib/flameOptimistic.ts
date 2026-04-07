@@ -18,7 +18,7 @@ export function optimisticFlameUpdate(
   queryClient.setQueryData<FlameData>(
     ["flame-state", userId],
     (old) => {
-      if (!old) return { state: "ativa", streak: 1, adherence: Math.min(delta.adherenceDelta ?? 0, 100) };
+      if (!old) return { state: "ativa", streak: 1, adherence: Math.min(Math.max(0, delta.adherenceDelta ?? 0), 100) };
       
       const newAdherence = Math.min(100, Math.max(0, old.adherence + (delta.adherenceDelta ?? 0)));
       
