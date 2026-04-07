@@ -4,7 +4,7 @@ import {
   User, Camera, CreditCard, LogOut, Shield,
   MessageCircle, MoreHorizontal,
   Flame, ImageIcon, Trophy, Grid3x3, Settings, Check, Users, Loader2, X,
-  CheckCircle2, ExternalLink, Zap, Gift, HelpCircle
+  CheckCircle2, ExternalLink, Zap, Gift, HelpCircle, BadgeCheck
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
