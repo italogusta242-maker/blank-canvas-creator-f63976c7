@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import NotificationCenter from "@/components/NotificationCenter";
 import PushPermissionBanner from "@/components/PushPermissionBanner";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface AppLayoutProps {
@@ -25,6 +26,7 @@ const AppLayout = ({ dishonorMode, setDishonorMode }: AppLayoutProps) => {
         <Outlet />
       </main>
       <BottomNav />
+      <PWAInstallBanner isInstallable={isInstallable} onInstall={installPWA} />
     </div>
   );
 };
