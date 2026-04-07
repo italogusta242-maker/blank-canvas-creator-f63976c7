@@ -276,11 +276,12 @@ const DailyGoals = ({
       </div>
 
       <div className="space-y-1.5 md:space-y-3">
-        {activeGoals.map((goal) => {
+        {sortedGoals.map((goal, idx) => {
           const done = isGoalDone(goal.key);
           const GoalIcon = GOAL_ICONS[goal.key] || Droplets;
           const color = GOAL_COLORS[goal.key] || waterBarColor;
           const auto = isAutoGoal(goal.key);
+          const isFirstManual = !auto && (idx === 0 || isAutoGoal(sortedGoals[idx - 1].key));
 
           if (goal.key === "agua") {
             return (
@@ -325,27 +326,36 @@ const DailyGoals = ({
           }
 
           return (
-            <div key={goal.key} className="bg-secondary/5 p-2 md:p-3 rounded-xl md:rounded-2xl border border-secondary/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle 
-                    done={done} 
-                    color={color} 
-                    onClick={!auto ? () => toggleGoal(goal.key) : undefined} 
-                  />
-                  <div>
-                    <span className={`flex items-center gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider ${done ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
-                      <GoalIcon size={14} style={{ color: done ? `${color}80` : color }} /> {goal.label}
-                      {auto && <span className="text-[9px] opacity-40 font-normal italic lowercase ml-1">(Auto)</span>}
-                    </span>
-                    <span className="text-[10px] md:text-xs text-muted-foreground/40 leading-tight block">{goal.description}</span>
-                  </div>
+            <React.Fragment key={goal.key}>
+              {isFirstManual && (
+                <div className="flex items-center gap-2 pt-1.5 pb-0.5">
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Manuais</span>
+                  <div className="h-px flex-1 bg-border/50" />
                 </div>
-                <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${done ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
-                  {done ? "OK" : "P"}
-                </span>
+              )}
+              <div className={`p-2 md:p-3 rounded-xl md:rounded-2xl border ${auto ? "bg-primary/5 border-primary/15" : "bg-secondary/5 border-secondary/10"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle 
+                      done={done} 
+                      color={color} 
+                      onClick={!auto ? () => toggleGoal(goal.key) : undefined} 
+                    />
+                    <div>
+                      <span className={`flex items-center gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider ${done ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
+                        <GoalIcon size={14} style={{ color: done ? `${color}80` : color }} /> {goal.label}
+                        {auto && <span className="text-[9px] opacity-50 font-semibold tracking-wider text-primary/70 ml-1">AUTOMÁTICO</span>}
+                      </span>
+                      <span className="text-[10px] md:text-xs text-muted-foreground/40 leading-tight block">{goal.description}</span>
+                    </div>
+                  </div>
+                  <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${done ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
+                    {done ? "OK" : "P"}
+                  </span>
+                </div>
               </div>
-            </div>
+            </React.Fragment>
           );
         })}
 
