@@ -133,8 +133,17 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
 
       <div className="p-2 space-y-2">
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-primary" size={24} />
+          <div className="space-y-2 p-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-muted" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-28 bg-muted rounded" />
+                  <div className="h-2 w-16 bg-muted/60 rounded" />
+                </div>
+                <div className="h-4 w-10 bg-muted/40 rounded" />
+              </div>
+            ))}
           </div>
         ) : (
           <>
@@ -299,7 +308,7 @@ export default function Comunidade() {
           image_url, 
           created_at, 
           user_id, 
-          profiles (id, nome, avatar_url, is_verified),
+          profiles (id, full_name, avatar_url, is_verified),
           community_reactions (user_id, reaction_type)
         `)
         .order("created_at", { ascending: false })
@@ -394,7 +403,23 @@ export default function Comunidade() {
             <CreatePost onPosted={() => queryClient.invalidateQueries({ queryKey: ["community-posts"] })} />
 
             {status === "pending" ? (
-              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-accent" size={32} /></div>
+              <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
+                {[1,2,3].map(i => (
+                  <div key={i} className="p-4 space-y-3 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3 w-24 bg-muted rounded" />
+                        <div className="h-2 w-16 bg-muted/60 rounded" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-full bg-muted/50 rounded" />
+                      <div className="h-3 w-3/4 bg-muted/40 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground bg-card/30 rounded-2xl border border-dashed border-border">
                 <Trophy className="mx-auto mb-4 opacity-10" size={64} />
