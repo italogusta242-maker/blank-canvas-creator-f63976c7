@@ -1245,9 +1245,9 @@ const AdminUsuarios = () => {
                       {/* Profiles pendentes sem pagamento */}
                       {alunosPendentes
                         .filter(a => !search || 
-                          a.nome?.toLowerCase().includes(search.toLowerCase()) || 
+                          a.full_name?.toLowerCase().includes(search.toLowerCase()) || 
                           a.email?.toLowerCase().includes(search.toLowerCase()) ||
-                          a.telefone?.includes(search)
+                          a.phone?.includes(search)
                         )
                         .map((aluno) => (
                         <div key={aluno.id}>
@@ -1257,12 +1257,12 @@ const AdminUsuarios = () => {
                           >
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold shrink-0">
-                                {aluno.nome?.charAt(0).toUpperCase() || "?"}
+                                {aluno.full_name?.charAt(0).toUpperCase() || "?"}
                               </div>
                               <div>
-                                <p className="font-medium text-foreground">{aluno.nome || "Sem nome"}</p>
+                                <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                                 <p className="text-xs text-muted-foreground">{aluno.email}</p>
-                                {aluno.telefone && <p className="text-xs text-muted-foreground">{aluno.telefone}</p>}
+                                {aluno.phone && <p className="text-xs text-muted-foreground">{aluno.phone}</p>}
                               </div>
                             </div>
                             <div className="flex flex-wrap gap-2 items-center">
@@ -1277,9 +1277,9 @@ const AdminUsuarios = () => {
                           {expandedUser === aluno.id && (
                             <div className="px-6 pb-5 space-y-4 bg-secondary/5 border-t border-border">
                               <div className="grid grid-cols-2 gap-x-6 gap-y-3 pt-4">
-                                <Field label="Nome completo" value={aluno.nome || "—"} />
+                                <Field label="Nome completo" value={aluno.full_name || "—"} />
                                 <Field label="E-mail" value={aluno.email || "—"} />
-                                <Field label="Telefone" value={aluno.telefone || "—"} />
+                                <Field label="Telefone" value={aluno.phone || "—"} />
                                 <Field label="CPF" value={aluno.cpf || "—"} />
                                 <Field label="Data de cadastro" value={new Date(aluno.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} />
                                 <Field label="Status" value={aluno.status} />
@@ -1315,7 +1315,7 @@ const AdminUsuarios = () => {
                                       if (res.error) throw new Error(res.error.message);
                                       const result = res.data as any;
                                       if (result?.error) throw new Error(result.error);
-                                      toast.success(`Usuário ${aluno.nome || aluno.email} ativado com sucesso!`);
+                                      toast.success(`Usuário ${aluno.full_name || aluno.email} ativado com sucesso!`);
                                       setExpandedUser(null);
                                       setEditPlanId("");
                                       fetchAlunos();
@@ -1421,9 +1421,9 @@ const AdminUsuarios = () => {
                     <div className="divide-y divide-border">
                       {alunosPagosNaoAtivados
                         .filter(a => !search || 
-                          a.nome?.toLowerCase().includes(search.toLowerCase()) || 
+                          a.full_name?.toLowerCase().includes(search.toLowerCase()) || 
                           a.email?.toLowerCase().includes(search.toLowerCase()) ||
-                          a.telefone?.includes(search)
+                          a.phone?.includes(search)
                         )
                         .map((aluno) => {
                         const evidence = paymentEvidence[aluno.id];
@@ -1435,12 +1435,12 @@ const AdminUsuarios = () => {
                             >
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center text-destructive font-bold shrink-0">
-                                  {aluno.nome?.charAt(0).toUpperCase() || "?"}
+                                  {aluno.full_name?.charAt(0).toUpperCase() || "?"}
                                 </div>
                                 <div>
-                                  <p className="font-medium text-foreground">{aluno.nome || "Sem nome"}</p>
+                                  <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                                   <p className="text-xs text-muted-foreground">{aluno.email}</p>
-                                  {aluno.telefone && <p className="text-xs text-muted-foreground">{aluno.telefone}</p>}
+                                  {aluno.phone && <p className="text-xs text-muted-foreground">{aluno.phone}</p>}
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-2 items-center">
@@ -1454,9 +1454,9 @@ const AdminUsuarios = () => {
                             {expandedUser === aluno.id && (
                               <div className="px-6 pb-5 space-y-4 bg-secondary/5 border-t border-border">
                                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 pt-4">
-                                  <Field label="Nome completo" value={aluno.nome || "—"} />
+                                  <Field label="Nome completo" value={aluno.full_name || "—"} />
                                   <Field label="E-mail" value={aluno.email || "—"} />
-                                  <Field label="Telefone" value={aluno.telefone || "—"} />
+                                  <Field label="Telefone" value={aluno.phone || "—"} />
                                   <Field label="CPF" value={aluno.cpf || "—"} />
                                   <Field label="Data de cadastro" value={new Date(aluno.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} />
                                   <Field label="Status atual" value={aluno.status} />
@@ -1504,7 +1504,7 @@ const AdminUsuarios = () => {
                                         if (res.error) throw new Error(res.error.message);
                                         const result = res.data as any;
                                         if (result?.error) throw new Error(result.error);
-                                        toast.success(`Usuário ${aluno.nome || aluno.email} ativado com sucesso!`);
+                                        toast.success(`Usuário ${aluno.full_name || aluno.email} ativado com sucesso!`);
                                         setExpandedUser(null);
                                         setEditPlanId("");
                                         fetchAlunos();
@@ -1562,10 +1562,10 @@ const AdminUsuarios = () => {
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-bold shrink-0">
-                              {aluno.nome?.charAt(0).toUpperCase() || "?"}
+                              {aluno.full_name?.charAt(0).toUpperCase() || "?"}
                             </div>
                             <div>
-                              <p className="font-medium text-foreground">{aluno.nome || "Sem nome"}</p>
+                              <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                               <p className="text-xs text-muted-foreground">{aluno.email}</p>
                             </div>
                           </div>
@@ -1586,9 +1586,9 @@ const AdminUsuarios = () => {
                           <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4 bg-secondary/5">
                             {/* Dados pessoais */}
                             <SectionBlock icon={User} title="Dados Pessoais">
-                              <Field label="Nome" value={aluno.nome || "—"} />
+                              <Field label="Nome" value={aluno.full_name || "—"} />
                               <Field label="Email" value={aluno.email || "—"} />
-                              <Field label="Telefone" value={aluno.telefone || "—"} />
+                              <Field label="Telefone" value={aluno.phone || "—"} />
                               <Field label="CPF" value={aluno.cpf || "—"} />
                               <Field label="Nascimento" value={aluno.nascimento || "—"} />
                               <Field label="Sexo" value={aluno.sexo || "—"} />
