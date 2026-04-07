@@ -1,75 +1,68 @@
 
 
-## Plano: Sincronização Financeira Completa
+## Plano: Finalizar Sincronização Financeira
 
-### Resumo
+### Ações Imediatas
 
-Cruzar o CSV InfinitePay com o banco de dados, criar os 6 planos, registrar pagamentos/assinaturas retroativos, corrigir status, e gerar relatório de auditoria.
+**1. Desativar Mariana Honório (churn)**
+- Profile ID: `e0535f95-71d6-4550-9e63-f27041129526`
+- UPDATE `profiles` SET `status = 'cancelado'`
+- Não criar subscription/payment para ela
 
-### Observações do Usuário
-- **Victor Gabriel Viana Neri** → teste do dono da InfinitePay, **excluir** do cruzamento
-- **Nomes masculinos** (Anísio, Pietro) → sinalizar, verificar com a aluna depois
-- **2 alunas sem match** → provavelmente os pagamentos restantes são delas (dedução por eliminação)
+**2. Match Solange A Vilar → Inara Vilar**
+- Profile ID: `56223de5-bb9c-413a-a75c-8f535f3f4b05`
+- CSV: "solange a vilar", R$ 39,90, Pix → Plano Mensal (R$ 39,90)
+- Criar subscription + payment retroativo
 
-### Estado Atual do Banco
+**3. Excluir do cruzamento**
+- "ana chagas" (teste da ANAAC) → ignorar
+- "Victor Gabriel Viana Neri" (teste InfinitePay) → já excluído
+- 5 contas sistema (Admin ANAAC, Admin Master, ANAAC, admin@anaac.com, aluno@anaac.com)
 
-| Dado | Valor |
-|------|-------|
-| Perfis ativo/active | 90 (85 + 5) |
-| `subscription_plans` | 0 |
-| `payments` | 0 |
-| `subscriptions` | 0 |
+### Inserção em Massa (subscriptions + payments)
 
-### Etapas
+Script Python que:
+1. Re-lê o CSV da InfinitePay (preciso que reenvie ou uso dados em cache da análise anterior)
+2. Para cada transação aprovada pareada com perfil ativo:
+   - Insere 1 `subscription` (plan_id inferido pelo valor, status=active, payment_status=paid)
+   - Insere 1 `payment` (amount, status=paid, gateway_transaction_id=NSU)
+3. Inclui os 7 matches manuais + Aline + Inara Vilar
 
-**1. Criar os 6 planos em `subscription_plans`** (migration)
+**Mapeamento valor → plano:**
 
-| Nome | Preço | Meses | Cupom |
-|------|-------|-------|-------|
-| Mensal | R$ 39,90 | 1 | - |
-| Trimestral | R$ 109,00 | 3 | - |
-| Semestral | R$ 197,00 | 6 | - |
-| Mensal ANAAC10 | R$ 35,90 | 1 | ANAAC10 |
-| Trimestral ANAAC10 | R$ 98,00 | 3 | ANAAC10 |
-| Semestral ANAAC10 | R$ 177,00 | 6 | ANAAC10 |
+| Valor CSV | Plan ID | Nome |
+|-----------|---------|------|
+| 3590, 3748 | c5852b5c | Mensal ANAAC10 (R$35,90) |
+| 3990 | 00423c77 | Mensal (R$39,90) |
+| 9800, 10230 | 3f52ae0c | Trimestral ANAAC10 (R$98,00) |
+| 10900 | 91a8944a | Trimestral (R$109,00) |
+| 18476 | c437a926 | Semestral ANAAC10 (R$177,00) |
+| 19700 | 89639d9b | Semestral (R$197,00) |
 
-**2. Corrigir status `active` → `ativo`** (insert tool)
+### Lista para Revisão Manual (gerar CSV)
 
-5 perfis: `admin@anaac.com`, `villarinara@icloud.com`, `anaac.master@gmail.com`, `malulira9@gmail.com`, `aline_spok@hotmail.com`
+Gerar `/mnt/documents/pendentes_revisao_manual.csv` com:
 
-**3. Script Python de cruzamento** (exec)
+**A) Pagamentos no CSV sem perfil identificado** (~9 transações de cartão sem nome + Anísio + Pietro)
+- Colunas: Nome CSV, Valor, Meio, Data, NSU, Observação
 
-- Usuário reenvia o CSV (ou uso os dados já extraídos da análise anterior)
-- Normaliza nomes do CSV e do banco
-- Exclui Victor Gabriel Viana Neri (teste InfinitePay)
-- Mapeia valores CSV → plano (3990→Mensal, 3590→Mensal ANAAC10, 3748→Mensal ANAAC10 cartão, 10900→Trimestral, 9800→Trimestral ANAAC10, 10230→Trimestral ANAAC10 cartão, 19700→Semestral, 18476→Semestral ANAAC10 cartão)
-- Sinaliza nomes masculinos como "verificar com aluna"
-- Alunas sem match no CSV → dedução por eliminação (associar pagamentos órfãos)
+**B) Alunas ativas sem pagamento no CSV** (~10 alunas)
+- Colunas: Nome, Email, Telefone, Observação
+- Inclui: Ana Beatriz Brandao Macedo, Anna Julia Machado, Clara Mann Boaroli, Giovana Danielli, Giovana Ribeiro, Joany Medeiros, Julia Araujo Santos, Karla Beatriz, Lívia Mirelly, Nicolle Franco, Ana Pais, etc.
 
-**4. Gerar relatório** → `/mnt/documents/auditoria_completa.csv`
+**C) Remarketing (negadas/canceladas)** (~14 transações)
+- Colunas: Nome CSV, Valor, Status, Data
 
-Colunas: Nome DB, Email, Telefone, Status DB, Nome CSV, Valor Pago, Plano Inferido, Meio, Data, Resultado (PAREADO / SEM_PAGAMENTO_CSV / PAGAMENTO_SEM_PERFIL / REMARKETING / TESTE_EXCLUIDO / TERCEIRO_VERIFICAR)
+### Etapas Técnicas
 
-**5. Criar registros retroativos** (insert tool, após aprovação)
-
-- `subscriptions`: 1 por aluna pareada, vinculada ao plano correto
-- `payments`: 1 por transação aprovada, com `gateway_transaction_id` = NSU
-
-**6. Lista de remarketing**
-
-Transações negadas/canceladas do CSV → sinalizadas no relatório para ação comercial
+1. `INSERT` para desativar Mariana Honório
+2. Script Python `/tmp/sync_financial.py`:
+   - Cruza CSV × perfis (usa dados da análise anterior em memória)
+   - Insere `subscriptions` e `payments` via psql
+   - Gera `/mnt/documents/pendentes_revisao_manual.csv`
+3. Atualizar telefone de Inara Vilar (se disponível na lista manual)
 
 ### Pré-requisito
 
-Preciso que o CSV seja reenviado (o upload anterior não persistiu no sistema de arquivos). Assim que receber, executo tudo de uma vez.
-
-### Arquivos
-
-| Arquivo | Ação |
-|---------|------|
-| Migration SQL | Criar `subscription_plans` com 6 planos |
-| Insert SQL | Corrigir 5 perfis `active` → `ativo` |
-| Script Python `/tmp/` | Cruzamento CSV × DB |
-| `/mnt/documents/auditoria_completa.csv` | Relatório final |
-| Insert SQL (pós-aprovação) | Criar `subscriptions` + `payments` retroativos |
+O CSV `infinite_pay_report.csv` precisa ser reenviado (uploads não persistem entre mensagens). Caso contrário, uso os dados extraídos da análise anterior que tenho em contexto.
 
