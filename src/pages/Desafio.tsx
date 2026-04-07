@@ -533,13 +533,14 @@ const Challenge = () => {
         }
       }
       const isConfigDiet = planData?.is_config_diet === true;
+      const isConfigTraining = planData?.is_config_training === true;
       
-      if (isConfigDiet) {
-        // Config diets use non-UUID ids — delete old entry then insert fresh
+      if (isConfigDiet || isConfigTraining) {
+        // Config items use non-UUID ids — delete old entry then insert fresh
         await supabase.from("user_selected_plans")
           .delete()
           .eq("user_id", user.id)
-          .eq("plan_type", "diet");
+          .eq("plan_type", normalizedType);
         
         const { error } = await supabase.from("user_selected_plans").insert({
           user_id: user.id,
