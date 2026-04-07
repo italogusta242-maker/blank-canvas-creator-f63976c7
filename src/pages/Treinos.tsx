@@ -521,7 +521,9 @@ const Treinos = () => {
             <TrainingAnalysisCards avaliacaoPostural={plan.avaliacao_postural} pontosMelhoria={plan.pontos_melhoria} objetivoMesociclo={plan.objetivo_mesociclo} />
           )}
 
-          <TrainingObjectiveCard />
+          <TrainingObjectiveCard configTrainingIndex={
+            plan ? ALL_TRAININGS.findIndex(t => t.id === plan.id) : null
+          } />
 
           <div className="grid grid-cols-1 gap-4">
             {Array.isArray(workoutGroups) && workoutGroups.map((group, i) => {
