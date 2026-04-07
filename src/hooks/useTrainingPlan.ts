@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { TrainingPlan, WorkoutGroup } from "@/components/training/types";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { parseWorkoutDescription, splitExercisesIntoGroups } from "@/components/training/helpers";
 import { pickPreferredChallenge } from "@/lib/challenges";
 
@@ -35,8 +36,37 @@ export function useTrainingPlan() {
 
       let basePlan: TrainingPlan | null = null;
       const isLesson = selectedPlan?.plan_data?.is_lesson === true;
+      const isConfigTraining = selectedPlan?.plan_data?.is_config_training === true;
 
-      if (selectedPlan?.source_plan_id) {
+      // Handle config-driven (hardcoded) training plans
+      if (isConfigTraining) {
+        const tIdx = selectedPlan.plan_data.training_index ?? 0;
+        const configPlan = ALL_TRAININGS[tIdx];
+        if (configPlan) {
+          basePlan = {
+            id: configPlan.id,
+            title: configPlan.title,
+            groups: configPlan.workouts.map(wk => ({
+              name: wk.name,
+              exercises: wk.exercises.map(ex => ({
+                name: ex.name,
+                sets: ex.sets,
+                reps: ex.reps,
+                rest: "60",
+                weight: null,
+                setsData: Array.from({ length: ex.sets }, () => ({
+                  targetReps: ex.reps,
+                  weight: null,
+                  actualReps: null,
+                  done: false,
+                })),
+              })),
+            })),
+            total_sessions: 50,
+            valid_until: null,
+          } as any;
+        }
+      } else if (selectedPlan?.source_plan_id) {
         if (isLesson) {
           // Option A: Selection is a lesson ID (handle specific challenge content)
           const { data: lesson } = await supabase

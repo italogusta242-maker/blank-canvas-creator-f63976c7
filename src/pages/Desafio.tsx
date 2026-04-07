@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import PlanilhaCorrida from "@/components/training/PlanilhaCorrida";
 import { ALL_DIETS } from "@/components/diet/DietPlanData";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -347,6 +348,18 @@ const Challenge = () => {
     let list = [...moduleLessons];
 
     if (moduleType === 'workouts') {
+      // Config trainings come first (hardcoded)
+      const configTrainings = ALL_TRAININGS.map((t, idx) => ({
+        id: t.id,
+        title: t.title,
+        duration: "PLANO",
+        video_url: "",
+        description: `__CONFIG_TRAINING__${idx}`,
+        isPlan: true,
+        isConfigTraining: true,
+        trainingIndex: idx,
+      }));
+      // DB training plans after config
       const pItems = trainingPlans.map(p => ({
         id: p.id,
         title: p.title,
@@ -355,9 +368,11 @@ const Challenge = () => {
         description: (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
         isPlan: true
       }));
-      pItems.forEach(pi => {
-        if (!list.some(l => l.title === pi.title)) list.push(pi as any);
-      });
+      // Filter DB items that duplicate config ones
+      const filteredDb = [...list, ...pItems].filter(l =>
+        !configTrainings.some(ct => l.title?.includes(ct.title))
+      );
+      return [...configTrainings as any[], ...filteredDb];
     }
     return list;
   }, [moduleLessons, dietPlans, trainingPlans, selectedModule?.type]);
@@ -423,6 +438,12 @@ const Challenge = () => {
     if ((contentItem as any)?.isConfigDiet) {
       return latestRecord.plan_data?.is_config_diet === true && 
              latestRecord.plan_data?.calories === (contentItem as any).dietCalories;
+    }
+
+    // For config trainings, match by training_index in plan_data
+    if ((contentItem as any)?.isConfigTraining) {
+      return latestRecord.plan_data?.is_config_training === true && 
+             latestRecord.plan_data?.training_index === (contentItem as any).trainingIndex;
     }
 
     const isRecordLesson = !!latestRecord.plan_data?.is_lesson;
@@ -512,13 +533,14 @@ const Challenge = () => {
         }
       }
       const isConfigDiet = planData?.is_config_diet === true;
+      const isConfigTraining = planData?.is_config_training === true;
       
-      if (isConfigDiet) {
-        // Config diets use non-UUID ids — delete old entry then insert fresh
+      if (isConfigDiet || isConfigTraining) {
+        // Config items use non-UUID ids — delete old entry then insert fresh
         await supabase.from("user_selected_plans")
           .delete()
           .eq("user_id", user.id)
-          .eq("plan_type", "diet");
+          .eq("plan_type", normalizedType);
         
         const { error } = await supabase.from("user_selected_plans").insert({
           user_id: user.id,
@@ -860,12 +882,64 @@ const Challenge = () => {
                                 <div className="grid gap-3 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
                                   {(() => {
                                     const text = currentLesson.description || '';
+                                    // Handle Config Training Plans (hardcoded)
+                                    if ((currentLesson as any)?.isConfigTraining) {
+                                      const tIdx = (currentLesson as any).trainingIndex;
+                                      const training = ALL_TRAININGS[tIdx];
+                                      if (training) {
+                                        return (
+                                          <div className="space-y-8">
+                                            {/* About Card */}
+                                            <div className="p-5 rounded-2xl border border-border/30 bg-secondary/20 space-y-3">
+                                              <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{training.emoji}</span>
+                                                <div>
+                                                  <h4 className="font-cinzel font-black text-base text-foreground">{training.title}</h4>
+                                                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{training.level} • {training.frequency}</p>
+                                                </div>
+                                              </div>
+                                              <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                                                {training.about}
+                                              </div>
+                                            </div>
+
+                                            {/* Workouts */}
+                                            {training.workouts.map((wk, wi) => (
+                                              <div key={wi} className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="h-1 w-6 bg-accent rounded-full" />
+                                                  <h5 className="text-sm font-cinzel font-black uppercase tracking-wider text-foreground">{wk.name}</h5>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                  {wk.exercises.map((ex, ei) => (
+                                                    <div key={ei} className="p-4 rounded-2xl border border-border/30 bg-card/50 flex items-center justify-between group hover:border-accent/30 transition-all">
+                                                      <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-black text-accent/60 w-5">{ei + 1}.</span>
+                                                        <span className="text-sm font-bold text-foreground">{ex.name}</span>
+                                                      </div>
+                                                      <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider shrink-0">
+                                                        {ex.sets}x {ex.reps}
+                                                      </span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            ))}
+
+                                            <p className="text-[9px] text-accent/60 uppercase tracking-widest font-bold pt-2 italic">
+                                              * Selecione para importar este treino para sua aba de Treinos.
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
                                     if (selectedModule?.type === 'workouts' || selectedModule?.type === 'running') {
                                       const exercises = parseWorkoutDescription(text);
                                       return exercises
-                                        .filter(ex => ex.name.trim() !== '') // Ignore empty section markers
+                                        .filter(ex => ex.name.trim() !== '')
                                         .map((ex, i) => (
-                                          <div key={i} className={cn("p-4 rounded-2xl border transition-all", ex.description === '__section__' ? "bg-accent/10 border-accent/20 mt-4" : "bg-white/5 border-white/5")}>
+                                          <div key={i} className={cn("p-4 rounded-2xl border transition-all", ex.description === '__section__' ? "bg-accent/10 border-accent/20 mt-4" : "bg-card/50 border-border/30")}>
                                             <div className="flex items-center justify-between">
                                               <span className={cn("font-bold text-sm", ex.description === '__section__' ? "text-accent uppercase tracking-widest" : "text-foreground")}>
                                                 {ex.name}
@@ -975,6 +1049,13 @@ const Challenge = () => {
                                             sourceId: currentLesson.id,
                                             planType: 'diet',
                                             planData: { is_config_diet: true, calories: (currentLesson as any).dietCalories, diet_index: (currentLesson as any).dietIndex },
+                                            planTitle: currentLesson.title,
+                                          });
+                                        } else if ((currentLesson as any).isConfigTraining) {
+                                          importPlanMutation.mutate({
+                                            sourceId: currentLesson.id,
+                                            planType: 'training',
+                                            planData: { is_config_training: true, training_index: (currentLesson as any).trainingIndex },
                                             planTitle: currentLesson.title,
                                           });
                                         } else {
