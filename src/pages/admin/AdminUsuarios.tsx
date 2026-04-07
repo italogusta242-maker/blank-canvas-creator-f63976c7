@@ -52,6 +52,16 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div><p className="text-xs text-muted-foreground">{label}</p><p className="text-foreground font-medium">{value}</p></div>
 );
 
+const UserAvatar = ({ name, avatarUrl, className = "bg-secondary text-primary" }: { name?: string | null; avatarUrl?: string | null; className?: string }) => (
+  avatarUrl ? (
+    <img src={avatarUrl} alt={name || ""} className="w-10 h-10 rounded-full object-cover shrink-0" />
+  ) : (
+    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0", className)}>
+      {name?.charAt(0).toUpperCase() || "?"}
+    </div>
+  )
+);
+
 // ============================
 // GROUP DETAIL PANEL
 // ============================
