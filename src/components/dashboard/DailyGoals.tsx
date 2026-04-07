@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UtensilsCrossed, Droplets, Moon, TrendingUp, Check, History, Camera, X, Loader2, ImageIcon, Footprints, BookOpen, CandyOff, Heart, Activity, Shield, Smartphone, Flame } from "lucide-react";
 import DailyGoalsHistoryModal from "./DailyGoalsHistoryModal";
