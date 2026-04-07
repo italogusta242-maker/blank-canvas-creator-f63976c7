@@ -440,7 +440,10 @@ const Perfil = () => {
            </div>
            
            <div className="text-center space-y-1">
-             <h2 className="font-cinzel text-xl font-bold text-foreground leading-tight">{full_name}</h2>
+              <h2 className="font-cinzel text-xl font-bold text-foreground leading-tight flex items-center justify-center gap-1.5">
+                {full_name}
+                {profile?.is_verified && <BadgeCheck size={18} className="text-blue-500 fill-blue-500/20" />}
+              </h2>
              <p className="text-xs text-muted-foreground uppercase tracking-widest">Aluno ANAAC · Desde {memberSince}</p>
            </div>
            
