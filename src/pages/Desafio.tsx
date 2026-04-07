@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import PlanilhaCorrida from "@/components/training/PlanilhaCorrida";
 import { ALL_DIETS } from "@/components/diet/DietPlanData";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
