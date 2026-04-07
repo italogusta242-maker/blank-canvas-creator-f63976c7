@@ -234,42 +234,94 @@ const AdminDesafios = () => {
 
       // 3. Sync Modules
       const modules = challenge.modules || [];
-      const currentModuleIds = modules.filter((m: any) => !m.id.startsWith('temp-')).map((m: any) => m.id);
-      
-      const { data: existingModules } = await supabase.from('challenge_modules').select('id').eq('challenge_id', challengeId);
-      const modulesToDelete = existingModules?.filter(em => !currentModuleIds.includes(em.id)).map(em => em.id) || [];
+      const persistedModuleIds = modules
+        .map((m: any) => m.id)
+        .filter((id: unknown): id is string => typeof id === "string" && id.length > 0 && !id.startsWith("temp-"));
+
+      const { data: existingModules } = await supabase
+        .from("challenge_modules")
+        .select("id")
+        .eq("challenge_id", challengeId);
+      const modulesToDelete = existingModules?.filter((em) => !persistedModuleIds.includes(em.id)).map((em) => em.id) || [];
 
       if (modulesToDelete.length > 0) {
-        await supabase.from('challenge_modules').delete().in('id', modulesToDelete);
+        await supabase.from("challenge_modules").delete().in("id", modulesToDelete);
       }
 
-      // 3. Prepare Batch Upserts
-      const modulesToUpsert = modules.map(mod => {
-        const base: Record<string, any> = {
+      const existingModulePayload = modules
+        .filter((mod: any) => typeof mod.id === "string" && mod.id.length > 0 && !mod.id.startsWith("temp-"))
+        .map((mod: any) => ({
+          id: mod.id,
           challenge_id: challengeId,
           title: mod.title,
           description: mod.description,
           type: mod.type,
-          icon: mod.icon || 'BookOpen',
+          icon: mod.icon || "BookOpen",
           order_index: mod.sort_order ?? mod.order_index ?? 0,
           cover_image: mod.cover_image,
-          is_locked: mod.access_restricted ?? mod.is_locked ?? false
-        };
-        if (mod.id && typeof mod.id === 'string' && !mod.id.startsWith('temp-')) base.id = mod.id;
-        return base;
-      });
+          is_locked: mod.access_restricted ?? mod.is_locked ?? false,
+        }));
 
-      const { data: syncedModules, error: modError } = await supabase
-        .from('challenge_modules')
-        .upsert(modulesToUpsert)
-        .select();
+      const newModulePayload = modules
+        .filter((mod: any) => !(typeof mod.id === "string" && mod.id.length > 0 && !mod.id.startsWith("temp-")))
+        .map((mod: any) => ({
+          challenge_id: challengeId,
+          title: mod.title,
+          description: mod.description,
+          type: mod.type,
+          icon: mod.icon || "BookOpen",
+          order_index: mod.sort_order ?? mod.order_index ?? 0,
+          cover_image: mod.cover_image,
+          is_locked: mod.access_restricted ?? mod.is_locked ?? false,
+        }));
 
-      if (modError) throw modError;
+      if (existingModulePayload.length > 0) {
+        const { error: updateModulesError } = await supabase
+          .from("challenge_modules")
+          .upsert(existingModulePayload, { onConflict: "id" });
+        if (updateModulesError) throw updateModulesError;
+      }
+
+      if (newModulePayload.length > 0) {
+        const { error: insertModulesError } = await supabase
+          .from("challenge_modules")
+          .insert(newModulePayload);
+        if (insertModulesError) throw insertModulesError;
+      }
+
+      const { data: syncedModules, error: syncedModulesError } = await supabase
+        .from("challenge_modules")
+        .select("id, title, order_index")
+        .eq("challenge_id", challengeId)
+        .order("order_index", { ascending: true });
+
+      if (syncedModulesError) throw syncedModulesError;
 
       // 4. Sync Lessons
       const lessonsToUpsert: any[] = [];
       const lessonsToInsert: any[] = [];
-      const moduleMap = new Map(syncedModules.map((m, idx) => [modules[idx].id, m.id]));
+      const moduleMap = new Map<string, string>();
+      const usedModuleIds = new Set<string>();
+
+      for (const mod of modules) {
+        if (typeof mod.id === "string" && mod.id.length > 0 && !mod.id.startsWith("temp-")) {
+          moduleMap.set(mod.id, mod.id);
+          usedModuleIds.add(mod.id);
+          continue;
+        }
+
+        const matchedModule = syncedModules?.find(
+          (dbModule) =>
+            !usedModuleIds.has(dbModule.id) &&
+            dbModule.title === mod.title &&
+            (dbModule.order_index ?? 0) === (mod.sort_order ?? mod.order_index ?? 0)
+        );
+
+        if (matchedModule) {
+          moduleMap.set(mod.id, matchedModule.id);
+          usedModuleIds.add(matchedModule.id);
+        }
+      }
 
       for (const mod of modules) {
         const dbModuleId = moduleMap.get(mod.id);
@@ -278,26 +330,25 @@ const AdminDesafios = () => {
         const lessons = mod.lessons || [];
         const currentLessonIds = lessons
           .map((l: any) => l.id)
-          .filter((id: unknown): id is string => typeof id === 'string' && !id.startsWith('temp-') && !id.startsWith('item-'));
-        
-        // Cleanup deleted lessons for this module
-        const { data: existingLessons } = await supabase.from('challenge_lessons').select('id').eq('module_id', dbModuleId);
-        const lessonsToDelete = existingLessons?.filter(el => !currentLessonIds.includes(el.id)).map(el => el.id) || [];
+          .filter((id: unknown): id is string => typeof id === "string" && !id.startsWith("temp-") && !id.startsWith("item-"));
+
+        const { data: existingLessons } = await supabase.from("challenge_lessons").select("id").eq("module_id", dbModuleId);
+        const lessonsToDelete = existingLessons?.filter((el) => !currentLessonIds.includes(el.id)).map((el) => el.id) || [];
         if (lessonsToDelete.length > 0) {
-          await supabase.from('challenge_lessons').delete().in('id', lessonsToDelete);
+          await supabase.from("challenge_lessons").delete().in("id", lessonsToDelete);
         }
 
         lessons.forEach((lesson: any) => {
           const lessonBase: Record<string, any> = {
             module_id: dbModuleId,
             title: lesson.title,
-            description: lesson.description || '',
-            video_url: lesson.video_url || '',
-            duration: lesson.duration || '05:00',
+            description: lesson.description || "",
+            video_url: lesson.video_url || "",
+            duration: lesson.duration || "05:00",
             order_index: lesson.sort_order ?? lesson.order_index ?? 0,
           };
 
-          if (typeof lesson.id === 'string' && !lesson.id.startsWith('temp-') && !lesson.id.startsWith('item-')) {
+          if (typeof lesson.id === "string" && !lesson.id.startsWith("temp-") && !lesson.id.startsWith("item-")) {
             lessonsToUpsert.push({ ...lessonBase, id: lesson.id });
           } else {
             lessonsToInsert.push(lessonBase);
@@ -306,16 +357,12 @@ const AdminDesafios = () => {
       }
 
       if (lessonsToUpsert.length > 0) {
-        const { error: lessonUpsertError } = await supabase
-          .from('challenge_lessons')
-          .upsert(lessonsToUpsert);
+        const { error: lessonUpsertError } = await supabase.from("challenge_lessons").upsert(lessonsToUpsert, { onConflict: "id" });
         if (lessonUpsertError) throw lessonUpsertError;
       }
 
       if (lessonsToInsert.length > 0) {
-        const { error: lessonInsertError } = await supabase
-          .from('challenge_lessons')
-          .insert(lessonsToInsert);
+        const { error: lessonInsertError } = await supabase.from("challenge_lessons").insert(lessonsToInsert);
         if (lessonInsertError) throw lessonInsertError;
       }
 
