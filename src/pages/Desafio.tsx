@@ -191,11 +191,10 @@ const Challenge = () => {
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["profile-group"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["flame-state"] });
+      await queryClient.invalidateQueries({ queryKey: ["training-plan"] });
       setIsChangingPlanner(false);
       toast.success("Planner ativado com sucesso!");
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     } catch(err) {
       console.error(err);
       toast.error("Erro ao ativar o planner.");
