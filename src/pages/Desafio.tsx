@@ -440,6 +440,12 @@ const Challenge = () => {
              latestRecord.plan_data?.calories === (contentItem as any).dietCalories;
     }
 
+    // For config trainings, match by training_index in plan_data
+    if ((contentItem as any)?.isConfigTraining) {
+      return latestRecord.plan_data?.is_config_training === true && 
+             latestRecord.plan_data?.training_index === (contentItem as any).trainingIndex;
+    }
+
     const isRecordLesson = !!latestRecord.plan_data?.is_lesson;
     return latestRecord.source_plan_id === sourceId && isRecordLesson === isLessonInList;
   };
