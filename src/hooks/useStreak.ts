@@ -67,8 +67,8 @@ export const useStreak = (userId?: string) => {
         }
       }
 
-      // Final streak is the max between calculation and DB column (to respect admin manual changes)
-      const finalStreak = Math.max(calculatedStreak, flame?.streak || 0);
+      // Use calculated streak only — DB value may be stale/inflated
+      const finalStreak = calculatedStreak;
       
       return {
         streak: finalStreak,
