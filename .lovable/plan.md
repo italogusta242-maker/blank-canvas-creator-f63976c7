@@ -1,71 +1,40 @@
 
 
-## Bug Fix: Adherence Exceeding 100% + UI Refinement
+## Correções: Adesão, Nome do Planner, e Auto-check de Treino
 
-### Problem 1: Adherence > 100%
+### Problema 1: Adesão (círculo hero) não bate com Score de Evolução
 
-The adherence displayed in `DashboardHero` comes from `useFlameState().adherence`. This value starts from `calculateAdherence()` (already capped at 100), BUT `optimisticFlameUpdate` in `flameOptimistic.ts` adds deltas from multiple sources (meals, water, goals, workouts). Each action adds points (`adherenceDelta`) to the cached value. While `flameOptimistic.ts` does `Math.min(100, ...)`, the problem is the **accumulation**:
+**Causa**: `calculateAdherence()` em `useFlameState.ts` calcula apenas `dias_treinados / 7 * 100`. O score de evolução usa o composto `Treino(40) + Dieta(40) + Metas(20) = 100`. São métricas completamente diferentes.
 
-- `toggleMeal` adds `~7pts` per meal (40/6) — 6 meals = 40pts
-- `setWater` adds up to 10pts  
-- `toggleGoal` adds 3pts each
-- Workout completion adds training points
-- These stack on top of the DB-fetched adherence (which already includes workout days)
+**Solução**: Substituir a adesão do círculo pelo `performanceScore` do `useRealPerformance()`. Assim, o que aparece no círculo do hero será exatamente o score de hoje (mesmo valor do gráfico).
 
-The root cause: `calculateAdherence()` returns workout-based adherence (e.g. 57%), then optimistic deltas from meals/water/goals add ON TOP of that, easily pushing past 100%.
+**Arquivo**: `src/pages/Dashboard.tsx`
+- Em vez de usar `adherenceReal` do `useFlameState()`, usar `performanceScore` do `useRealPerformance()` como valor de adesão passado ao `DashboardHero`
+- Manter o `useFlameState` apenas para streak e flame state
 
-### Problem 2: UI needs more breathing room
+### Problema 2: Nome "Planner Principal" em vez de "Metas Diárias"
 
-Cards in the diet/training sections need more padding, softer shadows, and better spacing between navigation tabs and content.
+**Arquivo**: `src/components/dashboard/DailyGoals.tsx` (linha 241)
+- Trocar `"Planner Principal"` por `"Metas Diárias"`
+
+### Problema 3: Treinamento marca como feito incorretamente
+
+**Causa**: `isGoalDone("treino")` verifica se o último dia do array `performanceData` tem `training > 0`. Isso significa que se a aluna treinou ontem, hoje mostra como feito. Mas o planner diz "X treinos na semana" — deveria checar se o total de treinos na semana atingiu a meta semanal.
+
+**Solução**: Mudar a lógica do `treino` para contar dias com treino nos últimos 7 dias e comparar com a meta do planner (ex: Elite = 5 treinos/semana, Essencial = 2, etc.).
+
+**Arquivo**: `src/components/dashboard/DailyGoals.tsx`
+- Extrair o número de treinos exigidos do `description` do goal (ex: "2 treinos" → 2, "5 treinos" → 5)
+- Contar dias únicos com `training > 0` nos últimos 7 dias do `performanceData`
+- Marcar como feito apenas se `diasTreinados >= metaSemanal`
 
 ---
 
-### Plan
+### Resumo de Arquivos
 
-#### Step 1: Cap adherence in all display points
-
-**Files**: `src/components/dashboard/DashboardHero.tsx`, `src/pages/Dashboard.tsx`
-
-- In `Dashboard.tsx` line 137: `const adherence = Math.min(100, adherenceReal);`
-- In `DashboardHero.tsx`: cap the `adherence` prop usage: `const cappedAdherence = Math.min(adherence, 100);` and use it everywhere in the component
-- In `DietPlan.tsx` line 78: `const mealProgress = Math.min(totalMeals > 0 ? (mealsCompleted / totalMeals) * 100 : 0, 100);`
-
-#### Step 2: Fix optimistic flame delta accumulation
-
-**File**: `src/hooks/useDailyHabits.ts`
-
-The `optimisticFlameUpdate` calls use raw deltas that can inflate adherence. The `flameOptimistic.ts` already caps at 100, but verify and add safety:
-- In `toggleMeal`: reduce per-meal delta from `40/mealCount` to be proportional (already fine, just ensure cap)
-- The real fix is ensuring `flameOptimistic.ts` line 23 cap works — it does (`Math.min(100, ...)`), so the overflow must come from the initial value being wrong when `old` is null (line 21). Fix: `Math.min(Math.max(0, delta.adherenceDelta ?? 0), 100)`
-
-#### Step 3: UI Refinement — Cards & Spacing
-
-**Files**: `src/components/diet/DietPlan.tsx`, `src/pages/Desafio.tsx`
-
-- **DietPlan.tsx meal cards**: Increase padding from `px-5 pt-5 pb-3` → `px-6 pt-6 pb-4`, use `rounded-2xl shadow-md`
-- **DietPlan.tsx substitutions text**: Use `text-sm text-muted-foreground` for lighter appearance
-- **DietPlan.tsx shopping cards**: Same padding increase
-- **Desafio.tsx module section**: Add `mb-8` spacing between tabs/navigation and content area
-- **Food items**: Ensure `text-sm` for portions, `text-muted-foreground` for secondary info
-- **Check buttons**: Ensure `min-h-[44px]` touch target, `flex justify-between items-center` alignment
-
-#### Step 4: Progress bar overflow protection
-
-**File**: `src/components/ui/progress.tsx`
-
-Add CSS clamp to prevent visual overflow:
-```tsx
-style={{ transform: `translateX(-${Math.max(0, 100 - (value || 0))}%)`, ... }}
-```
-
-### Files Modified
-
-| File | Change |
-|------|--------|
-| `src/pages/Dashboard.tsx` | Cap adherence with `Math.min(100, ...)` |
-| `src/components/dashboard/DashboardHero.tsx` | Cap adherence prop |
-| `src/components/diet/DietPlan.tsx` | Cap progress, increase padding/spacing, softer shadows |
-| `src/components/ui/progress.tsx` | Prevent visual overflow |
-| `src/lib/flameOptimistic.ts` | Safety cap on initial state |
-| `src/pages/Desafio.tsx` | Spacing between navigation and content |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Dashboard.tsx` | Passar `performanceScore` como adesão ao hero em vez de `adherenceReal` |
+| `src/components/dashboard/DailyGoals.tsx` | Renomear "Planner Principal" → "Metas Diárias"; corrigir auto-check de treino para contar treinos semanais |
+| `src/hooks/useFlameState.ts` | Sem alteração (mantém streak/state, adesão não é mais usada no hero) |
 
