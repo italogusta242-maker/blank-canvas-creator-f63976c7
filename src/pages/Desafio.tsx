@@ -1044,6 +1044,13 @@ const Challenge = () => {
                                             planData: { is_config_diet: true, calories: (currentLesson as any).dietCalories, diet_index: (currentLesson as any).dietIndex },
                                             planTitle: currentLesson.title,
                                           });
+                                        } else if ((currentLesson as any).isConfigTraining) {
+                                          importPlanMutation.mutate({
+                                            sourceId: currentLesson.id,
+                                            planType: 'training',
+                                            planData: { is_config_training: true, training_index: (currentLesson as any).trainingIndex },
+                                            planTitle: currentLesson.title,
+                                          });
                                         } else {
                                           toggleItem(currentLesson.id, pType);
                                         }
