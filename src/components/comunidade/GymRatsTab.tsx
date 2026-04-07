@@ -355,7 +355,7 @@ function PodiumSeat({
       </div>
       <div className={`w-full ${height} ${accentColors[accent]} rounded-t-xl border-t border-l border-r flex flex-col items-center justify-start pt-3 relative overflow-hidden`}>
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        <span className="font-cinzel text-2xl font-black text-foreground drop-shadow-md relative z-10">{position}°</span>
+        <span className="font-cinzel text-4xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] relative z-10">{position}°</span>
         <span className="text-[9px] font-bold mt-0.5 opacity-70 relative z-10">{user.hustle_points} pts</span>
       </div>
     </div>
