@@ -210,8 +210,15 @@ const DailyGoals = ({
     switch (key) {
       case "agua": return waterDone;
       case "sono": return sleepDone;
-      case "treino": 
-        return performanceData.length > 0 && (performanceData[performanceData.length - 1]?.training || 0) > 0;
+      case "treino": {
+        // Count days with training in the last 7 days
+        const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
+        // Extract required weekly workouts from goal description (e.g. "2 treinos" → 2)
+        const treinoGoal = activeGoals.find(g => g.key === "treino");
+        const match = treinoGoal?.description?.match(/(\d+)\s*treino/i);
+        const requiredWorkouts = match ? parseInt(match[1], 10) : 3;
+        return trainedDays >= requiredWorkouts;
+      }
       case "dieta_completa":
         return mealsCompletedCount >= 5;
       case "dieta_cafe":
@@ -238,7 +245,7 @@ const DailyGoals = ({
     >
       <div className="flex items-center justify-between mb-1 md:mb-4 px-2 pt-1 border-b border-border/50 pb-2">
         <div>
-          <h3 className="font-cinzel text-sm md:text-xl font-bold text-primary">Planner Principal</h3>
+          <h3 className="font-cinzel text-sm md:text-xl font-bold text-primary">Metas Diárias</h3>
           <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest font-bold mt-0.5">{phaseLabel}</p>
         </div>
         <button
