@@ -348,6 +348,18 @@ const Challenge = () => {
     let list = [...moduleLessons];
 
     if (moduleType === 'workouts') {
+      // Config trainings come first (hardcoded)
+      const configTrainings = ALL_TRAININGS.map((t, idx) => ({
+        id: t.id,
+        title: t.title,
+        duration: "PLANO",
+        video_url: "",
+        description: `__CONFIG_TRAINING__${idx}`,
+        isPlan: true,
+        isConfigTraining: true,
+        trainingIndex: idx,
+      }));
+      // DB training plans after config
       const pItems = trainingPlans.map(p => ({
         id: p.id,
         title: p.title,
@@ -356,9 +368,11 @@ const Challenge = () => {
         description: (p as any).objetivo_mesociclo || "Plano disponível para visualização e importação.",
         isPlan: true
       }));
-      pItems.forEach(pi => {
-        if (!list.some(l => l.title === pi.title)) list.push(pi as any);
-      });
+      // Filter DB items that duplicate config ones
+      const filteredDb = [...list, ...pItems].filter(l =>
+        !configTrainings.some(ct => l.title?.includes(ct.title))
+      );
+      return [...configTrainings as any[], ...filteredDb];
     }
     return list;
   }, [moduleLessons, dietPlans, trainingPlans, selectedModule?.type]);
