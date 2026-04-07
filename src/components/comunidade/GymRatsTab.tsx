@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, Medal, Flame, User, Loader2, Dumbbell, Target } from "lucide-react";
+import { Trophy, Medal, Flame, User, Dumbbell, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -117,8 +117,41 @@ export function GymRatsTab() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="animate-spin text-primary" size={32} />
+      <div className="pb-12 space-y-6">
+        <div className="text-center space-y-2 animate-pulse">
+          <div className="h-6 w-40 bg-muted rounded mx-auto" />
+          <div className="h-4 w-56 bg-muted/60 rounded mx-auto" />
+        </div>
+        <div className="flex items-center gap-1 bg-secondary/50 rounded-xl p-1 border border-border">
+          {[1,2,3].map(i => <div key={i} className="flex-1 h-8 bg-muted rounded-lg animate-pulse" />)}
+        </div>
+        <div className="flex items-end justify-center gap-3 h-56 pt-4 animate-pulse">
+          <div className="flex flex-col items-center flex-1 gap-2">
+            <div className="w-12 h-12 rounded-full bg-muted" />
+            <div className="w-full h-28 rounded-t-xl bg-muted/60" />
+          </div>
+          <div className="flex flex-col items-center flex-1 gap-2 -mt-6">
+            <div className="w-12 h-12 rounded-full bg-muted" />
+            <div className="w-full h-40 rounded-t-xl bg-muted/60" />
+          </div>
+          <div className="flex flex-col items-center flex-1 gap-2">
+            <div className="w-12 h-12 rounded-full bg-muted" />
+            <div className="w-full h-20 rounded-t-xl bg-muted/60" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border animate-pulse">
+              <div className="w-6 h-4 bg-muted rounded" />
+              <div className="w-9 h-9 rounded-full bg-muted" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 w-28 bg-muted rounded" />
+                <div className="h-2 w-16 bg-muted/60 rounded" />
+              </div>
+              <div className="h-4 w-10 bg-muted/40 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

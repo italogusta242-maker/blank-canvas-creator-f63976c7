@@ -96,7 +96,7 @@ function useSegmentedRanking(category: PlanCategory) {
 // ── Segmented Ranking UI ──
 function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => void }) {
   const { user } = useAuth();
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["profile-planner-type", user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -106,16 +106,20 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
     enabled: !!user,
   });
 
-  const [category, setCategory] = useState<PlanCategory>("essencial");
+  const [category, setCategory] = useState<PlanCategory | null>(null);
 
   // Sync state with profile once loaded
   useEffect(() => {
     if (profile?.planner_type && PLAN_MAPPING[profile.planner_type]) {
       setCategory(profile.planner_type as PlanCategory);
+    } else if (profile && !PLAN_MAPPING[profile?.planner_type ?? '']) {
+      setCategory("essencial");
     }
   }, [profile]);
 
-  const { data: entries = [], isLoading } = useSegmentedRanking(category);
+  const resolvedCategory = category ?? "essencial";
+  const { data: entries = [], isLoading } = useSegmentedRanking(resolvedCategory);
+  const isFullLoading = isProfileLoading || category === null || isLoading;
   const userEntry = entries.find(e => e.user_id === user?.id);
 
   return (
@@ -124,15 +128,15 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
       <div className="flex items-center justify-between border-b border-border p-4 bg-muted/20">
          <div className="flex flex-col">
             <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Sua Liga</span>
-            <span className={`font-sans font-bold text-lg ${PLAN_MAPPING[category]?.color || 'text-foreground'}`}>
-              Liga {PLAN_MAPPING[category]?.label || 'Desafiante'}
+            <span className={`font-sans font-bold text-lg ${PLAN_MAPPING[resolvedCategory]?.color || 'text-foreground'}`}>
+              Liga {PLAN_MAPPING[resolvedCategory]?.label || 'Desafiante'}
             </span>
          </div>
-         <Trophy className={PLAN_MAPPING[category]?.color || 'text-muted-foreground'} size={24} />
+         <Trophy className={PLAN_MAPPING[resolvedCategory]?.color || 'text-muted-foreground'} size={24} />
       </div>
 
       <div className="p-2 space-y-2">
-        {isLoading ? (
+        {isFullLoading ? (
           <div className="space-y-2 p-2">
             {[1,2,3].map(i => (
               <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
@@ -149,8 +153,8 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
           <>
             {entries.length === 0 ? (
               <div className="text-center py-12 px-4 opacity-80">
-                <Trophy size={48} className={`mx-auto mb-3 opacity-20 ${PLAN_MAPPING[category]?.color || ''}`} />
-                <p className="font-cinzel text-sm font-bold text-foreground">Você é a primeira da Liga {PLAN_MAPPING[category]?.label || ""} a chegar aqui!</p>
+                <Trophy size={48} className={`mx-auto mb-3 opacity-20 ${PLAN_MAPPING[resolvedCategory]?.color || ''}`} />
+                <p className="font-cinzel text-sm font-bold text-foreground">Você é a primeira da Liga {PLAN_MAPPING[resolvedCategory]?.label || ""} a chegar aqui!</p>
                 <p className="text-[11px] text-muted-foreground mt-1">Comece a treinar para dominar o topo do ranking este mês.</p>
               </div>
             ) : (
