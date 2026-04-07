@@ -152,7 +152,8 @@ const Dashboard = () => {
     const groups = realTrainingPlan.groups;
     const groupIndex = (dayOfWeek - 1) % groups.length;
     if (dayOfWeek - 1 >= groups.length) return "Descanso";
-    return groups[groupIndex]?.name || realTrainingPlan.title || todaySchedule.name;
+    const rawName = groups[groupIndex]?.name || realTrainingPlan.title || todaySchedule.name;
+    return rawName.replace(/^(SEGUNDA|TERÇA|QUARTA|QUINTA|SEXTA|SÁBADO|DOMINGO)\s*[—–-]\s*/i, '');
   }, [realTrainingPlan, todaySchedule.name]);
 
   const hasRealPlan = !!realTrainingPlan || hasTrainingPlan;
