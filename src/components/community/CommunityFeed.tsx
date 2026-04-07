@@ -22,7 +22,7 @@ export function CommunityFeed() {
         .from("community_posts")
         .select(`
           *,
-          profiles!community_posts_profile_id_fkey (nome, avatar_url),
+          profiles (full_name, avatar_url),
           community_reactions (user_id, reaction_type)
         `)
         .order("created_at", { ascending: false })
