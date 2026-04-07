@@ -75,7 +75,7 @@ const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
   const { completedMeals, toggleMeal } = useDailyHabits();
 
   const mealsCompleted = diet.meals.filter((_, idx) => completedMeals.has(`${mealPrefix}-meal-${idx}`)).length;
-  const mealProgress = totalMeals > 0 ? (mealsCompleted / totalMeals) * 100 : 0;
+  const mealProgress = Math.min(totalMeals > 0 ? (mealsCompleted / totalMeals) * 100 : 0, 100);
 
   const toggleItem = (item: string) => {
     setCheckedItems(prev => {
@@ -178,7 +178,7 @@ const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
           </TabsList>
 
           {/* TAB: CARDÁPIO */}
-          <TabsContent value="cardapio" className="mt-4 space-y-4">
+          <TabsContent value="cardapio" className="mt-6 space-y-5">
             {/* Progress bar */}
             <Card className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
               <CardContent className="p-5">
@@ -201,11 +201,11 @@ const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
               const foods = parseFoods(currentOption.principal);
 
               return (
-                <Card key={mealIdx} className={cn(
-                  "bg-card border-border rounded-2xl overflow-hidden shadow-sm transition-all",
+                  <Card key={mealIdx} className={cn(
+                  "bg-card border-border rounded-2xl overflow-hidden shadow-md transition-all",
                   isMealDone && "border-primary/30 bg-primary/5"
                 )}>
-                  <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+                  <div className="flex items-center gap-3 px-6 pt-6 pb-4">
                     {/* Check-in circle */}
                     <button
                       onClick={() => toggleMeal(`${mealPrefix}-meal-${mealIdx}`, totalMeals)}
@@ -259,7 +259,7 @@ const DietPlan = ({ initialCalories, hideHeader }: DietPlanProps = {}) => {
                     </div>
                   )}
 
-                  <CardContent className="px-5 pb-5 pt-0">
+                  <CardContent className="px-6 pb-6 pt-0">
                     {/* Selected option content */}
                     <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
                       {hasMultipleOptions && (

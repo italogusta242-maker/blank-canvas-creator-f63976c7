@@ -731,8 +731,8 @@ const Challenge = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <div className="mb-12">
-          <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar scroll-smooth">
+        <div className="mb-12 mt-2">
+          <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar scroll-smooth mb-8">
             {challengeModules.map((mod) => {
               const Icon = mod.icon === 'Utensils' ? Utensils : mod.icon === 'Dumbbell' ? Dumbbell : mod.icon === 'Users' ? Users : mod.icon === 'Flame' ? Flame : BookOpen;
               const isActive = selectedModuleId === mod.id;

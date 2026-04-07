@@ -134,7 +134,7 @@ const Dashboard = () => {
   } = useRealPerformance();
 
   const { state: flameState, streak, adherence: adherenceReal, isLoading: isFlameLoading } = useFlameState();
-  const adherence = adherenceReal;
+  const adherence = Math.min(100, adherenceReal);
 
   // Real training plan (from useTrainingPlan) for Hero display
   const { data: realTrainingPlan } = useTrainingPlan();

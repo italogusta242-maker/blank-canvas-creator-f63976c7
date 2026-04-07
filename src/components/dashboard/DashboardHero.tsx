@@ -24,6 +24,7 @@ const DashboardHero = ({
   currentDayLabel
 }: DashboardHeroProps & { currentDayLabel?: string }) => {
   const navigate = useNavigate();
+  const cappedAdherence = Math.min(adherence, 100);
 
   return (
     <div className="relative z-10 w-full mb-6 md:mb-10">
@@ -79,7 +80,7 @@ const DashboardHero = ({
                  fill="transparent"
                  strokeDasharray="339.29"
                  initial={{ strokeDashoffset: 339.29 }}
-                 animate={{ strokeDashoffset: 339.29 - (339.29 * adherence) / 100 }}
+                 animate={{ strokeDashoffset: 339.29 - (339.29 * cappedAdherence) / 100 }}
                  transition={{ duration: 2, ease: "easeOut" }}
                  strokeLinecap="round"
                  className="text-white dark:text-accent"
@@ -87,7 +88,7 @@ const DashboardHero = ({
              </svg>
              <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <Flame className="text-white dark:text-accent animate-pulse mb-0.5 md:mb-3 w-5 h-5 md:w-10 md:h-10" />
-                <span className="text-xl md:text-4xl lg:text-6xl font-sans font-bold text-white">{adherence}%</span>
+                <span className="text-xl md:text-4xl lg:text-6xl font-sans font-bold text-white">{cappedAdherence}%</span>
                <span className="text-[9px] md:text-sm font-cinzel font-bold text-white/80 dark:text-accent tracking-[0.3em] md:tracking-[0.4em] mt-0.5 md:mt-2 uppercase">Adesão</span>
              </div>
            </div>
