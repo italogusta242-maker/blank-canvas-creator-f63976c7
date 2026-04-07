@@ -389,19 +389,20 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-6">
           {(profile as any)?.planner_type ? (
              <DailyGoals 
-                waterIntake={waterIntake}
-                waterGoal={dynamicGoalsConfig.waterGoal}
-                sleepHours={sleepHours}
-                sleepGoal={dynamicGoalsConfig.sleepGoal}
-                setWaterIntake={setWaterIntake}
-                iconAccentClass={iconAccentClass}
-                dropletsClass={dropletsClass}
-                waterBarColor={waterBarColor}
-                sleepBarColor={sleepBarColor}
-                performanceData={performanceData}
-                plannerType={(profile as any)?.planner_type}
-                planDaysElapsed={planDaysElapsed}
-             />
+                 waterIntake={waterIntake}
+                 waterGoal={dynamicGoalsConfig.waterGoal}
+                 sleepHours={sleepHours}
+                 sleepGoal={dynamicGoalsConfig.sleepGoal}
+                 setWaterIntake={setWaterIntake}
+                 iconAccentClass={iconAccentClass}
+                 dropletsClass={dropletsClass}
+                 waterBarColor={waterBarColor}
+                 sleepBarColor={sleepBarColor}
+                 performanceData={performanceData}
+                 plannerType={(profile as any)?.planner_type}
+                 planDaysElapsed={planDaysElapsed}
+                 totalMealsInDiet={totalMealsFromPlan}
+              />
           ) : (
              <div className={`${cardBg} ${cardBorder} border p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] flex flex-col items-center justify-center text-center opacity-70`}>
                 <div className="w-12 h-12 rounded-full bg-secondary/30 flex items-center justify-center mb-4">
