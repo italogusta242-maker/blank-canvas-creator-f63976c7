@@ -224,7 +224,9 @@ const DailyGoals = ({
       case "agua": return waterDone || completedGoals.has("agua");
       case "sono": return sleepDone || completedGoals.has("sono");
       case "treino": {
-        const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
+        // Only count trained days in the LAST 7 days, not all performanceData
+        const recentDays = performanceData.slice(-7);
+        const trainedDays = recentDays.filter(d => (d.training || 0) > 0).length;
         const treinoGoal = activeGoals.find(g => g.key === "treino");
         const match = treinoGoal?.description?.match(/(\d+)\s*treino/i);
         const requiredWorkouts = match ? parseInt(match[1], 10) : 3;
