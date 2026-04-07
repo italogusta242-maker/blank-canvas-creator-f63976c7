@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UtensilsCrossed, Droplets, Moon, TrendingUp, Check, History, Camera, X, Loader2, ImageIcon, Footprints, BookOpen, CandyOff, Heart, Activity, Shield, Smartphone, Flame } from "lucide-react";
 import DailyGoalsHistoryModal from "./DailyGoalsHistoryModal";
@@ -23,6 +23,7 @@ interface DailyGoalsProps {
   performanceData?: DayPerformance[];
   planDaysElapsed?: number;
   plannerType?: string;
+  totalMealsInDiet?: number;
 }
 
 const CheckCircle = ({ done, color, onClick }: { done: boolean; color: string; onClick?: () => void }) => (
@@ -188,6 +189,7 @@ const DailyGoals = ({
   performanceData = [],
   planDaysElapsed = 1,
   plannerType,
+  totalMealsInDiet = 6,
 }: DailyGoalsProps) => {
   const { user } = useAuth();
   const last7 = performanceData.slice(-7);
@@ -206,27 +208,36 @@ const DailyGoals = ({
   const phase = getPhase(planDaysElapsed);
   const phaseLabel = getPhaseLabel(phase);
 
+  // Dynamic diet thresholds based on actual meal count
+  const dietThresholds = useMemo(() => {
+    const total = totalMealsInDiet;
+    return {
+      dieta_cafe: Math.max(1, Math.ceil(total * 0.2)),      // ~20% of meals
+      dieta_almoco: Math.max(2, Math.ceil(total * 0.5)),     // ~50% of meals
+      dieta_jantar: Math.max(3, Math.ceil(total * 0.8)),     // ~80% of meals
+      dieta_completa: total,                                  // 100% of meals
+    };
+  }, [totalMealsInDiet]);
+
   const isGoalDone = (key: GoalKey): boolean => {
     switch (key) {
       case "agua": return waterDone || completedGoals.has("agua");
       case "sono": return sleepDone || completedGoals.has("sono");
       case "treino": {
-        // Count days with training in the last 7 days
         const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
-        // Extract required weekly workouts from goal description (e.g. "2 treinos" → 2)
         const treinoGoal = activeGoals.find(g => g.key === "treino");
         const match = treinoGoal?.description?.match(/(\d+)\s*treino/i);
         const requiredWorkouts = match ? parseInt(match[1], 10) : 3;
         return trainedDays >= requiredWorkouts;
       }
       case "dieta_completa":
-        return mealsCompletedCount >= 5;
+        return mealsCompletedCount >= dietThresholds.dieta_completa;
       case "dieta_cafe":
-        return mealsCompletedCount >= 1;
+        return mealsCompletedCount >= dietThresholds.dieta_cafe;
       case "dieta_almoco":
-        return mealsCompletedCount >= 3;
+        return mealsCompletedCount >= dietThresholds.dieta_almoco;
       case "dieta_jantar":
-        return mealsCompletedCount >= 5;
+        return mealsCompletedCount >= dietThresholds.dieta_jantar;
       default: 
         return completedGoals.has(key);
     }
@@ -235,6 +246,13 @@ const DailyGoals = ({
   const isAutoGoal = (key: string) => {
     return ["treino", "dieta_cafe", "dieta_almoco", "dieta_jantar", "dieta_completa"].includes(key);
   };
+
+  // Sort goals: auto goals first, then manual
+  const sortedGoals = useMemo(() => {
+    const auto = activeGoals.filter(g => isAutoGoal(g.key));
+    const manual = activeGoals.filter(g => !isAutoGoal(g.key));
+    return [...auto, ...manual];
+  }, [activeGoals]);
 
   return (
     <motion.div
@@ -258,11 +276,12 @@ const DailyGoals = ({
       </div>
 
       <div className="space-y-1.5 md:space-y-3">
-        {activeGoals.map((goal) => {
+        {sortedGoals.map((goal, idx) => {
           const done = isGoalDone(goal.key);
           const GoalIcon = GOAL_ICONS[goal.key] || Droplets;
           const color = GOAL_COLORS[goal.key] || waterBarColor;
           const auto = isAutoGoal(goal.key);
+          const isFirstManual = !auto && (idx === 0 || isAutoGoal(sortedGoals[idx - 1].key));
 
           if (goal.key === "agua") {
             return (
@@ -307,27 +326,36 @@ const DailyGoals = ({
           }
 
           return (
-            <div key={goal.key} className="bg-secondary/5 p-2 md:p-3 rounded-xl md:rounded-2xl border border-secondary/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle 
-                    done={done} 
-                    color={color} 
-                    onClick={!auto ? () => toggleGoal(goal.key) : undefined} 
-                  />
-                  <div>
-                    <span className={`flex items-center gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider ${done ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
-                      <GoalIcon size={14} style={{ color: done ? `${color}80` : color }} /> {goal.label}
-                      {auto && <span className="text-[9px] opacity-40 font-normal italic lowercase ml-1">(Auto)</span>}
-                    </span>
-                    <span className="text-[10px] md:text-xs text-muted-foreground/40 leading-tight block">{goal.description}</span>
-                  </div>
+            <React.Fragment key={goal.key}>
+              {isFirstManual && (
+                <div className="flex items-center gap-2 pt-1.5 pb-0.5">
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Manuais</span>
+                  <div className="h-px flex-1 bg-border/50" />
                 </div>
-                <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${done ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
-                  {done ? "OK" : "P"}
-                </span>
+              )}
+              <div className={`p-2 md:p-3 rounded-xl md:rounded-2xl border ${auto ? "bg-primary/5 border-primary/15" : "bg-secondary/5 border-secondary/10"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle 
+                      done={done} 
+                      color={color} 
+                      onClick={!auto ? () => toggleGoal(goal.key) : undefined} 
+                    />
+                    <div>
+                      <span className={`flex items-center gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider ${done ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
+                        <GoalIcon size={14} style={{ color: done ? `${color}80` : color }} /> {goal.label}
+                        {auto && <span className="text-[9px] opacity-50 font-semibold tracking-wider text-primary/70 ml-1">AUTOMÁTICO</span>}
+                      </span>
+                      <span className="text-[10px] md:text-xs text-muted-foreground/40 leading-tight block">{goal.description}</span>
+                    </div>
+                  </div>
+                  <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${done ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
+                    {done ? "OK" : "P"}
+                  </span>
+                </div>
               </div>
-            </div>
+            </React.Fragment>
           );
         })}
 
