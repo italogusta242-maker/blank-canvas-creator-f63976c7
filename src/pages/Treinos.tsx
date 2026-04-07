@@ -22,6 +22,7 @@ import SetInputPicker from "@/components/training/SetInputPicker";
 const DAYS_OF_WEEK = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA"];
 
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { useFlameState } from "@/hooks/useFlameState";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
