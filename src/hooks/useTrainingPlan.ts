@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { TrainingPlan, WorkoutGroup } from "@/components/training/types";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { parseWorkoutDescription, splitExercisesIntoGroups } from "@/components/training/helpers";
 import { pickPreferredChallenge } from "@/lib/challenges";
 
