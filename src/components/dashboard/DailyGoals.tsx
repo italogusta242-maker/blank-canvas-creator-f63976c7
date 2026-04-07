@@ -23,6 +23,7 @@ interface DailyGoalsProps {
   performanceData?: DayPerformance[];
   planDaysElapsed?: number;
   plannerType?: string;
+  totalMealsInDiet?: number;
 }
 
 const CheckCircle = ({ done, color, onClick }: { done: boolean; color: string; onClick?: () => void }) => (
