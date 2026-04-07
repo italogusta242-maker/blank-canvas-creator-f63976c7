@@ -912,14 +912,21 @@ const Challenge = () => {
                                                 </div>
                                                 <div className="grid gap-2">
                                                   {wk.exercises.map((ex, ei) => (
-                                                    <div key={ei} className="p-4 rounded-2xl border border-border/30 bg-card/50 flex items-center justify-between group hover:border-accent/30 transition-all">
-                                                      <div className="flex items-center gap-3">
-                                                        <span className="text-[10px] font-black text-accent/60 w-5">{ei + 1}.</span>
-                                                        <span className="text-sm font-bold text-foreground">{ex.name}</span>
+                                                    <div key={ei} className="p-4 rounded-2xl border border-border/30 bg-card/50 group hover:border-accent/30 transition-all space-y-1.5">
+                                                      <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                          <span className="text-[10px] font-black text-accent/60 w-5">{ei + 1}.</span>
+                                                          <span className="text-sm font-bold text-foreground">{ex.name}</span>
+                                                        </div>
+                                                        <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider shrink-0">
+                                                          {ex.sets}x {ex.reps}
+                                                        </span>
                                                       </div>
-                                                      <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider shrink-0">
-                                                        {ex.sets}x {ex.reps}
-                                                      </span>
+                                                      {ex.notes && (
+                                                        <p className="text-[10px] text-muted-foreground leading-relaxed italic pl-8">
+                                                          💡 {ex.notes}
+                                                        </p>
+                                                      )}
                                                     </div>
                                                   ))}
                                                 </div>

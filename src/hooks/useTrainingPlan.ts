@@ -54,6 +54,7 @@ export function useTrainingPlan() {
                 reps: ex.reps,
                 rest: "60",
                 weight: null,
+                description: ex.notes || undefined,
                 setsData: Array.from({ length: ex.sets }, () => ({
                   targetReps: ex.reps,
                   weight: null,
