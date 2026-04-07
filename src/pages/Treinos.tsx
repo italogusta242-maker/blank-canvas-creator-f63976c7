@@ -554,7 +554,7 @@ const Treinos = () => {
                       <Dumbbell size={20} />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-sm font-bold text-foreground tracking-tight uppercase leading-tight">{group.name}</p>
+                      <p className="text-sm font-bold text-foreground tracking-tight uppercase leading-tight">{group.name.replace(/^(SEGUNDA|TERÇA|QUARTA|QUINTA|SEXTA|SÁBADO|DOMINGO)\s*[—–-]\s*/i, '')}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-0.5 uppercase tracking-wider opacity-60">
                         {group.exercises.length === 0 ? "⏳ Aguardando" : `${group.exercises.length} EXERCÍCIOS`}
                       </p>
