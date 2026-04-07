@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { decode } from "https://deno.land/std@0.203.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,8 +10,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    if (!API_KEY) throw new Error("API Key (LOVABLE_API_KEY, GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY) not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     let fileBase64: string;
     const contentType = req.headers.get("content-type") || "";
@@ -27,7 +26,6 @@ serve(async (req) => {
       if (!file) throw new Error("No PDF file provided");
       const ab = await file.arrayBuffer();
       const bytes = new Uint8Array(ab);
-      // encode to base64
       let binary = "";
       bytes.forEach((b) => (binary += String.fromCharCode(b)));
       fileBase64 = btoa(binary);
@@ -55,52 +53,54 @@ Responda APENAS com JSON válido:
   ]
 }`;
 
-    const geminiPayload = {
-      contents: [
-        {
-          parts: [
-            {
-              inline_data: {
-                mime_type: "application/pdf",
-                data: fileBase64,
-              },
-            },
-            {
-              text: systemPrompt + "\n\nExtraia o conteúdo deste PDF seguindo o formato JSON solicitado.",
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        response_mime_type: "application/json",
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    };
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiPayload),
-      }
-    );
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:application/pdf;base64,${fileBase64}` },
+              },
+              {
+                type: "text",
+                text: "Extraia o conteúdo deste PDF seguindo o formato JSON solicitado.",
+              },
+            ],
+          },
+        ],
+      }),
+    });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini API error:", response.status, errText);
+      console.error("AI Gateway error:", response.status, errText);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos esgotados. Adicione fundos ao workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(`AI Gateway error: ${response.status} - ${errText}`);
     }
 
     const data = await response.json();
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) throw new Error("Gemini returned empty response");
+    const resultText = data.choices?.[0]?.message?.content;
+    if (!resultText) throw new Error("AI returned empty response");
 
     let cleanJson = resultText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     const planData = JSON.parse(cleanJson);
