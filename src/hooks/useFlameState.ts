@@ -74,8 +74,8 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
         }
       }
 
-      // Final streak is the maximum count from history OR the DB value
-      const finalStreak = Math.max(calculatedStreak, flameStatus?.streak || 0);
+      // Use calculated streak only — DB value may be stale/inflated
+      const finalStreak = calculatedStreak;
 
       let computedState: FlameState = "normal";
       if (workoutDates.has(today)) {
