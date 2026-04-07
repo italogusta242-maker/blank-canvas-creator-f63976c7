@@ -22,6 +22,7 @@ import SetInputPicker from "@/components/training/SetInputPicker";
 const DAYS_OF_WEEK = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA"];
 
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
+import { ALL_TRAININGS } from "@/components/training/TrainingPlanData";
 import { useFlameState } from "@/hooks/useFlameState";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -521,7 +522,9 @@ const Treinos = () => {
             <TrainingAnalysisCards avaliacaoPostural={plan.avaliacao_postural} pontosMelhoria={plan.pontos_melhoria} objetivoMesociclo={plan.objetivo_mesociclo} />
           )}
 
-          <TrainingObjectiveCard />
+          <TrainingObjectiveCard configTrainingIndex={
+            plan ? ALL_TRAININGS.findIndex(t => t.id === plan.id) : null
+          } />
 
           <div className="grid grid-cols-1 gap-4">
             {Array.isArray(workoutGroups) && workoutGroups.map((group, i) => {
