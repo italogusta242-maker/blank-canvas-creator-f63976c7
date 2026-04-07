@@ -208,8 +208,8 @@ const DailyGoals = ({
 
   const isGoalDone = (key: GoalKey): boolean => {
     switch (key) {
-      case "agua": return waterDone;
-      case "sono": return sleepDone;
+      case "agua": return waterDone || completedGoals.has("agua");
+      case "sono": return sleepDone || completedGoals.has("sono");
       case "treino": {
         // Count days with training in the last 7 days
         const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
@@ -290,7 +290,7 @@ const DailyGoals = ({
               <div key={goal.key} className="bg-secondary/5 p-2 md:p-3 rounded-xl md:rounded-2xl border border-secondary/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CheckCircle done={sleepDone} color={color} />
+                    <CheckCircle done={sleepDone || completedGoals.has("sono")} color={color} onClick={() => toggleGoal("sono")} />
                     <div>
                       <span className="flex items-center gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">
                         <Moon size={14} className={iconAccentClass} /> Sono
