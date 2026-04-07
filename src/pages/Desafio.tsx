@@ -875,12 +875,64 @@ const Challenge = () => {
                                 <div className="grid gap-3 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
                                   {(() => {
                                     const text = currentLesson.description || '';
+                                    // Handle Config Training Plans (hardcoded)
+                                    if ((currentLesson as any)?.isConfigTraining) {
+                                      const tIdx = (currentLesson as any).trainingIndex;
+                                      const training = ALL_TRAININGS[tIdx];
+                                      if (training) {
+                                        return (
+                                          <div className="space-y-8">
+                                            {/* About Card */}
+                                            <div className="p-5 rounded-2xl border border-border/30 bg-secondary/20 space-y-3">
+                                              <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{training.emoji}</span>
+                                                <div>
+                                                  <h4 className="font-cinzel font-black text-base text-foreground">{training.title}</h4>
+                                                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{training.level} • {training.frequency}</p>
+                                                </div>
+                                              </div>
+                                              <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                                                {training.about}
+                                              </div>
+                                            </div>
+
+                                            {/* Workouts */}
+                                            {training.workouts.map((wk, wi) => (
+                                              <div key={wi} className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="h-1 w-6 bg-accent rounded-full" />
+                                                  <h5 className="text-sm font-cinzel font-black uppercase tracking-wider text-foreground">{wk.name}</h5>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                  {wk.exercises.map((ex, ei) => (
+                                                    <div key={ei} className="p-4 rounded-2xl border border-border/30 bg-card/50 flex items-center justify-between group hover:border-accent/30 transition-all">
+                                                      <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-black text-accent/60 w-5">{ei + 1}.</span>
+                                                        <span className="text-sm font-bold text-foreground">{ex.name}</span>
+                                                      </div>
+                                                      <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider shrink-0">
+                                                        {ex.sets}x {ex.reps}
+                                                      </span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            ))}
+
+                                            <p className="text-[9px] text-accent/60 uppercase tracking-widest font-bold pt-2 italic">
+                                              * Selecione para importar este treino para sua aba de Treinos.
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
                                     if (selectedModule?.type === 'workouts' || selectedModule?.type === 'running') {
                                       const exercises = parseWorkoutDescription(text);
                                       return exercises
-                                        .filter(ex => ex.name.trim() !== '') // Ignore empty section markers
+                                        .filter(ex => ex.name.trim() !== '')
                                         .map((ex, i) => (
-                                          <div key={i} className={cn("p-4 rounded-2xl border transition-all", ex.description === '__section__' ? "bg-accent/10 border-accent/20 mt-4" : "bg-white/5 border-white/5")}>
+                                          <div key={i} className={cn("p-4 rounded-2xl border transition-all", ex.description === '__section__' ? "bg-accent/10 border-accent/20 mt-4" : "bg-card/50 border-border/30")}>
                                             <div className="flex items-center justify-between">
                                               <span className={cn("font-bold text-sm", ex.description === '__section__' ? "text-accent uppercase tracking-widest" : "text-foreground")}>
                                                 {ex.name}
