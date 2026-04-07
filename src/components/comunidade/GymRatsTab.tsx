@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, Medal, Flame, User, Loader2, Dumbbell, Target } from "lucide-react";
+import { Trophy, Medal, Flame, User, Dumbbell, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
