@@ -1266,9 +1266,7 @@ const AdminUsuarios = () => {
                             onClick={() => setExpandedUser(expandedUser === aluno.id ? null : aluno.id)}
                           >
                             <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold shrink-0">
-                                {aluno.full_name?.charAt(0).toUpperCase() || "?"}
-                              </div>
+                              <UserAvatar name={aluno.full_name} avatarUrl={aluno.avatar_url} className="bg-muted text-muted-foreground" />
                               <div>
                                 <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                                 <p className="text-xs text-muted-foreground">{aluno.email}</p>
@@ -1357,9 +1355,7 @@ const AdminUsuarios = () => {
                         .map((lead) => (
                         <div key={`lead-${lead.id}`} className="p-4 flex items-center justify-between gap-4 hover:bg-secondary/10 transition-colors">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold shrink-0">
-                              {lead.nome?.charAt(0).toUpperCase() || "?"}
-                            </div>
+                            <UserAvatar name={lead.nome} className="bg-muted text-muted-foreground" />
                             <div>
                               <p className="font-medium text-foreground">{lead.nome || "Sem nome"}</p>
                               <p className="text-xs text-muted-foreground">{lead.email}</p>
@@ -1444,9 +1440,7 @@ const AdminUsuarios = () => {
                               onClick={() => setExpandedUser(expandedUser === aluno.id ? null : aluno.id)}
                             >
                               <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center text-destructive font-bold shrink-0">
-                                  {aluno.full_name?.charAt(0).toUpperCase() || "?"}
-                                </div>
+                                <UserAvatar name={aluno.full_name} avatarUrl={aluno.avatar_url} className="bg-destructive/20 text-destructive" />
                                 <div>
                                   <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                                   <p className="text-xs text-muted-foreground">{aluno.email}</p>
@@ -1571,9 +1565,7 @@ const AdminUsuarios = () => {
                           onClick={() => setExpandedUser(isExpanded ? null : aluno.id)}
                         >
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-bold shrink-0">
-                              {aluno.full_name?.charAt(0).toUpperCase() || "?"}
-                            </div>
+                            <UserAvatar name={aluno.full_name} avatarUrl={aluno.avatar_url} />
                             <div>
                               <p className="font-medium text-foreground">{aluno.full_name || "Sem nome"}</p>
                               <p className="text-xs text-muted-foreground">{aluno.email}</p>
