@@ -189,6 +189,7 @@ const DailyGoals = ({
   performanceData = [],
   planDaysElapsed = 1,
   plannerType,
+  totalMealsInDiet = 6,
 }: DailyGoalsProps) => {
   const { user } = useAuth();
   const last7 = performanceData.slice(-7);
@@ -207,27 +208,36 @@ const DailyGoals = ({
   const phase = getPhase(planDaysElapsed);
   const phaseLabel = getPhaseLabel(phase);
 
+  // Dynamic diet thresholds based on actual meal count
+  const dietThresholds = useMemo(() => {
+    const total = totalMealsInDiet;
+    return {
+      dieta_cafe: Math.max(1, Math.ceil(total * 0.2)),      // ~20% of meals
+      dieta_almoco: Math.max(2, Math.ceil(total * 0.5)),     // ~50% of meals
+      dieta_jantar: Math.max(3, Math.ceil(total * 0.8)),     // ~80% of meals
+      dieta_completa: total,                                  // 100% of meals
+    };
+  }, [totalMealsInDiet]);
+
   const isGoalDone = (key: GoalKey): boolean => {
     switch (key) {
       case "agua": return waterDone || completedGoals.has("agua");
       case "sono": return sleepDone || completedGoals.has("sono");
       case "treino": {
-        // Count days with training in the last 7 days
         const trainedDays = performanceData.filter(d => (d.training || 0) > 0).length;
-        // Extract required weekly workouts from goal description (e.g. "2 treinos" → 2)
         const treinoGoal = activeGoals.find(g => g.key === "treino");
         const match = treinoGoal?.description?.match(/(\d+)\s*treino/i);
         const requiredWorkouts = match ? parseInt(match[1], 10) : 3;
         return trainedDays >= requiredWorkouts;
       }
       case "dieta_completa":
-        return mealsCompletedCount >= 5;
+        return mealsCompletedCount >= dietThresholds.dieta_completa;
       case "dieta_cafe":
-        return mealsCompletedCount >= 1;
+        return mealsCompletedCount >= dietThresholds.dieta_cafe;
       case "dieta_almoco":
-        return mealsCompletedCount >= 3;
+        return mealsCompletedCount >= dietThresholds.dieta_almoco;
       case "dieta_jantar":
-        return mealsCompletedCount >= 5;
+        return mealsCompletedCount >= dietThresholds.dieta_jantar;
       default: 
         return completedGoals.has(key);
     }
@@ -236,6 +246,13 @@ const DailyGoals = ({
   const isAutoGoal = (key: string) => {
     return ["treino", "dieta_cafe", "dieta_almoco", "dieta_jantar", "dieta_completa"].includes(key);
   };
+
+  // Sort goals: auto goals first, then manual
+  const sortedGoals = useMemo(() => {
+    const auto = activeGoals.filter(g => isAutoGoal(g.key));
+    const manual = activeGoals.filter(g => !isAutoGoal(g.key));
+    return [...auto, ...manual];
+  }, [activeGoals]);
 
   return (
     <motion.div
