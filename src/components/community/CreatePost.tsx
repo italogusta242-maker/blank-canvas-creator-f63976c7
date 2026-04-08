@@ -7,6 +7,30 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Camera, Send, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 
+/* ── Compress image client-side before upload ── */
+async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("Compression failed")),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export function CreatePost({ onPosted }: { onPosted: () => void }) {
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -61,9 +85,9 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
       if (!user || (!content.trim() && !image)) return;
       let mediaUrl: string | null = null;
       if (image) {
-        const ext = image.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("community_media").upload(path, image);
+        const compressed = await compressImage(image);
+        const path = `${user.id}/${Date.now()}.jpg`;
+        const { error: upErr } = await supabase.storage.from("community_media").upload(path, compressed, { contentType: "image/jpeg" });
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from("community_media").getPublicUrl(path);
         mediaUrl = publicUrl;

@@ -9,6 +9,23 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { PostDetailModal } from "./PostDetailModal";
 
+/* ── Image with skeleton placeholder ── */
+function ImageWithSkeleton({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative">
+      {!loaded && <div className="w-full aspect-video bg-secondary animate-pulse" />}
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${loaded ? '' : 'absolute inset-0 opacity-0'}`}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
+
 interface CommunityPost {
   id: string;
   content: string;

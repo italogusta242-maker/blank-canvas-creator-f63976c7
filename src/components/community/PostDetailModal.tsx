@@ -193,7 +193,7 @@ export function PostDetailModal({ post, isOpen, onClose, autoFocusComment }: Pos
           {/* Left: Image */}
           {post.image_url && (
             <div className="w-full h-[40vh] md:h-full md:w-7/12 bg-black flex items-center justify-center relative overflow-hidden shrink-0">
-              <img src={post.image_url} alt="Post" className="max-w-full max-h-full object-contain" />
+              <img src={post.image_url + '?width=800&resize=contain'} alt="Post" className="max-w-full max-h-full object-contain" decoding="async" />
             </div>
           )}
 
