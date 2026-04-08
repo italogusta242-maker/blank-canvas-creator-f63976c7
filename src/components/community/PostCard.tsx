@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -194,7 +194,11 @@ export function PostCard({ post, onAvatarClick }: { post: CommunityPost; onAvata
         {post.image_url && (
           <div className="relative" onDoubleClick={handleHeartClick}>
             <div className="overflow-hidden bg-secondary/20 relative">
-              <img src={post.image_url} alt="Post media" className="w-full max-h-[600px] object-cover" />
+              <ImageWithSkeleton
+                src={post.image_url + '?width=600&resize=contain'}
+                alt="Post media"
+                className="w-full max-h-[600px] object-cover"
+              />
               <AnimatePresence>
                 {heartBurst && (
                   <motion.div
