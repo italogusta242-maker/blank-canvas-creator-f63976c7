@@ -1,85 +1,43 @@
 
 
-## Plano Unificado de Performance Mobile
+## Diagnóstico e Correções: Ranking, Pontuação e Sininho
 
-Todas as melhorias são invisíveis para a aluna — mesmo visual, app mais rápido no 4G.
+### Problemas encontrados
+
+**1. Ranking da Liga mostra apenas Top 10**
+No arquivo `Comunidade.tsx` linha 90, o código faz `.slice(0, 10)` — cortando qualquer aluna depois da 10a posição. Resultado: alunas que treinaram não aparecem.
+
+**2. Aba "Liga" do GymRatsTab lê coluna errada**
+O `GymRatsTab.tsx` busca `profiles.hustle_points` (uma coluna estática, sempre 0) em vez de somar da tabela `hustle_points`. A coluna `profiles.hustle_points` nunca é atualizada — os pontos ficam apenas na tabela `hustle_points`. Por isso o ranking geral aparece zerado para quase todo mundo.
+
+**3. Sininho mostrando 0 — problema de RLS**
+A tabela `push_subscriptions` tem RLS com `push_select_own`, que permite apenas a própria aluna ver seu registro. Quando o admin faz `SELECT count(*)`, retorna 0 porque o admin não é dono de nenhuma subscription. Precisa de uma policy que permita admins verem todos os registros.
 
 ---
 
-### 1. Habilitar cache do navegador
+### Correções
 
-**Arquivo:** `index.html`
+**1. Remover limite de 10 no ranking da Liga** (`Comunidade.tsx`)
+- Remover `.slice(0, 10)` da linha 90 para mostrar todas as alunas da liga
+- Manter o sort por pontuação
 
-Remover as 3 meta tags anti-cache (linhas 8-10: `Cache-Control`, `Pragma`, `Expires`). O Vite já gera hashes nos nomes dos arquivos, então cache é seguro. Hoje cada visita re-baixa TODOS os assets do zero.
+**2. Corrigir GymRatsTab para ler da tabela correta** (`GymRatsTab.tsx`)
+- Em vez de `profiles.hustle_points`, fazer SUM da tabela `hustle_points` por `user_id`
+- Juntar com profiles para nome/avatar
+- Manter as 3 categorias (pontos, streak, treinos)
 
-### 2. Fonts sem bloquear renderização
-
-**Arquivo:** `index.html`
-
-Trocar o `<link href="fonts.googleapis.com/..." rel="stylesheet">` por carregamento assíncrono:
-```html
-<link rel="preload" href="..." as="style" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="..."></noscript>
+**3. Adicionar RLS admin para push_subscriptions** (Migration SQL)
+```sql
+CREATE POLICY "push_select_admin" ON public.push_subscriptions
+FOR SELECT TO authenticated
+USING (public.has_role('admin'::app_role, auth.uid()));
 ```
-Elimina ~750ms de bloqueio no primeiro paint.
 
-### 3. Cache global no React Query
-
-**Arquivo:** `src/App.tsx`
-
-Adicionar defaults globais no `QueryClient`:
-- `staleTime: 300_000` (5 min)
-- `gcTime: 1_800_000` (30 min)
-
-Hoje, trocar de aba (Treinos → Dashboard → Dieta) refaz TODAS as queries. Com isso, dados ficam em cache por 5 minutos.
-
-### 4. Priorizar imagem LCP
-
-**Arquivo:** `src/components/InsanoLogo.tsx`
-
-Adicionar `fetchpriority="high"` e `loading="eager"` na tag `<img>` do logo para o navegador priorizar o download.
-
-### 5. Imagens da comunidade — redimensionar via Storage Transform
-
-**Arquivo:** `src/components/community/PostCard.tsx`
-
-Adicionar `?width=600&resize=contain` na URL da imagem do feed + skeleton state enquanto carrega (padrão `animate-pulse` que já usamos). Cada imagem passa de ~3MB para ~50KB.
-
-**Arquivo:** `src/components/community/PostDetailModal.tsx`
-
-Mesma lógica com `?width=800` para o modal (resolução um pouco maior).
-
-### 6. Comprimir imagens antes do upload
-
-**Arquivo:** `src/components/community/CreatePost.tsx`
-
-Adicionar função `compressImage` usando Canvas API (max 1200px largura, JPEG 0.8). Reduz upload de ~3MB para ~200KB. Executada antes do `supabase.storage.upload`.
-
-### 7. Skeleton states nos gráficos do Dashboard
-
-**Arquivo:** `src/pages/Dashboard.tsx`
-
-Em vez de lazy loading, envolver `PerformanceEvolution` e os gráficos de volume com skeleton states enquanto os dados carregam (usando o padrão `<Skeleton>` + `animate-pulse` que já existe no projeto). Sem mudança no import — o componente carrega normal, mas mostra skeleton até os dados estarem prontos.
-
----
-
-### Resumo de arquivos
+### Arquivos alterados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `index.html` | Remover meta no-cache; fonts async |
-| `src/App.tsx` | staleTime + gcTime globais no QueryClient |
-| `src/components/InsanoLogo.tsx` | fetchpriority na img |
-| `src/components/community/PostCard.tsx` | Transform URL + skeleton state na imagem |
-| `src/components/community/PostDetailModal.tsx` | Transform URL na imagem do modal |
-| `src/components/community/CreatePost.tsx` | compressImage antes do upload |
-| `src/pages/Dashboard.tsx` | Skeleton states nos gráficos |
-
-### Impacto esperado
-
-- **FCP**: ~4.9s → ~2.5s (fonts async + cache)
-- **Navegação entre abas**: instantânea (staleTime 5min)
-- **Feed comunidade**: scroll fluido no 4G (imagens 50KB vs 3MB)
-- **Uploads**: 80% menores (compressão client-side)
-- **Revisitas**: quase instantâneas (assets cacheados)
+| `src/pages/Comunidade.tsx` | Remover `.slice(0, 10)` |
+| `src/components/comunidade/GymRatsTab.tsx` | Buscar pontos da tabela `hustle_points` em vez de `profiles.hustle_points` |
+| Migration SQL | Adicionar policy `push_select_admin` na tabela `push_subscriptions` |
 
