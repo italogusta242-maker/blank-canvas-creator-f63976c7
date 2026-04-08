@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toLocalDate, getToday, getYesterday, getDailyValue, parseSafeDate } from "@/lib/dateUtils";
+import { toLocalDate, getToday, getYesterday } from "@/lib/dateUtils";
 
 export type FlameState = "normal" | "ativa" | "frozen" | "tregua" | "extinta";
 
@@ -32,18 +32,32 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
       const today = getToday();
       const yesterday = getYesterday();
       
-      // Calculate streak from real workouts (last 90 days)
-      const { data: workouts } = await supabase
-        .from("workouts")
-        .select("started_at")
-        .eq("user_id", user.id)
-        .order("started_at", { ascending: false })
-        .limit(100);
+      // Get active dates from community_posts + historic workouts (UNION)
+      const [{ data: posts }, { data: workouts }] = await Promise.all([
+        supabase
+          .from("community_posts")
+          .select("created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("workouts")
+          .select("started_at")
+          .eq("user_id", user.id)
+          .order("started_at", { ascending: false })
+          .limit(100),
+      ]);
 
-      const workoutDates = new Set((workouts || []).map(w => w.started_at ? w.started_at.split('T')[0] : ''));
+      const activeDates = new Set<string>();
+      (posts || []).forEach(p => {
+        if (p.created_at) activeDates.add(p.created_at.split('T')[0]);
+      });
+      (workouts || []).forEach(w => {
+        if (w.started_at) activeDates.add(w.started_at.split('T')[0]);
+      });
       
       // Streak counts if today or yesterday is active
-      const isActive = workoutDates.has(today) || workoutDates.has(yesterday);
+      const isActive = activeDates.has(today) || activeDates.has(yesterday);
       
       let calculatedStreak = 0;
       let consecutiveMisses = 0;
@@ -54,19 +68,17 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
           const d = new Date(now);
           d.setDate(d.getDate() - i);
           const dateStr = toLocalDate(d);
-          if (dateStr > today) continue; // safety check
+          if (dateStr > today) continue;
           
           const isSunday = d.getDay() === 0;
 
-          if (workoutDates.has(dateStr)) {
+          if (activeDates.has(dateStr)) {
             calculatedStreak++;
-            consecutiveMisses = 0; // reset misses 
+            consecutiveMisses = 0;
           } else {
-            // Count skip logic
-            if (!isSunday && i > 0) { // i > 0 so missing TODAY doesn't count until day is over
+            if (!isSunday && i > 0) {
               consecutiveMisses++;
             }
-            // If they skipped more than 1 day in the past (excluding Sundays), it breaks
             if (consecutiveMisses > 1) {
               break;
             }
@@ -74,13 +86,12 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
         }
       }
 
-      // Use calculated streak only — DB value may be stale/inflated
       const finalStreak = calculatedStreak;
 
       let computedState: FlameState = "normal";
-      if (workoutDates.has(today)) {
+      if (activeDates.has(today)) {
         computedState = "ativa";
-      } else if (workoutDates.has(yesterday)) {
+      } else if (activeDates.has(yesterday)) {
         computedState = "ativa"; // Grace period
       } else if (finalStreak > 0) {
         computedState = "frozen";
@@ -102,35 +113,39 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
   };
 }
 
-async function isDayApproved(userId: string, dateStr: string): Promise<boolean> {
-  const { data: workouts } = await supabase.from("workouts").select("id").eq("user_id", userId).not("finished_at", "is", null).gte("finished_at", `${dateStr}T00:00:00`).lt("finished_at", `${dateStr}T23:59:59.999`).limit(1);
-  if (workouts && workouts.length > 0) return true;
-  return false;
-}
-
 async function calculateAdherence(userId: string): Promise<number> {
-  // Real adherence: count workout days in last 7 days / 7 * 100
   const now = new Date();
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   const startStr = toLocalDate(sevenDaysAgo);
   const endStr = toLocalDate(now);
   
-  const { data: workouts } = await supabase
-    .from("workouts")
-    .select("finished_at")
-    .eq("user_id", userId)
-    .not("finished_at", "is", null)
-    .gte("finished_at", `${startStr}T00:00:00`)
-    .lte("finished_at", `${endStr}T23:59:59.999`);
+  // Count days with posts OR workouts in last 7 days
+  const [{ data: posts }, { data: workouts }] = await Promise.all([
+    supabase
+      .from("community_posts")
+      .select("created_at")
+      .eq("user_id", userId)
+      .gte("created_at", `${startStr}T00:00:00`)
+      .lte("created_at", `${endStr}T23:59:59.999`),
+    supabase
+      .from("workouts")
+      .select("finished_at")
+      .eq("user_id", userId)
+      .not("finished_at", "is", null)
+      .gte("finished_at", `${startStr}T00:00:00`)
+      .lte("finished_at", `${endStr}T23:59:59.999`),
+  ]);
   
-  if (!workouts || workouts.length === 0) return 0;
+  const uniqueDays = new Set<string>();
+  (posts || []).forEach((p: any) => {
+    const d = p.created_at?.split("T")[0];
+    if (d) uniqueDays.add(d);
+  });
+  (workouts || []).forEach((w: any) => {
+    const d = w.finished_at?.split("T")[0];
+    if (d) uniqueDays.add(d);
+  });
   
-  // Count unique days with workouts
-  const uniqueDays = new Set(
-    workouts.map((w: any) => w.finished_at?.split("T")[0]).filter(Boolean)
-  );
-  
-  // Adherence = days trained / 7 * 100 (capped at 100)
   return Math.min(100, Math.round((uniqueDays.size / 7) * 100));
 }

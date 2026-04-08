@@ -11,10 +11,10 @@ const corsHeaders = {
  *
  * Runs at 03:00 UTC (00:00 BRT) via cron.
  * Checks all users with flame_status and demotes those who didn't
- * do anything yesterday (no training, no 50% diet).
+ * post anything yesterday in the community.
  *
  * - Ativa → Trégua (if yesterday not approved)
- * - Trégua → Extinta (if yesterday not approved, streak = 0)
+ * - Trégua → Extinta (if yesterday not approved)
  * - Normal stays Normal
  * - Extinta stays Extinta
  */
@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
 
     console.log(`[daily-flame-check] Running for date: ${yesterdayStr}`);
 
-    // Get all users with flame_status that are ativa or tregua
     const { data: activeFlames, error: fetchErr } = await supabase
       .from("flame_status")
       .select("user_id, state, streak, last_approved_date")
@@ -64,31 +63,26 @@ Deno.serve(async (req) => {
     let unchanged = 0;
 
     for (const flame of activeFlames) {
-      // If last_approved_date is yesterday or today (BRT), user is fine
       if (flame.last_approved_date === yesterdayStr) {
         unchanged++;
         continue;
       }
 
-      // Also check today's date in case of late-night activity
       const todayStr = brtNow.toISOString().split("T")[0];
       if (flame.last_approved_date === todayStr) {
         unchanged++;
         continue;
       }
 
-      // Check if user did anything yesterday
       const approved = await isDayApproved(supabase, flame.user_id, yesterdayStr);
 
       if (approved) {
-        // Update last_approved_date
         await supabase
           .from("flame_status")
           .update({ last_approved_date: yesterdayStr, updated_at: new Date().toISOString() })
           .eq("user_id", flame.user_id);
         unchanged++;
       } else {
-        // Demote state but NEVER reset streak to 0
         if (flame.state === "ativa") {
           await supabase
             .from("flame_status")
@@ -96,7 +90,6 @@ Deno.serve(async (req) => {
             .eq("user_id", flame.user_id);
           demotedToTruce++;
         } else if (flame.state === "tregua") {
-          // CRITICAL: streak is PRESERVED (frozen), only state changes
           await supabase
             .from("flame_status")
             .update({ state: "extinta", updated_at: new Date().toISOString() })
@@ -130,50 +123,23 @@ Deno.serve(async (req) => {
 
 /**
  * Check if a day is "approved" for the flame system (server-side version).
- * Approved if user did at least one of: training OR ≥50% diet meals.
+ * Approved if user made at least 1 community post that day.
  */
 async function isDayApproved(
   supabase: any,
   userId: string,
   dateStr: string
 ): Promise<boolean> {
-  // Check workouts
-  const { data: workouts } = await supabase
-    .from("workouts")
+  // Check community posts
+  const { data: posts } = await supabase
+    .from("community_posts")
     .select("id")
     .eq("user_id", userId)
-    .not("finished_at", "is", null)
-    .gte("finished_at", `${dateStr}T00:00:00`)
-    .lt("finished_at", `${dateStr}T23:59:59.999`)
+    .gte("created_at", `${dateStr}T00:00:00`)
+    .lt("created_at", `${dateStr}T23:59:59.999`)
     .limit(1);
 
-  if (workouts && workouts.length > 0) return true;
-
-  // Check diet (50% of meals) — guard against 0/0 false positive
-  const { data: dietPlan } = await supabase
-    .from("diet_plans")
-    .select("meals")
-    .eq("user_id", userId)
-    .eq("active", true)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // No active diet plan or empty meals → cannot approve by diet
-  const totalMeals = Array.isArray(dietPlan?.meals) ? dietPlan.meals.length : 0;
-  if (totalMeals === 0) return false;
-
-  const { data: habits } = await supabase
-    .from("daily_habits")
-    .select("completed_meals")
-    .eq("user_id", userId)
-    .eq("date", dateStr)
-    .maybeSingle();
-
-  if (habits?.completed_meals && Array.isArray(habits.completed_meals)) {
-    const percentage = habits.completed_meals.length / totalMeals;
-    if (percentage >= 0.5) return true;
-  }
+  if (posts && posts.length > 0) return true;
 
   return false;
 }

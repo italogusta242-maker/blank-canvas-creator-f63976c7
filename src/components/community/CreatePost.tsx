@@ -6,6 +6,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Camera, Send, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
+import { shouldIncrementFlame } from "@/hooks/useDailyFlameCheck";
+import { optimisticFlameUpdate } from "@/lib/flameOptimistic";
+import { checkAndUpdateFlame } from "@/lib/flameMotor";
 
 /* ── Compress image client-side before upload ── */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
@@ -78,6 +81,17 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
       setContent(""); 
       removeImage();
       setOpen(false);
+
+      // Optimistic flame update
+      const shouldIncrement = await shouldIncrementFlame(user.id);
+      if (shouldIncrement) {
+        await queryClient.cancelQueries({ queryKey: ["flame-state", user.id] });
+        optimisticFlameUpdate(queryClient, user.id, {
+          adherenceDelta: 15,
+          forceActive: true,
+          streakIncrement: true,
+        });
+      }
       
       return { previousData };
     },
@@ -98,6 +112,13 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
         image_url: mediaUrl,
       });
       if (insErr) throw insErr;
+
+      // Update flame in DB
+      try {
+        await checkAndUpdateFlame(user.id);
+      } catch (e) {
+        console.warn("Flame update failed (non-critical):", e);
+      }
 
       // If verified user, trigger global broadcast notification
       if ((profile as any)?.is_verified) {
@@ -128,6 +149,9 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["flame-state"] });
+      queryClient.invalidateQueries({ queryKey: ["streak"] });
+      queryClient.invalidateQueries({ queryKey: ["week-activity"] });
       onPosted();
     }
   });
