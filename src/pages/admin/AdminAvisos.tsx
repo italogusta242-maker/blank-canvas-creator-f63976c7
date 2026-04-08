@@ -12,6 +12,29 @@ export default function AdminAvisos() {
   const [markdown, setMarkdown] = useState("");
   const [isPreview, setIsPreview] = useState(false);
 
+  const { data: pushCount } = useQuery({
+    queryKey: ["push_subscribers_count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("push_subscriptions" as any)
+        .select("*", { count: "exact", head: true });
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
+
+  const { data: totalUsers } = useQuery({
+    queryKey: ["total_active_users"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "ativo");
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
+
   const { data: broadcasts, isLoading } = useQuery({
     queryKey: ["admin_broadcasts"],
     queryFn: async () => {
