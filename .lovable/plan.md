@@ -1,45 +1,61 @@
 
 
-## Plano: Zerar Pontuações + Popular Regras de Pontuação
+## Diagnóstico Completo para o Lançamento
 
-### Problema
-1. A tabela `scoring_rules` está **vazia** — por isso a tela admin mostra só o cabeçalho sem linhas
-2. O sistema usa fallback hardcoded quando não encontra regras, então alunas estão pontuando sem configuração oficial
-3. Existem 11 registros de hustle_points (90 pontos no total) que precisam ser zerados
+### Problemas Encontrados
 
-### Ações
+**1. Sem manifest.json — Instalação PWA não funciona**
+Não existe um arquivo `manifest.json` no projeto. Sem ele:
+- Android: o evento `beforeinstallprompt` nunca dispara, então `isInstallable` fica sempre `false` e o botão "Instalar" nunca aparece
+- iOS Safari: o `PWAInstallBanner` detecta iOS e mostra instruções manuais, mas sem manifest o "Adicionar à Tela Inicial" não cria um app standalone
+- O service worker `push-handler.js` é registrado mas sem manifest ele opera como SW genérico, não como PWA
 
-**1. Migration: Limpar pontos existentes e zerar campo em profiles**
-- `DELETE FROM hustle_points;` — remove os 11 registros (90 pts)
-- `UPDATE profiles SET hustle_points = 0 WHERE hustle_points > 0;` — zera o cache no perfil
+**2. Sem cron jobs configurados**
+A extensão `pg_cron` não está habilitada (tabela `cron.job` não existe). Isso significa:
+- `daily-flame-check` (00:00 BRT) — NÃO roda automaticamente
+- `motivational-notifications` (19h e 22h BRT) — NÃO roda automaticamente
+- O flame/streak vai acumular sem nunca ser processado
 
-**2. Migration: Popular `scoring_rules` com as 15 ações padrão**
+**3. Email de autenticação**
+O domínio `www.anaacclub.com.br` está configurado como domínio customizado, mas não há domínio de email configurado. Os emails de autenticação (redefinição de senha, confirmação) estão usando o remetente padrão da Lovable, que funciona mas vai como `noreply@lovable...`.
 
-Inserir todas as regras com os valores default para o admin poder ajustar:
+**4. Push Notifications — estrutura OK, 0 inscritos**
+O fluxo técnico está correto (VAPID keys, push-handler.js, edge function). O problema é que sem o manifest.json + PWA instalada, o banner de push nunca aparece no fluxo correto. Mesmo assim, no navegador desktop/Android Chrome o push pode funcionar se a aluna aceitar.
 
-| Ação | Pontos | Descrição |
-|------|--------|-----------|
-| workout_complete | 10 | Treino concluído |
-| workout_weekly_bonus | 20 | Bônus semanal treino |
-| workout_streak | 3 | Streak de treino |
-| diet_log | 5 | Registrar refeição |
-| diet_calories | 5 | Meta de calorias |
-| diet_protein | 3 | Meta de proteína |
-| diet_all_macros | 5 | Todos os macros |
-| diet_weekly_bonus | 15 | Bônus semanal dieta |
-| habit_water | 5 | Meta de água |
-| habit_sleep | 5 | Meta de sono |
-| habit_combined_bonus | 3 | Bônus hábitos |
-| lesson_complete | 8 | Aula concluída |
-| module_complete | 15 | Módulo concluído |
-| community_post | 2 | Post na comunidade |
-| community_reaction_bonus | 3 | Bônus de reações |
+---
 
-**3. Nenhuma alteração de código necessária**
-- O `AdminPontuacao.tsx` já lê e edita `scoring_rules` corretamente
-- O `useHustlePoints.ts` já busca regras do DB com fallback
+### Plano de Correção
 
-### Resultado
-- Todos os pontos zerados (fresh start)
-- Admin verá as 15 regras listadas para editar valores antes de "liberar" a pontuação
+**Etapa 1: Criar `manifest.json` (resolve instalação Android + iOS + push)**
+Criar `public/manifest.json` com:
+- `name`: "ANAAC Club"
+- `short_name`: "ANAAC"
+- `start_url`: "/"
+- `display`: "standalone"
+- `background_color` e `theme_color`
+- Icons: usar `insano-icon-192.png` e `insano-icon-512.png` que já existem
+- Adicionar `<link rel="manifest" href="/manifest.json">` no `index.html`
+
+**Etapa 2: Habilitar pg_cron + pg_net e criar 2 cron jobs**
+Migration SQL para habilitar as extensões, depois INSERT dos crons:
+- `daily-flame-check`: todo dia às 03:00 UTC (00:00 BRT)
+- `motivational-notifications`: às 22:00 UTC (19h BRT) e 01:00 UTC (22h BRT)
+
+**Etapa 3: Melhorar o banner de push/instalação no iOS**
+O `PWAInstallBanner` já tem lógica iOS. Mas o `PushPermissionBanner` prioriza instalação sobre push — no iOS nunca vai instalar via prompt. Ajustar para que no iOS mostre diretamente o banner de push (já que instalação é manual).
+
+### Arquivos alterados
+
+| Arquivo | Ação |
+|---------|------|
+| `public/manifest.json` | Novo — manifest PWA |
+| `index.html` | Adicionar `<link rel="manifest">` |
+| Migration SQL | Habilitar pg_cron/pg_net + criar 3 cron jobs |
+| `src/components/PushPermissionBanner.tsx` | Ajuste menor para iOS |
+
+### O que NÃO precisa mudar
+- Service worker `push-handler.js` — já está correto
+- Edge function `push-notifications` — funcional
+- `usePushNotifications` hook — funcional
+- Emails de auth — funcionam pelo default da Lovable (alunas já estão redefinindo senha)
 
