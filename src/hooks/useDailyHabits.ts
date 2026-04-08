@@ -122,10 +122,7 @@ export function useDailyHabits(date?: string) {
       optimisticFlameUpdate(queryClient, user.id, { adherenceDelta: newScore - oldScore });
       upsertHabits.mutate({ water_liters: clamped, completed_meals: habits?.completed_meals || [] });
 
-      // Award Hustle Points for hitting water goal
-      if (clamped >= 2.5 && oldWater < 2.5) {
-        awardPoints({ action: "habit_water" });
-      }
+      // Water goal no longer awards separate hustle points
     }
   };
 

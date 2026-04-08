@@ -5,20 +5,9 @@ import { toast } from "sonner";
 
 export type HustleAction = 
   | "workout_complete" 
-  | "workout_weekly_bonus" 
-  | "workout_streak"
   | "diet_log" 
-  | "diet_calories" 
-  | "diet_protein" 
-  | "diet_all_macros" 
-  | "diet_weekly_bonus"
-  | "habit_water" 
-  | "habit_sleep" 
-  | "habit_combined_bonus"
-  | "lesson_complete" 
-  | "module_complete"
-  | "community_post" 
-  | "community_reaction_bonus";
+  | "running_complete"
+  | "daily_goal_check";
 
 // Fetch scoring rules from DB (cached)
 function useScoringRules() {
@@ -42,20 +31,9 @@ function useScoringRules() {
 // Fallback defaults if DB is empty
 const FALLBACK_POINTS: Record<HustleAction, number> = {
   workout_complete: 10,
-  workout_weekly_bonus: 20,
-  workout_streak: 3,
   diet_log: 5,
-  diet_calories: 5,
-  diet_protein: 3,
-  diet_all_macros: 5,
-  diet_weekly_bonus: 15,
-  habit_water: 5,
-  habit_sleep: 5,
-  habit_combined_bonus: 3,
-  lesson_complete: 8,
-  module_complete: 15,
-  community_post: 2,
-  community_reaction_bonus: 3,
+  running_complete: 10,
+  daily_goal_check: 3,
 };
 
 export function useHustlePoints() {

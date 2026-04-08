@@ -8,20 +8,9 @@ import { Input } from "@/components/ui/input";
 
 const ACTION_LABELS: Record<string, string> = {
   workout_complete: "🏋️ Treino Concluído",
-  workout_weekly_bonus: "📅 Bônus Semanal Treino",
-  workout_streak: "🔥 Streak de Treino",
   diet_log: "🍽️ Registrar Refeição",
-  diet_calories: "🎯 Meta de Calorias",
-  diet_protein: "💪 Meta de Proteína",
-  diet_all_macros: "✅ Todos os Macros",
-  diet_weekly_bonus: "📅 Bônus Semanal Dieta",
-  habit_water: "💧 Meta de Água",
-  habit_sleep: "🌙 Meta de Sono",
-  habit_combined_bonus: "⭐ Bônus Hábitos",
-  lesson_complete: "📚 Aula Concluída",
-  module_complete: "🏆 Módulo Concluído",
-  community_post: "💬 Post na Comunidade",
-  community_reaction_bonus: "❤️ Bônus de Reações",
+  running_complete: "🏃 Corrida Concluída",
+  daily_goal_check: "✅ Check em Meta Diária",
 };
 
 export default function AdminPontuacao() {
