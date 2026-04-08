@@ -458,11 +458,7 @@ const Perfil = () => {
                </div>
                <div className="text-center text-orange-500">
                  <p className="text-base font-black">{streakNum}</p>
-                 <p className="text-[9px] uppercase tracking-tighter">Streak</p>
-               </div>
-               <div className="text-center text-yellow-500">
-                 <p className="text-base font-black">{socialCounts?.points ?? 0}</p>
-                 <p className="text-[9px] uppercase tracking-tighter">Pontos</p>
+                 <p className="text-[9px] uppercase tracking-tighter">Dias Ativos</p>
                </div>
                <div className="text-center">
                  <p className="text-base font-black text-foreground">{socialCounts?.workoutsCount ?? 0}</p>
