@@ -2,15 +2,15 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trophy, Medal, User, Zap, ChevronUp, ChevronDown, Calendar, Infinity as InfinityIcon, Flame } from "lucide-react";
+import { Trophy, User, ChevronUp, ChevronDown, Calendar, Infinity as InfinityIcon, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type RankPeriod = "weekly" | "monthly" | "alltime";
 
 const PERIOD_LABELS: Record<RankPeriod, { label: string; icon: React.ComponentType<any>; desc: string }> = {
-  weekly:  { label: "Semana",  icon: Flame,    desc: "Pontos acumulados esta semana" },
-  monthly: { label: "Mês",     icon: Calendar, desc: "Pontos acumulados este mês" },
-  alltime: { label: "Geral",   icon: InfinityIcon, desc: "Todos os pontos da história" },
+  weekly:  { label: "Semana",  icon: Flame,    desc: "Dias ativos esta semana" },
+  monthly: { label: "Mês",     icon: Calendar, desc: "Dias ativos este mês" },
+  alltime: { label: "Geral",   icon: InfinityIcon, desc: "Total de dias ativos" },
 };
 
 function getPeriodStart(period: RankPeriod): string | null {
@@ -35,64 +35,62 @@ function useRanking(period: RankPeriod, plannerType?: string) {
   return useQuery({
     queryKey: ["gym-rats-ranking", period, plannerType],
     queryFn: async () => {
-      // For alltime, use hustle_points directly from profiles (cached total)
-      if (period === "alltime") {
-        let q = supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url, hustle_points")
-          .gt("hustle_points", 0)
-          
-        if (plannerType) q = q.eq("planner_type", plannerType);
-        
-        const { data, error } = await q.order("hustle_points", { ascending: false }).limit(30);
-        if (error) throw error;
-        return (data || []).map((p: any, i: number) => ({
-          user_id: p.id,
-          nome: p.full_name || "Aluna",
-          avatar_url: p.avatar_url,
-          points: p.hustle_points ?? 0,
-          position: i + 1,
-          isMe: p.id === user?.id,
-        }));
-      }
+      // Fetch profiles in this planner type
+      let profileQuery = supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url");
+      if (plannerType) profileQuery = profileQuery.eq("planner_type", plannerType);
+      const { data: profiles, error: profErr } = await profileQuery;
+      if (profErr) throw profErr;
+      if (!profiles || profiles.length === 0) return [];
 
-      // For weekly/monthly — use hustle_points table with inner join on profiles to filter planner
-      let query: any = supabase
-        .from("hustle_points")
-        .select("user_id, points, profiles!inner(full_name, avatar_url, planner_type)");
+      const userIds = profiles.map((p: any) => p.id);
+      const profileMap: Record<string, any> = {};
+      for (const p of profiles) profileMap[p.id] = p;
 
-      if (plannerType) {
-        query = query.eq("profiles.planner_type", plannerType);
-      }
-
+      // Fetch community_posts + workouts for the period
+      let postsQuery = supabase.from("community_posts").select("user_id, created_at").in("user_id", userIds);
+      let workoutsQuery = supabase.from("workouts").select("user_id, started_at").in("user_id", userIds);
+      
       if (periodStart) {
-        query = query.gte("created_at", periodStart);
+        postsQuery = postsQuery.gte("created_at", periodStart);
+        workoutsQuery = workoutsQuery.gte("started_at", periodStart);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const [{ data: posts }, { data: workouts }] = await Promise.all([postsQuery, workoutsQuery]);
 
-      if (!data || data.length === 0) return [];
-
-      const grouped = (data as any[]).reduce((acc: any, curr: any) => {
-        const uid = curr.user_id;
-        if (!acc[uid]) {
-          acc[uid] = {
-            user_id: uid,
-            nome: curr.profiles?.full_name || "Aluna",
-            avatar_url: curr.profiles?.avatar_url,
-            points: 0,
-            isMe: uid === user?.id,
-          };
+      // Count unique active days per user
+      const activeDaysMap: Record<string, Set<string>> = {};
+      for (const p of (posts || [])) {
+        const d = p.created_at?.split('T')[0];
+        if (d) {
+          if (!activeDaysMap[p.user_id]) activeDaysMap[p.user_id] = new Set();
+          activeDaysMap[p.user_id].add(d);
         }
-        acc[uid].points += curr.points ?? 0;
-        return acc;
-      }, {});
+      }
+      for (const w of (workouts || [])) {
+        const d = (w as any).started_at?.split('T')[0];
+        if (d) {
+          if (!activeDaysMap[(w as any).user_id]) activeDaysMap[(w as any).user_id] = new Set();
+          activeDaysMap[(w as any).user_id].add(d);
+        }
+      }
 
-      return Object.values(grouped)
+      const ranked = userIds
+        .map((uid: string) => ({
+          user_id: uid,
+          nome: profileMap[uid]?.full_name || "Aluna",
+          avatar_url: profileMap[uid]?.avatar_url,
+          points: activeDaysMap[uid]?.size ?? 0,
+          isMe: uid === user?.id,
+          position: 0,
+        }))
+        .filter((p: any) => p.points > 0)
         .sort((a: any, b: any) => b.points - a.points)
         .slice(0, 30)
         .map((player: any, index: number) => ({ ...player, position: index + 1 }));
+
+      return ranked;
     },
     staleTime: 1000 * 60 * 3,
   });
@@ -167,7 +165,6 @@ export function GymRatsHub() {
               {top3.length > 0 && (
                 <div className="flex justify-center gap-4 pt-8 pb-4 px-2">
                   {top3.map((player: any, idx) => {
-                    // Visual order: 2nd, 1st, 3rd
                     const visualOrder = idx === 0 ? "order-2" : idx === 1 ? "order-1" : "order-3";
                     const isWinner = idx === 0;
                     const avatarSize = isWinner ? "w-20 h-20" : "w-16 h-16";
@@ -209,8 +206,8 @@ export function GymRatsHub() {
                           {player.isMe && <span className="ml-1 text-accent">★</span>}
                         </p>
                         <div className="flex items-center gap-1 text-accent mt-0.5">
-                          <Zap size={10} className="fill-accent" />
-                          <span className="text-[10px] font-bold">{player.points.toLocaleString()} pts</span>
+                          <Flame size={10} className="fill-accent" />
+                          <span className="text-[10px] font-bold">{player.points} {player.points === 1 ? 'dia' : 'dias'}</span>
                         </div>
                       </motion.div>
                     );
@@ -245,8 +242,8 @@ export function GymRatsHub() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1 text-accent shrink-0">
-                        <Zap size={12} className="fill-accent" />
-                        <span className="text-sm font-bold">{player.points.toLocaleString()}</span>
+                        <Flame size={12} className="fill-accent" />
+                        <span className="text-sm font-bold">{player.points}</span>
                       </div>
                     </div>
                   ))}
@@ -257,7 +254,7 @@ export function GymRatsHub() {
                 <div className="text-center py-16 opacity-50">
                   <Trophy size={48} className="mx-auto mb-3 opacity-10" />
                   <p className="text-xs font-cinzel">A arena ainda está vazia.</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Seja a primeira a marcar pontos este período!</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Seja a primeira a marcar dias ativos este período!</p>
                 </div>
               )}
             </>
