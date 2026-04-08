@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Megaphone, Send, Clock, Edit } from "lucide-react";
+import { Megaphone, Send, Clock, Edit, Bell, Users } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 export default function AdminAvisos() {
@@ -11,6 +11,29 @@ export default function AdminAvisos() {
   const [body, setBody] = useState("");
   const [markdown, setMarkdown] = useState("");
   const [isPreview, setIsPreview] = useState(false);
+
+  const { data: pushCount } = useQuery({
+    queryKey: ["push_subscribers_count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("push_subscriptions" as any)
+        .select("*", { count: "exact", head: true });
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
+
+  const { data: totalUsers } = useQuery({
+    queryKey: ["total_active_users"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "ativo");
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
 
   const { data: broadcasts, isLoading } = useQuery({
     queryKey: ["admin_broadcasts"],
@@ -57,6 +80,24 @@ export default function AdminAvisos() {
           <p className="text-muted-foreground mt-1">
             Envie avisos, atualizações e motivações para o sininho de todas as alunas simultaneamente.
           </p>
+        </div>
+      </div>
+
+      {/* Push stats */}
+      <div className="flex gap-4">
+        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3">
+          <Bell size={20} className="text-accent" />
+          <div>
+            <p className="text-2xl font-bold">{pushCount ?? 0}</p>
+            <p className="text-xs text-muted-foreground">Sininho ativado</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3">
+          <Users size={20} className="text-muted-foreground" />
+          <div>
+            <p className="text-2xl font-bold">{totalUsers ?? 0}</p>
+            <p className="text-xs text-muted-foreground">Alunas ativas</p>
+          </div>
         </div>
       </div>
 
