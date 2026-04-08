@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,23 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { PostDetailModal } from "./PostDetailModal";
+
+/* ── Image with skeleton placeholder ── */
+function ImageWithSkeleton({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative">
+      {!loaded && <div className="w-full aspect-video bg-secondary animate-pulse" />}
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${loaded ? '' : 'absolute inset-0 opacity-0'}`}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
 
 interface CommunityPost {
   id: string;
@@ -194,7 +211,11 @@ export function PostCard({ post, onAvatarClick }: { post: CommunityPost; onAvata
         {post.image_url && (
           <div className="relative" onDoubleClick={handleHeartClick}>
             <div className="overflow-hidden bg-secondary/20 relative">
-              <img src={post.image_url} alt="Post media" className="w-full max-h-[600px] object-cover" />
+              <ImageWithSkeleton
+                src={post.image_url + '?width=600&resize=contain'}
+                alt="Post media"
+                className="w-full max-h-[600px] object-cover"
+              />
               <AnimatePresence>
                 {heartBurst && (
                   <motion.div
