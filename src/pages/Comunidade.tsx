@@ -43,21 +43,7 @@ function useSegmentedRanking(category: PlanCategory) {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // 1. Fetch hustle_points earned this month
-      const { data: pointsLog, error: logErr } = await supabase
-        .from("hustle_points")
-        .select("user_id, points")
-        .gte("created_at", monthStart);
-
-      if (logErr) throw logErr;
-
-      // Aggregate points per user this month
-      const monthlyPoints: Record<string, number> = {};
-      for (const row of (pointsLog || [])) {
-        monthlyPoints[row.user_id] = (monthlyPoints[row.user_id] ?? 0) + (row.points ?? 0);
-      }
-
-      // 2. Fetch users in this category via profiles.planner_type
+      // 1. Fetch users in this category via profiles.planner_type
       const { data: profiledUsers, error: profErr } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
@@ -67,21 +53,44 @@ function useSegmentedRanking(category: PlanCategory) {
       const userIds = [...new Set((profiledUsers || []).map((p: any) => p.id))] as string[];
       if (userIds.length === 0) return [];
 
-      const { data: flames } = await supabase
-        .from("flame_status")
-        .select("user_id, streak")
-        .in("user_id", userIds);
+      // 2. Count unique days with community_posts this month per user
+      const { data: posts } = await supabase
+        .from("community_posts")
+        .select("user_id, created_at")
+        .in("user_id", userIds)
+        .gte("created_at", monthStart);
 
-      const flameMap: Record<string, number> = {};
-      for (const f of (flames || [])) flameMap[f.user_id] = f.streak;
+      // 3. Also count historic workout days this month
+      const { data: workouts } = await supabase
+        .from("workouts")
+        .select("user_id, started_at")
+        .in("user_id", userIds)
+        .gte("started_at", monthStart);
 
-      // 4. Combine and sort by monthly score
+      // Build active days per user
+      const activeDaysMap: Record<string, Set<string>> = {};
+      for (const p of (posts || [])) {
+        const d = p.created_at?.split('T')[0];
+        if (d) {
+          if (!activeDaysMap[p.user_id]) activeDaysMap[p.user_id] = new Set();
+          activeDaysMap[p.user_id].add(d);
+        }
+      }
+      for (const w of (workouts || [])) {
+        const d = (w as any).started_at?.split('T')[0];
+        if (d) {
+          if (!activeDaysMap[(w as any).user_id]) activeDaysMap[(w as any).user_id] = new Set();
+          activeDaysMap[(w as any).user_id].add(d);
+        }
+      }
+
+      // 4. Combine and sort by active days count
       const combined: PodiumEntry[] = (profiledUsers || []).map((p: any) => ({
         user_id: p.id,
         full_name: p.full_name || "Miri",
         avatar_url: p.avatar_url,
-        score: monthlyPoints[p.id] ?? 0,
-        streak: flameMap[p.id] ?? 0,
+        score: activeDaysMap[p.id]?.size ?? 0,
+        streak: activeDaysMap[p.id]?.size ?? 0,
         rank: 0,
       }));
 
@@ -170,7 +179,7 @@ function SegmentedRanking({ onAvatarClick }: { onAvatarClick: (id: string) => vo
                     <span className="text-xs font-bold text-foreground">Sua Posição</span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground">
-                    <span>{userEntry.score} pts</span>
+                    <span>{userEntry.score} dias</span>
                     <span>{userEntry.streak}🔥</span>
                   </div>
                 </div>
@@ -270,14 +279,25 @@ export default function Comunidade() {
         d.setDate(d.getDate() - (6 - i));
         return { date: d.toISOString().split("T")[0], obj: d };
       });
-      const { data } = await supabase
-        .from("workouts")
-        .select("finished_at")
-        .eq("user_id", user.id)
-        .not("finished_at", "is", null)
-        .gte("finished_at", `${days[0].date}T00:00:00`)
-        .lte("finished_at", `${days[6].date}T23:59:59`);
-      const activeDays = new Set((data || []).map((w: any) => w.finished_at?.split("T")[0]));
+      // Fetch posts + workouts for the week
+      const [{ data: posts }, { data: workouts }] = await Promise.all([
+        supabase
+          .from("community_posts")
+          .select("created_at")
+          .eq("user_id", user.id)
+          .gte("created_at", `${days[0].date}T00:00:00`)
+          .lte("created_at", `${days[6].date}T23:59:59`),
+        supabase
+          .from("workouts")
+          .select("finished_at")
+          .eq("user_id", user.id)
+          .not("finished_at", "is", null)
+          .gte("finished_at", `${days[0].date}T00:00:00`)
+          .lte("finished_at", `${days[6].date}T23:59:59`),
+      ]);
+      const activeDays = new Set<string>();
+      (posts || []).forEach((p: any) => { const d = p.created_at?.split("T")[0]; if (d) activeDays.add(d); });
+      (workouts || []).forEach((w: any) => { const d = w.finished_at?.split("T")[0]; if (d) activeDays.add(d); });
       
       const today = new Date();
       today.setHours(0,0,0,0);
@@ -374,7 +394,7 @@ export default function Comunidade() {
             <Flame size={16} className="text-orange-500" />
             <h3 className="font-cinzel text-sm font-bold text-foreground tracking-tight uppercase">Esta Semana</h3>
             <span className="text-xs font-black text-orange-500 ml-auto bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
-              {currentStreak} {currentStreak === 1 ? "Dia" : "Dias"} 🔥
+              {currentStreak} {currentStreak === 1 ? "Dia Ativo" : "Dias Ativos"} 🔥
             </span>
           </div>
           <div className="flex items-center gap-2">

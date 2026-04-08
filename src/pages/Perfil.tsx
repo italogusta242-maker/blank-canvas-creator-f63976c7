@@ -447,7 +447,7 @@ const Perfil = () => {
              <p className="text-xs text-muted-foreground uppercase tracking-widest">Aluno ANAAC · Desde {memberSince}</p>
            </div>
            
-           <div className="grid grid-cols-5 gap-1 w-full pt-4">
+           <div className="grid grid-cols-4 gap-1 w-full pt-4">
                <div className="text-center">
                  <p className="text-base font-black text-foreground">{socialCounts?.posts ?? 0}</p>
                  <p className="text-[9px] text-muted-foreground uppercase tracking-tighter">Posts</p>
@@ -458,11 +458,7 @@ const Perfil = () => {
                </div>
                <div className="text-center text-orange-500">
                  <p className="text-base font-black">{streakNum}</p>
-                 <p className="text-[9px] uppercase tracking-tighter">Streak</p>
-               </div>
-               <div className="text-center text-yellow-500">
-                 <p className="text-base font-black">{socialCounts?.points ?? 0}</p>
-                 <p className="text-[9px] uppercase tracking-tighter">Pontos</p>
+                 <p className="text-[9px] uppercase tracking-tighter">Dias Ativos</p>
                </div>
                <div className="text-center">
                  <p className="text-base font-black text-foreground">{socialCounts?.workoutsCount ?? 0}</p>

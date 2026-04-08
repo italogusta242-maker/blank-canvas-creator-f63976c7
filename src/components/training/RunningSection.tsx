@@ -83,22 +83,12 @@ const RunningSectionBeta = ({ workoutHistory, onSaveSuccess }: RunningSectionPro
       if (error) throw error;
     },
     onMutate: async () => {
-      if (!user) return;
-      // Anti-duplication: check if flame already active today
-      const shouldIncrement = await shouldIncrementFlame(user.id);
-      if (shouldIncrement) {
-        await queryClient.cancelQueries({ queryKey: ["flame-state", user.id] });
-        optimisticFlameUpdate(queryClient, user.id, {
-          adherenceDelta: 40,
-          forceActive: true,
-          streakIncrement: true,
-        });
-      }
+      // Flame activation removed — now triggered by community posts only
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["workout-history"] });
       queryClient.invalidateQueries({ queryKey: ["real-performance"] });
-      if (user) checkAndUpdateFlame(user.id);
+      // Flame/streak no longer triggered by workouts
       setLogOpen(false);
       
       const distParsed = parseFloat(distance) || 0;
