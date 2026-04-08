@@ -667,13 +667,13 @@ const Challenge = () => {
   };
 
   const calculateCycleDay = () => {
-    const startDate = new Date('2026-04-06T00:00:00-03:00').getTime();
+    const startDate = new Date('2026-04-08T00:00:00-03:00').getTime();
     const now = new Date().getTime();
     
     if (now < startDate) return 1;
     
     const diffDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-    return (diffDays % 21) + 1;
+    return Math.min(21, diffDays + 1); // Cap at 21, no modulo wrap
   };
   
   const cycleDay = calculateCycleDay();
