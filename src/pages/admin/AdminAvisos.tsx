@@ -83,6 +83,24 @@ export default function AdminAvisos() {
         </div>
       </div>
 
+      {/* Push stats */}
+      <div className="flex gap-4">
+        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3">
+          <Bell size={20} className="text-accent" />
+          <div>
+            <p className="text-2xl font-bold">{pushCount ?? 0}</p>
+            <p className="text-xs text-muted-foreground">Sininho ativado</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3">
+          <Users size={20} className="text-muted-foreground" />
+          <div>
+            <p className="text-2xl font-bold">{totalUsers ?? 0}</p>
+            <p className="text-xs text-muted-foreground">Alunas ativas</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Editor */}
         <div className="bg-card p-6 rounded-xl border border-border space-y-6">
