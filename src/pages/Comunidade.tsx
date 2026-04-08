@@ -87,7 +87,7 @@ function useSegmentedRanking(category: PlanCategory) {
 
       combined.sort((a, b) => b.score - a.score);
       combined.forEach((e, i) => (e.rank = i + 1));
-      return combined.slice(0, 10);
+      return combined;
     },
     staleTime: 1000 * 60 * 3,
   });
