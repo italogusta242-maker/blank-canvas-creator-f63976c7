@@ -28,7 +28,7 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
-import { useHustlePoints } from "@/hooks/useHustlePoints";
+// useHustlePoints removed — unified into "Dias Ativos"
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
@@ -115,7 +115,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
-  const { totalPoints } = useHustlePoints();
+  // totalPoints removed — unified into streak/"Dias Ativos"
 
   // Real performance data
   const {
@@ -433,7 +433,6 @@ const Dashboard = () => {
           adherence={adherence}
           streak={streak}
           ranking={(profile as any)?.ranking || 1}
-          totalPoints={totalPoints}
           flameState={flameState}
         />
 
@@ -525,7 +524,7 @@ const Dashboard = () => {
         adherence={adherence}
         streak={streak}
         ranking={(profile as any)?.ranking || 1}
-        totalPoints={totalPoints}
+        
         flameState={flameState}
       />
 
