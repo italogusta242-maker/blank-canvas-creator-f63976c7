@@ -107,7 +107,7 @@ function PodiumBar({ entry, tier, onClick }: {
   );
 }
 
-export function PodiumCard({ entries, onAvatarClick, scoreLabel = "pts" }: PodiumCardProps) {
+export function PodiumCard({ entries, onAvatarClick, scoreLabel = "dias" }: PodiumCardProps) {
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
 
