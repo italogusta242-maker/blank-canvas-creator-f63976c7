@@ -35,7 +35,7 @@ const PerformanceEvolution = ({
         </div>
         <button 
           onClick={() => setShowPerformanceModal(true)}
-          className="hidden md:block whitespace-nowrap text-[10px] text-muted-foreground px-4 py-2 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors font-cinzel font-black tracking-widest border border-border/50"
+          className="whitespace-nowrap text-[10px] text-muted-foreground px-3 md:px-4 py-1.5 md:py-2 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors font-cinzel font-black tracking-widest border border-border/50"
         >
           DETALHES →
         </button>
