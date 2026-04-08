@@ -189,7 +189,6 @@ const DailyGoals = ({
   performanceData = [],
   planDaysElapsed = 1,
   plannerType,
-  totalMealsInDiet = 6,
 }: DailyGoalsProps) => {
   const { user } = useAuth();
   const last7 = performanceData.slice(-7);
@@ -208,53 +207,21 @@ const DailyGoals = ({
   const phase = getPhase(planDaysElapsed);
   const phaseLabel = getPhaseLabel(phase);
 
-  // Dynamic diet thresholds based on actual meal count
-  const dietThresholds = useMemo(() => {
-    const total = totalMealsInDiet;
-    return {
-      dieta_cafe: Math.max(1, Math.ceil(total * 0.2)),      // ~20% of meals
-      dieta_almoco: Math.max(2, Math.ceil(total * 0.5)),     // ~50% of meals
-      dieta_jantar: Math.max(3, Math.ceil(total * 0.8)),     // ~80% of meals
-      dieta_completa: total,                                  // 100% of meals
-    };
-  }, [totalMealsInDiet]);
-
   const isGoalDone = (key: GoalKey): boolean => {
     switch (key) {
-      case "agua": return waterDone || completedGoals.has("agua");
-      case "sono": return sleepDone || completedGoals.has("sono");
-      case "treino": {
-        // Only count trained days in the LAST 7 days, not all performanceData
-        const recentDays = performanceData.slice(-7);
-        const trainedDays = recentDays.filter(d => (d.training || 0) > 0).length;
-        const treinoGoal = activeGoals.find(g => g.key === "treino");
-        const match = treinoGoal?.description?.match(/(\d+)\s*treino/i);
-        const requiredWorkouts = match ? parseInt(match[1], 10) : 3;
-        return trainedDays >= requiredWorkouts;
-      }
-      case "dieta_completa":
-        return mealsCompletedCount >= dietThresholds.dieta_completa;
-      case "dieta_cafe":
-        return mealsCompletedCount >= dietThresholds.dieta_cafe;
-      case "dieta_almoco":
-        return mealsCompletedCount >= dietThresholds.dieta_almoco;
-      case "dieta_jantar":
-        return mealsCompletedCount >= dietThresholds.dieta_jantar;
-      default: 
+      case "agua":
+        return waterDone || completedGoals.has("agua");
+      case "sono":
+        return sleepDone || completedGoals.has("sono");
+      default:
         return completedGoals.has(key);
     }
   };
 
-  const isAutoGoal = (key: string) => {
-    return ["treino", "dieta_cafe", "dieta_almoco", "dieta_jantar", "dieta_completa"].includes(key);
-  };
+  const isAutoGoal = (_key: string) => false;
 
-  // Sort goals: auto goals first, then manual
-  const sortedGoals = useMemo(() => {
-    const auto = activeGoals.filter(g => isAutoGoal(g.key));
-    const manual = activeGoals.filter(g => !isAutoGoal(g.key));
-    return [...auto, ...manual];
-  }, [activeGoals]);
+  const sortedGoals = activeGoals;
+  const hasAutoGoals = sortedGoals.some((goal) => isAutoGoal(goal.key));
 
   return (
     <motion.div
@@ -283,7 +250,7 @@ const DailyGoals = ({
           const GoalIcon = GOAL_ICONS[goal.key] || Droplets;
           const color = GOAL_COLORS[goal.key] || waterBarColor;
           const auto = isAutoGoal(goal.key);
-          const isFirstManual = !auto && (idx === 0 || isAutoGoal(sortedGoals[idx - 1].key));
+          const isFirstManual = hasAutoGoals && !auto && (idx === 0 || isAutoGoal(sortedGoals[idx - 1].key));
 
           if (goal.key === "agua") {
             return (
@@ -375,11 +342,10 @@ const DailyGoals = ({
             let plannerCount = 0;
             if (waterDone) plannerCount++;
             if (sleepDone) plannerCount++;
-            if (trainingPts > 0) plannerCount++;
             
-            // Count all non-auto goals that are checked right now
+            // Count all manually checked goals right now
             activeGoals.forEach(g => {
-              if (["agua", "sono", "treino"].includes(g.key)) return; // already counted above
+              if (["agua", "sono"].includes(g.key)) return; // already counted above
               if (isGoalDone(g.key)) plannerCount++;
             });
             
