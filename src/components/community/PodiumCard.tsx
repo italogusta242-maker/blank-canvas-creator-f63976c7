@@ -100,7 +100,7 @@ function PodiumBar({ entry, tier, onClick }: {
         {/* Score at bottom */}
         <div className="absolute bottom-2 inset-x-0 flex flex-col items-center">
           <span className="text-[9px] font-black text-white/90">{entry.score.toLocaleString()}</span>
-          <span className="text-[8px] text-white/60">pts</span>
+          <span className="text-[8px] text-white/60">dias</span>
         </div>
       </motion.div>
     </motion.div>
