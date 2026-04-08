@@ -233,32 +233,15 @@ const Treinos = () => {
       }
     },
     onMutate: async () => {
-      if (!user) return;
-      const shouldIncrement = await shouldIncrementFlame(user.id);
-      await queryClient.cancelQueries({ queryKey: ["flame-state", user.id] });
-      await queryClient.cancelQueries({ queryKey: ["workout-history"] });
-      const previousFlame = queryClient.getQueryData(["flame-state", user.id]) as any;
-      
-      // Double check: if cache already says active, don't increment again
-      if (shouldIncrement && previousFlame?.state !== "ativa") {
-        optimisticFlameUpdate(queryClient, user.id, { adherenceDelta: 40, forceActive: true, streakIncrement: true });
-      } else {
-        // Just update adherence without touching the streak
-        optimisticFlameUpdate(queryClient, user.id, { adherenceDelta: 40, forceActive: true, streakIncrement: false });
-      }
-      return { previousFlame };
+      // Flame activation removed — now triggered by community posts only
     },
     onError: (_err, _vars, context) => {
-      if (context?.previousFlame && user) {
-        queryClient.setQueryData(["flame-state", user.id], context.previousFlame);
-      }
+      // no flame rollback needed
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workout-history"] });
       queryClient.invalidateQueries({ queryKey: ["real-performance"] });
-      if (user) checkAndUpdateFlame(user.id);
-      awardPoints({ action: "workout_complete" });
-      if (user) triggerMilestonePost(user.id, "workout");
+      // Flame/streak no longer triggered by workouts
     },
   });
 
