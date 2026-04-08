@@ -159,24 +159,38 @@ const Dashboard = () => {
   const hasRealPlan = !!realTrainingPlan || hasTrainingPlan;
 
   // Calculate days elapsed in challenge (for progressive goals)
+  // First try challenge_participants, then fallback to active challenge start_date
   const { data: participantData } = useQuery({
     queryKey: ["challenge-participant-days", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
+      // Try participant record first
+      const { data: participant } = await supabase
         .from("challenge_participants")
         .select("joined_at")
         .eq("user_id", user.id)
         .order("joined_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      return data;
+      if (participant?.joined_at) return { start: participant.joined_at };
+
+      // Fallback: use active challenge start_date
+      const { data: challenge } = await supabase
+        .from("challenges")
+        .select("start_date")
+        .eq("is_active", true)
+        .order("start_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (challenge?.start_date) return { start: challenge.start_date };
+
+      return null;
     },
     enabled: !!user,
     staleTime: 1000 * 60 * 60,
   });
-  const planDaysElapsed = participantData?.joined_at
-    ? Math.max(1, Math.ceil((Date.now() - new Date(participantData.joined_at).getTime()) / (1000 * 60 * 60 * 24)))
+  const planDaysElapsed = participantData?.start
+    ? Math.max(1, Math.ceil((Date.now() - new Date(participantData.start).getTime()) / (1000 * 60 * 60 * 24)))
     : 1;
 
   const dynamicGoalsConfig = useMemo(() => {
