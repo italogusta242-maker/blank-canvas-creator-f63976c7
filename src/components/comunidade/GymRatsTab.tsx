@@ -59,16 +59,26 @@ export function GymRatsTab() {
   const { data: ranking = [], isLoading } = useQuery<RankedUser[]>({
     queryKey: ["gym-rats-ranking", category],
     queryFn: async () => {
-      // 1. Fetch profiles with hustle_points
-      const { data: profiles, error } = await (supabase as any)
+      // 1. Sum hustle_points from the hustle_points table
+      const { data: hpRows, error: hpError } = await supabase
+        .from("hustle_points")
+        .select("user_id, points");
+      if (hpError) throw hpError;
+
+      const pointsMap = new Map<string, number>();
+      for (const row of hpRows || []) {
+        pointsMap.set(row.user_id, (pointsMap.get(row.user_id) || 0) + (row.points || 0));
+      }
+
+      // 2. Fetch profiles for all users that have points, plus all profiles for streak/workout ranking
+      const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, hustle_points")
-        .order("hustle_points", { ascending: false })
-        .limit(50);
+        .select("id, full_name, avatar_url");
       if (error) throw error;
 
-      // 2. Fetch streaks for all these users
       const userIds = (profiles || []).map((p: any) => p.id);
+
+      // 3. Fetch streaks
       const { data: flames } = await supabase
         .from("flame_status")
         .select("user_id, streak")
@@ -76,7 +86,7 @@ export function GymRatsTab() {
       const flameMap = new Map<string, number>();
       for (const f of flames || []) flameMap.set(f.user_id, f.streak ?? 0);
 
-      // 3. Count finished workouts
+      // 4. Count finished workouts
       const { data: workouts } = await supabase
         .from("workouts")
         .select("user_id")
@@ -87,24 +97,26 @@ export function GymRatsTab() {
         workoutMap.set(w.user_id, (workoutMap.get(w.user_id) || 0) + 1);
       }
 
-      // 4. Build combined array
-      let combined: RankedUser[] = (profiles || []).map((p: any) => ({
-        id: p.id,
-        full_name: p.full_name || "Miri",
-        avatar_url: p.avatar_url,
-        hustle_points: p.hustle_points ?? 0,
-        streak: flameMap.get(p.id) || 0,
-        workouts_count: workoutMap.get(p.id) || 0,
-        rank: 0,
-        level: deriveLevel(p.hustle_points ?? 0),
-      }));
+      // 5. Build combined array — only include users with some activity
+      let combined: RankedUser[] = (profiles || [])
+        .map((p: any) => ({
+          id: p.id,
+          full_name: p.full_name || "Miri",
+          avatar_url: p.avatar_url,
+          hustle_points: pointsMap.get(p.id) || 0,
+          streak: flameMap.get(p.id) || 0,
+          workouts_count: workoutMap.get(p.id) || 0,
+          rank: 0,
+          level: deriveLevel(pointsMap.get(p.id) || 0),
+        }))
+        .filter((u) => u.hustle_points > 0 || u.streak > 0 || u.workouts_count > 0);
 
-      // 5. Sort by selected category
+      // 6. Sort by selected category
       if (category === "streak") combined.sort((a, b) => b.streak - a.streak);
       else if (category === "workouts") combined.sort((a, b) => b.workouts_count - a.workouts_count);
       else combined.sort((a, b) => b.hustle_points - a.hustle_points);
 
-      // 6. Assign ranks
+      // 7. Assign ranks
       combined.forEach((u, i) => (u.rank = i + 1));
       return combined;
     },
