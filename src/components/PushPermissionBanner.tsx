@@ -12,9 +12,13 @@ interface PushPermissionBannerProps {
 const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, onInstall }: PushPermissionBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
 
+  // Detect iOS — on iOS, beforeinstallprompt never fires, so show push directly
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+
   // Show install banner OR push prompt banner, never both at once
-  const showInstall = isInstallable && !dismissed;
-  const showPush = !isInstallable && pushState === "prompt" && !dismissed;
+  // On iOS, skip install banner (it's manual) and go straight to push prompt
+  const showInstall = isInstallable && !isIOS && !dismissed;
+  const showPush = (!isInstallable || isIOS) && pushState === "prompt" && !dismissed;
 
   if (!showInstall && !showPush) return null;
 
