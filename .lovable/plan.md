@@ -1,61 +1,43 @@
 
 
-## Diagnóstico Completo para o Lançamento
+## Correção Urgente: Falha de Segurança na Página de Login
 
-### Problemas Encontrados
+### Problema Encontrado
 
-**1. Sem manifest.json — Instalação PWA não funciona**
-Não existe um arquivo `manifest.json` no projeto. Sem ele:
-- Android: o evento `beforeinstallprompt` nunca dispara, então `isInstallable` fica sempre `false` e o botão "Instalar" nunca aparece
-- iOS Safari: o `PWAInstallBanner` detecta iOS e mostra instruções manuais, mas sem manifest o "Adicionar à Tela Inicial" não cria um app standalone
-- O service worker `push-handler.js` é registrado mas sem manifest ele opera como SW genérico, não como PWA
+No arquivo `src/pages/AuthPage.tsx`, a aba **"CRIAR CONTA"** está visível para qualquer pessoa. Quando alguém se cadastra por ali, o código na **linha 94-97** executa:
 
-**2. Sem cron jobs configurados**
-A extensão `pg_cron` não está habilitada (tabela `cron.job` não existe). Isso significa:
-- `daily-flame-check` (00:00 BRT) — NÃO roda automaticamente
-- `motivational-notifications` (19h e 22h BRT) — NÃO roda automaticamente
-- O flame/streak vai acumular sem nunca ser processado
+```typescript
+// Insert admin role
+await supabase.from("user_roles").upsert(
+  { user_id: userId, role: "admin" },
+  { onConflict: "user_id,role" }
+);
+```
 
-**3. Email de autenticação**
-O domínio `www.anaacclub.com.br` está configurado como domínio customizado, mas não há domínio de email configurado. Os emails de autenticação (redefinição de senha, confirmação) estão usando o remetente padrão da Lovable, que funciona mas vai como `noreply@lovable...`.
+Ou seja, **qualquer pessoa que cria uma conta pela tela de login recebe automaticamente a role `admin`**. Este é o "botão de emergência" que foi criado anteriormente para recuperação de acesso, mas ficou como o fluxo padrão de signup.
 
-**4. Push Notifications — estrutura OK, 0 inscritos**
-O fluxo técnico está correto (VAPID keys, push-handler.js, edge function). O problema é que sem o manifest.json + PWA instalada, o banner de push nunca aparece no fluxo correto. Mesmo assim, no navegador desktop/Android Chrome o push pode funcionar se a aluna aceitar.
-
----
+Como as alunas acessam a plataforma pelo link e algumas podem ter clicado em "Criar Conta" ao invés de usar a senha que receberam, elas viraram admin.
 
 ### Plano de Correção
 
-**Etapa 1: Criar `manifest.json` (resolve instalação Android + iOS + push)**
-Criar `public/manifest.json` com:
-- `name`: "ANAAC Club"
-- `short_name`: "ANAAC"
-- `start_url`: "/"
-- `display`: "standalone"
-- `background_color` e `theme_color`
-- Icons: usar `insano-icon-192.png` e `insano-icon-512.png` que já existem
-- Adicionar `<link rel="manifest" href="/manifest.json">` no `index.html`
+**1. Remover a aba "CRIAR CONTA" da AuthPage**
 
-**Etapa 2: Habilitar pg_cron + pg_net e criar 2 cron jobs**
-Migration SQL para habilitar as extensões, depois INSERT dos crons:
-- `daily-flame-check`: todo dia às 03:00 UTC (00:00 BRT)
-- `motivational-notifications`: às 22:00 UTC (19h BRT) e 01:00 UTC (22h BRT)
+A página de login deve ter APENAS o formulário de login. Alunas não devem poder se auto-cadastrar — contas são criadas pelo admin. Remover:
+- A aba/tab de signup
+- A função `handleSignUp` inteira
+- O campo "Nome completo"
 
-**Etapa 3: Melhorar o banner de push/instalação no iOS**
-O `PWAInstallBanner` já tem lógica iOS. Mas o `PushPermissionBanner` prioriza instalação sobre push — no iOS nunca vai instalar via prompt. Ajustar para que no iOS mostre diretamente o banner de push (já que instalação é manual).
+**2. Limpar roles admin incorretas (novamente)**
+
+Verificar e remover qualquer role admin que não seja do `anaac.master@gmail.com`.
+
+**3. Resultado**
+
+A tela de auth fica apenas com email + senha + botão "ENTRAR" + link "Esqueci minha senha". Ninguém mais poderá se auto-atribuir admin.
 
 ### Arquivos alterados
 
 | Arquivo | Ação |
 |---------|------|
-| `public/manifest.json` | Novo — manifest PWA |
-| `index.html` | Adicionar `<link rel="manifest">` |
-| Migration SQL | Habilitar pg_cron/pg_net + criar 3 cron jobs |
-| `src/components/PushPermissionBanner.tsx` | Ajuste menor para iOS |
-
-### O que NÃO precisa mudar
-- Service worker `push-handler.js` — já está correto
-- Edge function `push-notifications` — funcional
-- `usePushNotifications` hook — funcional
-- Emails de auth — funcionam pelo default da Lovable (alunas já estão redefinindo senha)
+| `src/pages/AuthPage.tsx` | Remover signup tab e função handleSignUp |
 
