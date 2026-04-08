@@ -9,7 +9,6 @@ interface DashboardHeroProps {
   adherence: number;
   streak: number;
   ranking: number;
-  totalPoints: number;
   flameState?: FlameState;
 }
 
@@ -19,7 +18,6 @@ const DashboardHero = ({
   adherence, 
   streak, 
   ranking,
-  totalPoints,
   flameState = "ativa",
   currentDayLabel
 }: DashboardHeroProps & { currentDayLabel?: string }) => {
@@ -96,12 +94,7 @@ const DashboardHero = ({
            <div className="flex gap-4 md:gap-10">
               <div className="text-center">
                 <p className="text-base md:text-2xl font-cinzel font-bold text-white">{streak}</p>
-                <p className="text-[9px] md:text-[10px] text-white/80 dark:text-muted-foreground uppercase tracking-widest">Streak</p>
-              </div>
-              <div className="w-[1px] h-6 md:h-12 bg-white/30 dark:bg-white/10" />
-               <div className="text-center">
-                <p className="text-base md:text-2xl font-cinzel font-bold text-white">{totalPoints.toLocaleString()}</p>
-                <p className="text-[9px] md:text-[10px] text-white/80 dark:text-muted-foreground uppercase tracking-widest">Pontos</p>
+                <p className="text-[9px] md:text-[10px] text-white/80 dark:text-muted-foreground uppercase tracking-widest">Dias Ativos</p>
               </div>
               <div className="w-[1px] h-6 md:h-12 bg-white/30 dark:bg-white/10" />
                <div className="text-center">
