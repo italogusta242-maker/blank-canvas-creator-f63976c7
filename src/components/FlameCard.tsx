@@ -197,7 +197,7 @@ const FlameCard = ({ state, streak, adherence, className = "" }: FlameCardProps)
             {streak}
           </span>
           <span className="text-[10px] font-semibold tracking-widest" style={{ color: config.numberColor, opacity: 0.8 }}>
-            DIAS
+            DIAS ATIVOS
           </span>
         </div>
       </div>
