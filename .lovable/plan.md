@@ -1,47 +1,45 @@
 
 
-## Plano: Inserir 11 Assinaturas Confirmadas + Criar Plano Anual
+## Plano: Zerar Pontuações + Popular Regras de Pontuação
 
-### 1. Migration: Criar plano Anual
+### Problema
+1. A tabela `scoring_rules` está **vazia** — por isso a tela admin mostra só o cabeçalho sem linhas
+2. O sistema usa fallback hardcoded quando não encontra regras, então alunas estão pontuando sem configuração oficial
+3. Existem 11 registros de hustle_points (90 pontos no total) que precisam ser zerados
 
-Inserir na `subscription_plans` um novo plano "Anual" com price = 348.00 e period_months = 12.
+### Ações
 
-### 2. Script de inserção em massa (11 alunas)
+**1. Migration: Limpar pontos existentes e zerar campo em profiles**
+- `DELETE FROM hustle_points;` — remove os 11 registros (90 pts)
+- `UPDATE profiles SET hustle_points = 0 WHERE hustle_points > 0;` — zera o cache no perfil
 
-Usar `psql` para INSERT direto nas tabelas `subscriptions` e `payments` para as 11 alunas confirmadas:
+**2. Migration: Popular `scoring_rules` com as 15 ações padrão**
 
-| Aluna | Profile ID | Plano | Valor |
-|-------|-----------|-------|-------|
-| Lívia Mirelly | 7d6e5d09 | Mensal ANAAC10 (c5852b5c) | 35,90 |
-| Karla Beatriz | 2905b855 | Mensal ANAAC10 | 35,90 |
-| Giovana Ribeiro | ed2908e4 | Mensal ANAAC10 | 35,90 |
-| Giovana Danielli | 5638258e | Mensal ANAAC10 | 35,90 |
-| Clara Mann Boaroli | c37b3573 | Mensal ANAAC10 | 35,90 |
-| Ana Pais | f55abdf1 | Mensal ANAAC10 | 35,90 |
-| Julia Araujo Santos | 3c10aeaa | Mensal (00423c77) | 39,90 |
-| Joany Medeiros | c0a0e3fe | Mensal | 39,90 |
-| Anna Julia Machado | 4f196c85 | Mensal | 39,90 |
-| Ana Beatriz Brandao Macedo | 0d21d683 | Mensal | 39,90 |
-| Nicolle Franco | 6cf1a939 | Trimestral ANAAC10 (3f52ae0c) | 98,00 |
+Inserir todas as regras com os valores default para o admin poder ajustar:
 
-Cada INSERT cria:
-- 1 row em `subscriptions` (status=active, payment_status=paid, plan_price, subscription_plan_id, started_at=now)
-- 1 row em `payments` (status=paid, amount, subscription_plan_id)
+| Ação | Pontos | Descrição |
+|------|--------|-----------|
+| workout_complete | 10 | Treino concluído |
+| workout_weekly_bonus | 20 | Bônus semanal treino |
+| workout_streak | 3 | Streak de treino |
+| diet_log | 5 | Registrar refeição |
+| diet_calories | 5 | Meta de calorias |
+| diet_protein | 3 | Meta de proteína |
+| diet_all_macros | 5 | Todos os macros |
+| diet_weekly_bonus | 15 | Bônus semanal dieta |
+| habit_water | 5 | Meta de água |
+| habit_sleep | 5 | Meta de sono |
+| habit_combined_bonus | 3 | Bônus hábitos |
+| lesson_complete | 8 | Aula concluída |
+| module_complete | 15 | Módulo concluído |
+| community_post | 2 | Post na comunidade |
+| community_reaction_bonus | 3 | Bônus de reações |
 
-### 3. Pendentes (nao executo agora)
+**3. Nenhuma alteração de código necessária**
+- O `AdminPontuacao.tsx` já lê e edita `scoring_rules` corretamente
+- O `useHustlePoints.ts` já busca regras do DB com fallback
 
-- **Rafaela Goncalves**: preciso do email/telefone para criar perfil + associar ao plano Anual R$ 348
-- **Maria Luiza Lira Marques**: sem pagamento confirmado, manter como esta
-
-### 4. Atualizar CSV de pendentes
-
-Regenerar `/mnt/documents/pendentes_revisao_manual.csv` com apenas Rafaela e Maria Luiza.
-
-### Arquivos alterados
-
-| Arquivo | Acao |
-|---------|------|
-| Migration SQL | INSERT plano Anual na subscription_plans |
-| Script Python `/tmp/` | INSERT subscriptions + payments para 11 alunas |
-| `/mnt/documents/pendentes_revisao_manual.csv` | Atualizado com 2 pendentes |
+### Resultado
+- Todos os pontos zerados (fresh start)
+- Admin verá as 15 regras listadas para editar valores antes de "liberar" a pontuação
 
