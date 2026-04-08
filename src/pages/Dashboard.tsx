@@ -263,12 +263,13 @@ const Dashboard = () => {
   // Water & meals from database
   const { waterIntake, setWater: setWaterIntake, mealsCompletedCount: mealsCompleted, completedMeals, toggleMeal } = useDailyHabits();
 
-  // Fetch diet plan to get real total meals count
+  // Fetch diet plan to get real total meals count (try diet_plans first, then challenge diet)
   const { data: dietPlanData } = useQuery({
-    queryKey: ["diet-plan", user?.id],
+    queryKey: ["diet-plan-meals-count", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      // Try user's personal diet plan first
+      const { data } = await supabase
         .from("diet_plans")
         .select("meals")
         .eq("user_id", user.id)
@@ -276,10 +277,46 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error) throw error;
-      return data;
+      if (data?.meals) return data;
+
+      // Fallback: count meals from challenge diet module
+      const { data: challenges } = await supabase
+        .from("challenges")
+        .select("id")
+        .eq("is_active", true);
+      if (!challenges?.length) return null;
+
+      for (const ch of challenges) {
+        const { data: dietModule } = await supabase
+          .from("challenge_modules")
+          .select("id")
+          .eq("challenge_id", ch.id)
+          .eq("type", "diets")
+          .maybeSingle();
+        if (!dietModule) continue;
+
+        const { data: lessons } = await supabase
+          .from("challenge_lessons")
+          .select("description")
+          .eq("module_id", dietModule.id);
+        if (!lessons?.length) continue;
+
+        // Count meals from parsed JSON descriptions
+        let mealCount = 0;
+        for (const lesson of lessons) {
+          try {
+            const parsed = JSON.parse(lesson.description || "[]");
+            if (Array.isArray(parsed)) mealCount += parsed.length;
+          } catch {
+            mealCount += 1; // plain text = 1 meal per lesson
+          }
+        }
+        if (mealCount > 0) return { meals: new Array(mealCount) };
+      }
+      return null;
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 60,
   });
 
   const totalMealsFromPlan = useMemo(() => {
