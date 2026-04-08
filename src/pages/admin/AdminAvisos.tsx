@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Megaphone, Send, Clock, Edit } from "lucide-react";
+import { Megaphone, Send, Clock, Edit, Bell, Users } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 export default function AdminAvisos() {
