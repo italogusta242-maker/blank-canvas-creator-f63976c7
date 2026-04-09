@@ -538,6 +538,13 @@ const Dashboard = () => {
         flameState={flameState}
       />
 
+      <PushPermissionBanner
+        pushState={pushState}
+        onRequestPermission={requestPermission}
+        isInstallable={isInstallable}
+        onInstall={installPWA}
+      />
+
       {/* Balanced 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
         {(profile as any)?.planner_type ? (
