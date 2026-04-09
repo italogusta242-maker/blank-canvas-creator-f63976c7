@@ -182,8 +182,9 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!user) return;
 
+    const channelName = `realtime_notifications_${user.id}_${Date.now()}`;
     const channel = supabase
-      .channel("realtime_notifications")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
