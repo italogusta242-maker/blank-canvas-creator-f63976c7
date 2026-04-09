@@ -1,20 +1,31 @@
 
 
-## Plano: Banner PWA sempre visível no Android + anti-pisca
+## Plano: Botão "Instalar App" fixo no Dashboard
 
-### Mudança única
+### O que será feito
 
-**`src/components/PWAInstallBanner.tsx`**
+Um banner/card na Dashboard (abaixo do Hero, acima dos goals) com botão "Instalar Aplicativo". Ele desaparece automaticamente quando o app já está instalado (standalone) ou logo após a instalação (evento `appinstalled`).
 
-1. **Visibilidade**: Adicionar `p === "android-chrome"` à condição de exibição (linha ~33) para que o banner apareça mesmo sem `beforeinstallprompt`
-
-2. **renderContent para android-chrome**: Quando `isInstallable` é `false`, mostrar instruções manuais ("Toque nos ⋮ e selecione Instalar app"). Quando `true`, mostrar botão "Instalar Agora" (já funciona)
-
-3. **Anti-pisca**: Manter altura fixa (`min-h-[120px]`) no container interno para que a troca de texto→botão não empurre o layout
-
-### Arquivo
+### Arquivos
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/PWAInstallBanner.tsx` | Condição de visibilidade + fallback manual Android + altura fixa |
+| `src/hooks/useIsAppInstalled.ts` | **Novo** — hook que retorna `true` se standalone ou após `appinstalled` |
+| `src/pages/Dashboard.tsx` | Importar hook + `usePushNotifications`; renderizar card de install entre Hero e DailyGoals (mobile e desktop) |
+
+### Detalhes
+
+**`useIsAppInstalled.ts`**
+- Checa `matchMedia("(display-mode: standalone)")` e `navigator.standalone`
+- Escuta evento `appinstalled` para sumiço instantâneo
+- Retorna `boolean`
+
+**`Dashboard.tsx`**
+- Importar `useIsAppInstalled`, `usePushNotifications` (para `isInstallable` + `installPWA`), `useNavigate`, `detectPlatform`
+- Entre o `<DashboardHero>` e o grid de goals, renderizar condicionalmente (só se `!isInstalled && platform !== "standalone"`):
+  - Card com ícone Download, texto "Instale o app para uma experiência completa", botão "Instalar Aplicativo"
+  - `onClick`: se `isInstallable` → `installPWA()`, senão → `navigate("/instalar")`
+  - Botão X para dismiss (localStorage cooldown 7 dias)
+  - Estilo: `bg-card border border-border rounded-2xl p-4` com gradiente sutil
+- Mesmo card no layout desktop
 
