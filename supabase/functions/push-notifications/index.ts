@@ -328,7 +328,7 @@ serve(async (req) => {
         });
       }
 
-      const { conversation_id, title, body } = await req.json();
+      const { conversation_id, title, body } = _preReadBody || await req.json();
       const { privateKey, publicKeyB64 } =
         await getOrCreateVAPIDKeys(supabaseAdmin);
 
