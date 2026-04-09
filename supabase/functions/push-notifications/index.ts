@@ -1,4 +1,4 @@
-// Push Notifications Edge Function — v2 (2026-04-09)
+// Push Notifications Edge Function — v3 (2026-04-09)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -292,6 +292,7 @@ serve(async (req) => {
           endpoint: subscription.endpoint,
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
+          keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
         },
         { onConflict: "user_id,endpoint" }
       );

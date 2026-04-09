@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const DISMISS_KEY = "push_banner_dismissed";
+const GRANTED_KEY = "push_banner_granted";
 
 interface PushPermissionBannerProps {
   pushState: "loading" | "granted" | "denied" | "prompt" | "unsupported";
@@ -15,7 +15,7 @@ interface PushPermissionBannerProps {
 const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, onInstall }: PushPermissionBannerProps) => {
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(() => {
-    try { return localStorage.getItem(DISMISS_KEY) === "true"; } catch { return false; }
+    try { return localStorage.getItem(GRANTED_KEY) === "true"; } catch { return false; }
   });
 
   const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -26,7 +26,7 @@ const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, o
 
   useEffect(() => {
     if (pushState === "granted") {
-      try { localStorage.setItem(DISMISS_KEY, "true"); } catch {}
+      try { localStorage.setItem(GRANTED_KEY, "true"); } catch {}
       setDismissed(true);
     }
   }, [pushState]);
