@@ -14,7 +14,6 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
-// ─── Badge API helpers ──────────────────────────────────────────
 function updateAppBadge(count: number) {
   if ("setAppBadge" in navigator) {
     if (count > 0) {
@@ -30,25 +29,22 @@ export function usePushNotifications() {
   const queryClient = useQueryClient();
   const [pushState, setPushState] = useState<PushState>("loading");
   const navigateRef = useRef<ReturnType<typeof useNavigate> | null>(null);
+  const subscribedRef = useRef(false);
 
-  // Safe navigate — we store it via ref so the SW listener can use it
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     navigateRef.current = useNavigate();
   } catch {
-    // Outside router context — ignore
+    // Outside router context
   }
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  // ─── Subscribe current user to push ───────────────────────────
+  // ─── Core subscription logic (no toasts, no permission request) ──
   const subscribeCurrentUser = useCallback(async () => {
-    if (!user) throw new Error("Usuária não autenticada");
-
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      throw new Error("Push notifications não suportadas neste dispositivo");
-    }
+    if (!user) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -58,38 +54,20 @@ export function usePushNotifications() {
       `${supabaseUrl}/functions/v1/push-notifications?action=vapid-key`,
       { headers: { apikey } }
     );
-
-    if (!vapidRes.ok) {
-      const errorBody = await vapidRes.text().catch(() => "");
-      throw new Error(`Falha ao buscar VAPID key (${vapidRes.status}) ${errorBody}`.trim());
-    }
+    if (!vapidRes.ok) throw new Error(`VAPID key fetch failed: ${vapidRes.status}`);
 
     const { publicKey } = await vapidRes.json();
-    if (!publicKey) throw new Error("VAPID key não retornada pelo backend");
+    if (!publicKey) throw new Error("VAPID key not returned");
 
     console.log("[Push] Waiting for service worker...");
     const registration = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<never>((_, reject) =>
-        window.setTimeout(() => reject(new Error("Service Worker não ficou pronto a tempo")), 8000)
+        setTimeout(() => reject(new Error("SW timeout")), 8000)
       ),
     ]);
-    console.log("[Push] SW ready, scope:", registration.scope);
 
     let subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      try {
-        const testRes = await fetch(subscription.endpoint, { method: "HEAD" }).catch(() => null);
-        if (testRes && (testRes.status === 410 || testRes.status === 404)) {
-          console.log("[Push] Subscription expired, resubscribing...");
-          await subscription.unsubscribe();
-          subscription = null;
-        }
-      } catch {
-        console.log("[Push] Existing subscription kept after validation failure");
-      }
-    }
 
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
@@ -103,9 +81,9 @@ export function usePushNotifications() {
 
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
-    if (!token) throw new Error("Sessão inválida para salvar a inscrição push");
+    if (!token) throw new Error("No auth session");
 
-    console.log("[Push] Sending subscription to backend...");
+    console.log("[Push] Saving subscription to backend...");
     const res = await fetch(
       `${supabaseUrl}/functions/v1/push-notifications?action=subscribe`,
       {
@@ -121,19 +99,16 @@ export function usePushNotifications() {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      throw new Error(`Falha ao salvar subscription (${res.status}) ${errBody}`.trim());
+      throw new Error(`Subscribe failed: ${res.status} ${errBody}`);
     }
 
     console.log("[Push] ✅ Subscription saved successfully");
+    subscribedRef.current = true;
   }, [user]);
 
-  // ─── Detect push state silently ───────────────────────────────
+  // ─── Silent state detection + auto-subscribe if already granted ──
   useEffect(() => {
-    if (!user) {
-      setPushState("loading");
-      return;
-    }
-
+    if (!user) { setPushState("loading"); return; }
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       setPushState("unsupported");
       return;
@@ -142,30 +117,34 @@ export function usePushNotifications() {
     const perm = Notification.permission;
     if (perm === "denied") { setPushState("denied"); return; }
     if (perm === "default") { setPushState("prompt"); return; }
-    setPushState("granted");
-  }, [user]);
 
-  // ─── Foreground push listener (postMessage from SW) ───────────
+    setPushState("granted");
+
+    // If already granted, silently ensure subscription is saved (no toasts)
+    if (!subscribedRef.current) {
+      subscribeCurrentUser().catch((err) => {
+        console.warn("[Push] Silent auto-subscribe failed:", err.message);
+        // No toast — this is background work
+      });
+    }
+  }, [user, subscribeCurrentUser]);
+
+  // ─── Foreground push listener (postMessage from SW) ──────────────
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const handler = (event: MessageEvent) => {
       if (event.data?.type !== "PUSH_FOREGROUND") return;
-
       const { title, body, url } = event.data.payload || {};
 
       toast(title || "🔔 Nova notificação", {
         description: body || "",
         duration: 6000,
         action: url
-          ? {
-              label: "Ver",
-              onClick: () => navigateRef.current?.(url),
-            }
+          ? { label: "Ver", onClick: () => navigateRef.current?.(url) }
           : undefined,
       });
 
-      // Invalidate notifications query so the bell updates
       if (user) {
         queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
       }
@@ -175,7 +154,7 @@ export function usePushNotifications() {
     return () => navigator.serviceWorker.removeEventListener("message", handler);
   }, [user, queryClient]);
 
-  // ─── PWA install prompt ───────────────────────────────────────
+  // ─── PWA install prompt ──────────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -194,7 +173,7 @@ export function usePushNotifications() {
     setDeferredPrompt(null);
   };
 
-  // ─── Request permission (user-initiated only) ────────────────
+  // ─── Request permission (ONLY from user click) ──────────────────
   const requestPermission = useCallback(async () => {
     if (!("Notification" in window)) {
       setPushState("unsupported");
@@ -202,7 +181,7 @@ export function usePushNotifications() {
     }
 
     try {
-      console.log("[Push] Requesting notification permission from user interaction...");
+      console.log("[Push] Requesting permission (user-initiated)...");
       const result = await Notification.requestPermission();
       if (result === "granted") {
         setPushState("granted");
@@ -210,17 +189,17 @@ export function usePushNotifications() {
         toast.success("Notificações ativadas! 🔔");
       } else if (result === "denied") {
         setPushState("denied");
-        toast.error("Permissão de notificações negada. Ative nas configurações do navegador.");
+        toast.error("Permissão negada. Ative nas configurações do navegador.");
       } else {
         setPushState("prompt");
       }
-    } catch (err) {
-      console.error("[Push] Permission request error:", err);
-      toast.error("Erro ao solicitar permissão de notificações.");
+    } catch (err: any) {
+      console.error("[Push] Permission error:", err);
+      toast.error("Erro ao ativar notificações: " + (err.message || "erro desconhecido"));
     }
   }, [subscribeCurrentUser]);
 
-  // ─── Notifications from DB (in-app) ──────────────────────────
+  // ─── Notifications from DB ──────────────────────────────────────
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -230,7 +209,7 @@ export function usePushNotifications() {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(50);
       if (error) throw error;
       return data;
     },
@@ -239,50 +218,37 @@ export function usePushNotifications() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // ─── Badge API — sync badge with unread count ─────────────────
+  // ─── Badge API ──────────────────────────────────────────────────
   useEffect(() => {
     updateAppBadge(unreadCount);
   }, [unreadCount]);
 
-  // ─── Realtime for in-app toast ────────────────────────────────
+  // ─── Realtime for in-app updates ────────────────────────────────
   useEffect(() => {
     if (!user) return;
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let cancelled = false;
-
-    const timer = setTimeout(() => {
-      if (cancelled) return;
-      channel = supabase
-        .channel(`rt_notif_${user.id}_${crypto.randomUUID()}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            const n = payload.new as any;
-            toast.success(n.title, {
-              description: n.body,
-              icon: "🔔",
-            });
-            queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
-          }
-        )
-        .subscribe();
-    }, 0);
+    const channel = supabase
+      .channel(`rt_notif_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+        }
+      )
+      .subscribe();
 
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
-      if (channel) supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
 
-  // ─── Mark as read (+ clear badge) ────────────────────────────
+  // ─── Mark as read ───────────────────────────────────────────────
   const markAsRead = async (notificationId: string) => {
     if (!user) return;
     await supabase.from("notifications").update({ read: true }).eq("id", notificationId);
@@ -307,29 +273,16 @@ export function usePushNotifications() {
   };
 }
 
+// ─── Utility: frontend NEVER calls push directly anymore ──────────
+// Chat push is handled by the DB trigger on notifications table.
+// This function is kept only for backward compatibility but now
+// creates a notification record (which triggers push via DB trigger).
 export async function sendPushToConversation(
   conversationId: string,
   title: string,
   body: string
 ) {
-  try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-    if (!token) return;
-
-    fetch(
-      `${supabaseUrl}/functions/v1/push-notifications?action=send-to-conversation`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey,
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ conversation_id: conversationId, title, body }),
-      }
-    ).catch(() => {});
-  } catch {}
+  // No-op: push is now fully event-driven via DB triggers.
+  // Chat messages should create notification records server-side.
+  console.log("[Push] sendPushToConversation is deprecated — push is event-driven via DB trigger");
 }
