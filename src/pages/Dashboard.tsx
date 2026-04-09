@@ -575,6 +575,12 @@ const Dashboard = () => {
         />
       </div>
 
+      <PushPermissionBanner
+        pushState={pushState}
+        onRequestPermission={requestPermission}
+        isInstallable={isInstallable}
+        onInstall={installPWA}
+      />
 
 
       {/* DailyCheckIn popup removed */}
