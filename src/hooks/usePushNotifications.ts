@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,13 +16,100 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 export function usePushNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const attemptedRef = useRef(false);
   const [pushState, setPushState] = useState<PushState>("loading");
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  // Detect push state
+  const subscribeCurrentUser = useCallback(async () => {
+    if (!user) throw new Error("Usuária não autenticada");
+
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      throw new Error("Push notifications não suportadas neste dispositivo");
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    console.log("[Push] Fetching VAPID key...");
+    const vapidRes = await fetch(
+      `${supabaseUrl}/functions/v1/push-notifications?action=vapid-key`,
+      { headers: { apikey } }
+    );
+
+    if (!vapidRes.ok) {
+      const errorBody = await vapidRes.text().catch(() => "");
+      throw new Error(`Falha ao buscar VAPID key (${vapidRes.status}) ${errorBody}`.trim());
+    }
+
+    const { publicKey } = await vapidRes.json();
+    if (!publicKey) {
+      throw new Error("VAPID key não retornada pelo backend");
+    }
+
+    console.log("[Push] Waiting for service worker...");
+    const registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error("Service Worker não ficou pronto a tempo")), 8000)
+      ),
+    ]);
+    console.log("[Push] SW ready, scope:", registration.scope);
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      try {
+        const testRes = await fetch(subscription.endpoint, { method: "HEAD" }).catch(() => null);
+        if (testRes && (testRes.status === 410 || testRes.status === 404)) {
+          console.log("[Push] Subscription expired, resubscribing...");
+          await subscription.unsubscribe();
+          subscription = null;
+        }
+      } catch {
+        console.log("[Push] Existing subscription kept after validation failure");
+      }
+    }
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+      });
+      console.log("[Push] New subscription created");
+    } else {
+      console.log("[Push] Reusing existing subscription");
+    }
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) {
+      throw new Error("Sessão inválida para salvar a inscrição push");
+    }
+
+    console.log("[Push] Sending subscription to backend...");
+    const res = await fetch(
+      `${supabaseUrl}/functions/v1/push-notifications?action=subscribe`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      }
+    );
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      throw new Error(`Falha ao salvar subscription (${res.status}) ${errBody}`.trim());
+    }
+
+    console.log("[Push] ✅ Subscription saved successfully");
+  }, [user]);
+
+  // Detect push state silently
   useEffect(() => {
     if (!user) {
       setPushState("loading");
@@ -48,91 +135,6 @@ export function usePushNotifications() {
 
     // Permission is granted - subscribe
     setPushState("granted");
-
-    if (attemptedRef.current) return;
-    attemptedRef.current = true;
-
-    const subscribe = async () => {
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        console.log("[Push] Fetching VAPID key...");
-        const vapidRes = await fetch(
-          `${supabaseUrl}/functions/v1/push-notifications?action=vapid-key`,
-          { headers: { apikey } }
-        );
-        if (!vapidRes.ok) {
-          console.error("[Push] Failed to get VAPID key:", vapidRes.status);
-          return;
-        }
-        const { publicKey } = await vapidRes.json();
-        if (!publicKey) return;
-        console.log("[Push] VAPID key obtained");
-
-        const registration = await navigator.serviceWorker.ready;
-        console.log("[Push] SW ready, scope:", registration.scope);
-
-        // Check/renew subscription
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (subscription) {
-          try {
-            const testRes = await fetch(subscription.endpoint, { method: "HEAD" }).catch(() => null);
-            if (testRes && (testRes.status === 410 || testRes.status === 404)) {
-              console.log("[Push] Subscription expired, resubscribing...");
-              await subscription.unsubscribe();
-              subscription = null;
-            }
-          } catch {
-            // Keep existing subscription
-          }
-        }
-
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-          });
-          console.log("[Push] New subscription created");
-        } else {
-          console.log("[Push] Reusing existing subscription");
-        }
-
-        // Send subscription to server
-        const session = await supabase.auth.getSession();
-        const token = session.data.session?.access_token;
-        if (!token) return;
-
-        console.log("[Push] Sending subscription to backend...");
-        const res = await fetch(
-          `${supabaseUrl}/functions/v1/push-notifications?action=subscribe`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey,
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ subscription: subscription.toJSON() }),
-          }
-        );
-
-        if (res.ok) {
-          console.log("[Push] ✅ Subscription saved successfully");
-        } else {
-          const errBody = await res.text().catch(() => "");
-          console.error("[Push] Failed to save subscription:", res.status, errBody);
-          toast.error("Erro ao salvar notificação push. Tente novamente.");
-        }
-      } catch (e) {
-        console.error("[Push] Subscription failed:", e);
-        toast.error("Erro ao ativar notificações. Verifique as permissões do navegador.");
-      }
-    };
-
-    const timer = setTimeout(subscribe, 2000);
-    return () => clearTimeout(timer);
   }, [user]);
 
   // PWA install prompt
@@ -161,10 +163,11 @@ export function usePushNotifications() {
     }
 
     try {
+      console.log("[Push] Requesting notification permission from user interaction...");
       const result = await Notification.requestPermission();
       if (result === "granted") {
         setPushState("granted");
-        attemptedRef.current = false; // Allow re-subscribe attempt
+        await subscribeCurrentUser();
         toast.success("Notificações ativadas! 🔔");
       } else if (result === "denied") {
         setPushState("denied");
@@ -176,7 +179,7 @@ export function usePushNotifications() {
       console.error("[Push] Permission request error:", err);
       toast.error("Erro ao solicitar permissão de notificações.");
     }
-  }, []);
+  }, [subscribeCurrentUser]);
 
   // Notifications from DB (in-app)
   const { data: notifications = [] } = useQuery({
