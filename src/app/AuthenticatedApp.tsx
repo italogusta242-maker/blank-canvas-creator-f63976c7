@@ -39,6 +39,7 @@ const Cronometro = lazy(() => import("@/pages/Cronometro"));
 const PagamentoAprovado = lazy(() => import("@/pages/PagamentoAprovado"));
 const AguardandoPagamento = lazy(() => import("@/pages/AguardandoPagamento"));
 const AcessoNegado = lazy(() => import("@/pages/AcessoNegado"));
+const InstalarApp = lazy(() => import("@/pages/InstalarApp"));
 
 const PageLoader = () => <SkeletonLayout />;
 
@@ -61,9 +62,6 @@ const AppRoutes = () => {
     );
   }
 
-  if (location.pathname === "/instalar") {
-    return <Navigate to="/" replace />;
-  }
 
   if (location.pathname === "/") {
     if (user) return <Navigate to="/aluno" replace />;
@@ -81,6 +79,7 @@ const AppRoutes = () => {
         <Route path="/pagamento-sucesso" element={<PagamentoAprovado />} />
         <Route path="/aguardando-pagamento" element={<AguardandoPagamento />} />
         <Route path="/acesso-negado" element={<AcessoNegado />} />
+        <Route path="/instalar" element={<InstalarApp />} />
         {/* /dashboard redirects to /aluno for student users */}
         <Route path="/dashboard" element={<Navigate to="/aluno" replace />} />
 
