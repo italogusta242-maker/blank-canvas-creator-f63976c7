@@ -260,7 +260,18 @@ serve(async (req) => {
     );
 
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    let action = url.searchParams.get("action");
+
+    // Support action in body (supabase.functions.invoke sends body, not query params)
+    let _preReadBody: any = null;
+    if (req.method === "POST" && !action) {
+      try {
+        _preReadBody = await req.json();
+        if (_preReadBody?.action) action = _preReadBody.action;
+        // Default to send-to-user if body has user_id + title but no action
+        if (!action && _preReadBody?.user_id && _preReadBody?.title) action = "send-to-user";
+      } catch {}
+    }
 
     // GET: return VAPID public key
     if (req.method === "GET" && action === "vapid-key") {
