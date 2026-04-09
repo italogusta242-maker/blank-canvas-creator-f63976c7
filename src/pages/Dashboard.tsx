@@ -28,6 +28,8 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
+import PushPermissionBanner from "@/components/PushPermissionBanner";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
