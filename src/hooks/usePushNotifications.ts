@@ -182,32 +182,40 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!user) return;
 
-    const channelName = `realtime_notifications_${user.id}_${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newNotification = payload.new as any;
-          toast.success(newNotification.title, {
-            description: newNotification.body,
-            icon: "🔔",
-          });
-          queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    // Defer channel creation to avoid strict-mode double-mount collision
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      channel = supabase
+        .channel(`rt_notif_${user.id}_${crypto.randomUUID()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newNotification = payload.new as any;
+            toast.success(newNotification.title, {
+              description: newNotification.body,
+              icon: "🔔",
+            });
+            queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+          }
+        )
+        .subscribe();
+    }, 0);
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      clearTimeout(timer);
+      if (channel) supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient]);
 
   const markAsRead = async (notificationId: string) => {
     if (!user) return;
