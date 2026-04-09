@@ -28,6 +28,8 @@ import { useChangePasswordTrigger } from "@/components/ChangePasswordSection";
 import { getUnlockedRewards } from "@/lib/flameMotor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useStreak } from "@/hooks/useStreak";
+import ActiveDaysSticker from "@/components/ActiveDaysSticker";
+import { Download } from "lucide-react";
 import { PostDetailModal } from "@/components/community/PostDetailModal";
 
 // ── Photo Zoom Dialog Component ──
@@ -325,6 +327,7 @@ const Perfil = () => {
   const streakNum = Number(streakData?.streak || 0);
 
   const [editForm, setEditForm] = useState({ full_name: "" });
+  const [stickerOpen, setStickerOpen] = useState(false);
   useEffect(() => {
     if (profile && isOwnProfile) setEditForm({ full_name: profile.full_name || "" });
   }, [profile, isOwnProfile]);
@@ -456,10 +459,10 @@ const Perfil = () => {
                  <p className="text-base font-black text-foreground">{socialCounts?.followers ?? 0}</p>
                  <p className="text-[9px] text-muted-foreground uppercase tracking-tighter">Seguidores</p>
                </div>
-               <div className="text-center text-orange-500">
-                 <p className="text-base font-black">{streakNum}</p>
-                 <p className="text-[9px] uppercase tracking-tighter">Dias Ativos</p>
-               </div>
+                <div className="text-center text-orange-500 cursor-pointer active:scale-95 transition-transform" onClick={() => setStickerOpen(true)}>
+                  <p className="text-base font-black flex items-center justify-center gap-1">{streakNum} <Download size={10} className="opacity-50" /></p>
+                  <p className="text-[9px] uppercase tracking-tighter">Dias Ativos</p>
+                </div>
                <div className="text-center">
                  <p className="text-base font-black text-foreground">{socialCounts?.workoutsCount ?? 0}</p>
                  <p className="text-[9px] text-muted-foreground uppercase tracking-tighter">Treinos</p>
@@ -594,6 +597,21 @@ const Perfil = () => {
             </div>
             <Button onClick={handleSave} className="w-full" disabled={saving}>Salvar</Button>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Sticker Sheet */}
+      <Sheet open={stickerOpen} onOpenChange={setStickerOpen}>
+        <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="text-center">Sua Figurinha 🔥</SheetTitle>
+          </SheetHeader>
+          <ActiveDaysSticker
+            streak={streakNum}
+            userName={full_name}
+            flameState={streakData?.flameState ?? "normal"}
+            onClose={() => setStickerOpen(false)}
+          />
         </SheetContent>
       </Sheet>
     </div>
