@@ -32,6 +32,7 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
         p === "ios-webview" ||
         p === "android-webview" ||
         p === "ios-safari" ||
+        p === "android-chrome" ||
         isInstallable
       ) {
         setVisible(true);
@@ -76,6 +77,24 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
           buttonText: null,
           dismissText: "Entendi",
         };
+      case "android-chrome":
+        return isInstallable
+          ? {
+              icon: <Smartphone size={20} className="text-primary" />,
+              title: "Instale o App",
+              description:
+                "Acesse mais rápido direto da sua tela inicial, como um app de verdade.",
+              buttonText: "Instalar Agora",
+              dismissText: "Depois",
+            }
+          : {
+              icon: <Smartphone size={20} className="text-primary" />,
+              title: "Instale o App",
+              description:
+                "Toque nos 3 pontinhos (⋮) no topo da tela e selecione \"Instalar aplicativo\" ou \"Adicionar à tela inicial\".",
+              buttonText: null,
+              dismissText: "Entendi",
+            };
       default:
         return {
           icon: <Smartphone size={20} className="text-primary" />,
@@ -102,7 +121,7 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
         >
           <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
-          <div className="p-4">
+          <div className="p-4 min-h-[120px]">
             <button
               onClick={handleDismiss}
               className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
