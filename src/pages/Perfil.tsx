@@ -325,7 +325,7 @@ const Perfil = () => {
   const streakNum = Number(streakData?.streak || 0);
 
   const [editForm, setEditForm] = useState({ full_name: "" });
-  const [stickerOpen, setStickerOpen] = useState(false);
+  
   useEffect(() => {
     if (profile && isOwnProfile) setEditForm({ full_name: profile.full_name || "" });
   }, [profile, isOwnProfile]);
