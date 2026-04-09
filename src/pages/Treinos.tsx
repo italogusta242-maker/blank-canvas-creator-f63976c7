@@ -578,6 +578,20 @@ const Treinos = () => {
         {plan && activeTab === "extra" && (
           <PlanilhaCorrida />
         )}
+
+        <Sheet open={stickerOpen} onOpenChange={setStickerOpen}>
+          <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle className="text-center">Sua Figurinha 🔥</SheetTitle>
+            </SheetHeader>
+            <ActiveDaysSticker
+              streak={streakNum}
+              userName={profileData?.full_name ?? ""}
+              flameState={streakData?.flameState ?? flameState ?? "normal"}
+              onClose={() => setStickerOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
