@@ -117,7 +117,27 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
-  // totalPoints removed — unified into streak/"Dias Ativos"
+  const isAppInstalled = useIsAppInstalled();
+  const { isInstallable, installPWA } = usePushNotifications();
+  const platform = detectPlatform();
+  const [installDismissed, setInstallDismissed] = useState(() => {
+    const d = localStorage.getItem("install_banner_dismissed");
+    return d ? Date.now() - Number(d) < 7 * 24 * 60 * 60 * 1000 : false;
+  });
+  const showInstallCard = !isAppInstalled && platform !== "standalone" && !installDismissed;
+
+  const handleInstallClick = async () => {
+    if (isInstallable) {
+      await installPWA();
+    } else {
+      navigate("/instalar");
+    }
+  };
+
+  const dismissInstall = () => {
+    localStorage.setItem("install_banner_dismissed", String(Date.now()));
+    setInstallDismissed(true);
+  };
 
   // Real performance data
   const {
