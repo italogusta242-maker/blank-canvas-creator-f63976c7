@@ -50,12 +50,17 @@ export default function AdminAvisos() {
   const sendBroadcast = useMutation({
     mutationFn: async () => {
       if (!title || !body) throw new Error("Título e corpo curto são obrigatórios!");
-      const { error } = await supabase.from("broadcast_notifications").insert({
+      const { error, data } = await supabase.from("broadcast_notifications").insert({
         title,
         body,
         markdown_content: markdown || null,
-      });
-      if (error) throw error;
+      }).select();
+      if (error) {
+        console.error("[Broadcast] INSERT error:", JSON.stringify(error, null, 2));
+        throw new Error(error.message || "Erro ao salvar broadcast no banco.");
+      }
+      console.log("[Broadcast] Inserido com sucesso:", data);
+      return data;
     },
     onSuccess: () => {
       toast.success("Broadcast enviado com sucesso para todas as alunas! 📢");
@@ -66,7 +71,8 @@ export default function AdminAvisos() {
       queryClient.invalidateQueries({ queryKey: ["admin_broadcasts"] });
     },
     onError: (err: any) => {
-      toast.error(err.message);
+      console.error("[Broadcast] Mutation error:", err);
+      toast.error(`Falha ao enviar: ${err.message}`);
     },
   });
 
