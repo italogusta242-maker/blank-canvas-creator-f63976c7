@@ -29,7 +29,6 @@ import { getUnlockedRewards } from "@/lib/flameMotor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useStreak } from "@/hooks/useStreak";
 import { PostDetailModal } from "@/components/community/PostDetailModal";
-import { PostDetailModal } from "@/components/community/PostDetailModal";
 
 // ── Photo Zoom Dialog Component ──
 function PhotoZoomDialog({ url, isOpen, onClose }: { url: string | null; isOpen: boolean; onClose: () => void }) {
