@@ -6,10 +6,6 @@ import { toast } from "sonner";
 
 type PushState = "loading" | "granted" | "denied" | "prompt" | "unsupported";
 
-/**
- * Converts a base64url-encoded VAPID public key to a Uint8Array
- * for use with pushManager.subscribe()
- */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -21,18 +17,27 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+/** Wait for SW ready with a timeout */
+async function waitForSWReady(timeoutMs = 8000): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Service Worker not ready after " + timeoutMs + "ms")), timeoutMs)
+    ),
+  ]);
+}
+
 export function usePushNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [pushState, setPushState] = useState<PushState>("loading");
 
-  // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  // Detect push support and current permission
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.log("[Push] Unsupported: SW or PushManager missing");
       setPushState("unsupported");
       return;
     }
@@ -46,14 +51,12 @@ export function usePushNotifications() {
     }
   }, []);
 
-  // Auto-subscribe if already granted (e.g. returning user)
   useEffect(() => {
     if (pushState === "granted" && user) {
       registerSubscription();
     }
   }, [pushState, user]);
 
-  // PWA install prompt
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -68,54 +71,63 @@ export function usePushNotifications() {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstallable(false);
-    }
+    if (outcome === "accepted") setIsInstallable(false);
     setDeferredPrompt(null);
   };
 
-  /**
-   * Registers (or re-registers) the push subscription with the backend.
-   * Called after permission is granted.
-   */
   const registerSubscription = useCallback(async () => {
     try {
       if (!user) return;
+      console.log("[Push] Starting subscription registration for user", user.id);
 
-      const registration = await navigator.serviceWorker.ready;
+      // 1. Wait for SW with timeout
+      let registration: ServiceWorkerRegistration;
+      try {
+        registration = await waitForSWReady(8000);
+        console.log("[Push] SW ready, scope:", registration.scope);
+      } catch (swErr) {
+        console.error("[Push] SW not ready:", swErr);
+        toast.error("Erro: Service Worker não carregou. Tente reinstalar o app.");
+        return;
+      }
 
-      // 1. Fetch VAPID public key from Edge Function
+      // 2. Fetch VAPID key
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      console.log("[Push] Fetching VAPID key...");
       const vapidRes = await fetch(
         `https://${projectId}.supabase.co/functions/v1/push-notifications?action=vapid-key`,
         {
-          headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
         }
       );
       if (!vapidRes.ok) {
         const errText = await vapidRes.text().catch(() => "");
-        console.error("[Push] Failed to fetch VAPID key:", vapidRes.status, errText);
-        toast.error("Erro ao configurar notificações push. Tente novamente.");
+        console.error("[Push] VAPID key fetch failed:", vapidRes.status, errText);
+        toast.error("Erro ao configurar notificações push.");
         return;
       }
       const { publicKey: vapidPublicKey } = await vapidRes.json();
+      console.log("[Push] VAPID key obtained:", vapidPublicKey?.slice(0, 20) + "...");
 
-      // 2. Subscribe to push
+      // 3. Subscribe to push
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
+        console.log("[Push] No existing subscription, creating new...");
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as ArrayBuffer,
         });
+        console.log("[Push] New subscription created");
+      } else {
+        console.log("[Push] Reusing existing subscription");
       }
 
-      // 3. Send subscription to backend
+      // 4. Send subscription to backend
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      await fetch(
+      console.log("[Push] Sending subscription to backend...");
+      const subRes = await fetch(
         `https://${projectId}.supabase.co/functions/v1/push-notifications?action=subscribe`,
         {
           method: "POST",
@@ -128,15 +140,20 @@ export function usePushNotifications() {
         }
       );
 
-      console.log("[Push] Subscription registered successfully");
+      if (!subRes.ok) {
+        const errBody = await subRes.text().catch(() => "");
+        console.error("[Push] Subscribe call failed:", subRes.status, errBody);
+        toast.error("Erro ao salvar notificação push. Tente novamente.");
+        return;
+      }
+
+      console.log("[Push] ✅ Subscription registered successfully!");
     } catch (err) {
       console.error("[Push] Registration error:", err);
+      toast.error("Erro ao ativar notificações. Verifique as permissões do navegador.");
     }
   }, [user]);
 
-  /**
-   * Requests native push permission, then registers the subscription.
-   */
   const requestPermission = useCallback(async () => {
     if (!("Notification" in window)) {
       setPushState("unsupported");
@@ -187,7 +204,6 @@ export function usePushNotifications() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
-    // Defer channel creation to avoid strict-mode double-mount collision
     const timer = setTimeout(() => {
       if (cancelled) return;
       channel = supabase
