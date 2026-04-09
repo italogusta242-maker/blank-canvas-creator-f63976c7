@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { SFX } from "@/hooks/useSoundEffects";
 import { optimisticFlameUpdate } from "@/lib/flameOptimistic";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target, Download } from "lucide-react";
+import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNavigate } from "react-router-dom";
 import InsanoLogo from "@/components/InsanoLogo";
