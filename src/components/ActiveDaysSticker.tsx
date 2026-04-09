@@ -157,17 +157,31 @@ const ActiveDaysSticker = ({ streak, userName, flameState, onClose }: ActiveDays
 
       {/* Visible preview */}
       <div className="flex flex-col items-center gap-4 pb-4">
+        {/* Checkerboard background for transparency preview */}
+        <style>{`
+          .checkerboard-bg {
+            background-image:
+              linear-gradient(45deg, hsl(var(--muted)/0.5) 25%, transparent 25%),
+              linear-gradient(-45deg, hsl(var(--muted)/0.5) 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, hsl(var(--muted)/0.5) 75%),
+              linear-gradient(-45deg, transparent 75%, hsl(var(--muted)/0.5) 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+          }
+        `}</style>
         {isGenerating ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="animate-spin text-muted-foreground" size={32} />
           </div>
         ) : blobUrl ? (
-          <img
-            src={blobUrl}
-            alt={`${streak} dias ativos`}
-            className="w-64 rounded-2xl shadow-lg"
-            draggable
-          />
+          <div className="checkerboard-bg rounded-2xl p-2">
+            <img
+              src={blobUrl}
+              alt={`${streak} dias ativos`}
+              className="w-64 rounded-xl"
+              draggable
+            />
+          </div>
         ) : (
           /* Fallback static card matching VictoryCard style */
           <div className="w-64 rounded-2xl p-8 flex flex-col items-center gap-1 bg-black/40 border border-white/5">
