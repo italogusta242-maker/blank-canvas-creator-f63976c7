@@ -447,6 +447,31 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {showInstallCard && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 relative min-h-[72px]"
+          >
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Download className="text-accent" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground">Instale o app</p>
+              <p className="text-xs text-muted-foreground">Para uma experiência completa</p>
+            </div>
+            <button
+              onClick={handleInstallClick}
+              className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold shrink-0 active:scale-95 transition-transform"
+            >
+              Instalar
+            </button>
+            <button onClick={dismissInstall} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground p-1">
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
 
         <DashboardHero 
           hasTrainingPlan={hasRealPlan}
@@ -587,6 +612,31 @@ const Dashboard = () => {
         />
       </div>
 
+      {showInstallCard && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 relative min-h-[80px]"
+        >
+          <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+            <Download className="text-accent" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold text-foreground">Instale o aplicativo</p>
+            <p className="text-sm text-muted-foreground">Para uma experiência completa no seu celular</p>
+          </div>
+          <button
+            onClick={handleInstallClick}
+            className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold shrink-0 hover:opacity-90 transition-opacity"
+          >
+            Instalar
+          </button>
+          <button onClick={dismissInstall} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-1">
+            <X size={16} />
+          </button>
+        </motion.div>
+      )}
 
 
       {/* DailyCheckIn popup removed */}
