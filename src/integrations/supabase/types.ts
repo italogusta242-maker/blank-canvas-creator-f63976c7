@@ -1953,7 +1953,7 @@ export type Database = {
           created_at?: string
           endpoint: string
           id?: string
-          keys: Json
+          keys?: Json
           p256dh?: string | null
           user_id: string
         }
