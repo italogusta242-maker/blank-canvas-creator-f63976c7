@@ -1,42 +1,40 @@
 
 
-## Plano: Trocar ícones PWA para ANAAC Club + limpar arquivos legados
+## Plano: Corrigir sistema de Push Notifications (sininho mostrando zero)
 
-### Problema
+### Diagnóstico
 
-O `manifest.json` referencia `insano-icon-192.png` e `insano-icon-512.png` — ícones antigos do Shape Insano (o logo laranja com medalha). Além disso, existem vários arquivos legados "insano" tanto em `public/` quanto em `src/assets/`.
+O "sininho ativado" mostra 0 porque a tabela `push_subscriptions` está genuinamente vazia. A cadeia está quebrada em múltiplos pontos:
 
-### O que será feito
+1. **Edge Function nunca foi chamada** — zero logs no `push-notifications`, o que significa que nunca foi deployada ou nunca respondeu
+2. **Falta unique index** — o upsert usa `onConflict: "user_id,endpoint"` mas não existe constraint unique nesses campos, causando falha
+3. **VAPID keys nunca foram geradas** — `app_settings` não tem registro de VAPID
+4. **Service Worker só registra no domínio publicado** — no preview do Lovable, o SW é desregistrado (comportamento correto, mas impede testes no preview)
 
-**1. Gerar ícones PWA corretos (192x192 e 512x512) a partir do logo ANAAC**
-- Usar `public/anaac-logo.png` como base para gerar `public/anaac-icon-192.png` e `public/anaac-icon-512.png` via script (ImageMagick/sharp)
-- Fundo escuro (`#0a0a0a`) com o logo centralizado para ficar bonito como ícone de app
+### Correções
 
-**2. Atualizar `public/manifest.json`**
-- Trocar referências de `/insano-icon-192.png` → `/anaac-icon-192.png`
-- Trocar referências de `/insano-icon-512.png` → `/anaac-icon-512.png`
+| # | Arquivo/Ação | Mudança |
+|---|-------------|---------|
+| 1 | **Migração SQL** | Criar unique index em `push_subscriptions(user_id, endpoint)` para o upsert funcionar |
+| 2 | **Deploy Edge Function** | Forçar re-deploy da `push-notifications` (fazer qualquer mudança trivial para triggerar deploy automático) |
+| 3 | **`src/hooks/usePushNotifications.ts`** | Adicionar logs de erro mais visíveis (console.error) quando VAPID key fetch falha, para facilitar debug futuro |
+| 4 | **Teste no domínio publicado** | Após deploy, testar no `anaacclub.lovable.app` (o push só funciona lá, não no preview) |
 
-**3. Atualizar `index.html`**
-- Trocar `apple-touch-icon` de `/anaac-logo.png` para `/anaac-icon-192.png` (ícone quadrado otimizado)
+### Detalhes técnicos
 
-**4. Deletar arquivos legados do Shape Insano**
+**Migração SQL:**
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_user_endpoint_idx 
+ON public.push_subscriptions(user_id, endpoint);
+```
 
-| Arquivo | Ação |
-|---------|------|
-| `public/insano-icon-192.png` | Deletar |
-| `public/insano-icon-512.png` | Deletar |
-| `public/insano-logo-branco.svg` | Deletar |
-| `public/insano-logo.png` | Deletar (se existir) |
-| `src/assets/insano-logo-branco.svg` | Deletar |
-| `src/assets/insano-logo.png` | Verificar se algum componente usa → redirecionar import para `anaac-logo.png` antes de deletar |
-| `src/assets/insano-logo.svg` | Deletar |
+**Edge Function re-deploy:**
+Adicionar um comentário ou atualizar timestamp no `push-notifications/index.ts` para forçar o deploy automático do Lovable.
 
-**5. Corrigir imports que referenciam arquivos insano**
-- `src/components/InsanoLogo.tsx` — já usa `anaac-logo.png` ✓
-- `src/components/training/VictoryCard.tsx` — import `insanoLogo` aponta para `anaac-logo.png` ✓ (nome da variável legado, mas path correto)
-- Nenhum componente importa os SVGs insano diretamente
+**Melhoria no hook:**
+No `registerSubscription`, trocar o `return` silencioso por `console.error` + `toast.error` quando o VAPID fetch falha, para que o admin consiga ver quando algo dá errado.
 
-### Resultado
+### Resultado esperado
 
-O ícone do PWA na instalação e na tela inicial será o logo rosa/vermelho da ANAAC Club em vez do logo laranja antigo.
+Após as correções e deploy, quando uma aluna acessar `anaacclub.lovable.app`, aceitar notificações, a subscription será salva na tabela e o contador do admin refletirá o número real.
 
