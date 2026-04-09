@@ -296,7 +296,7 @@ serve(async (req) => {
         });
       }
 
-      const { subscription } = await req.json();
+      const { subscription } = _preReadBody || await req.json();
       await supabaseAdmin.from("push_subscriptions").upsert(
         {
           user_id: user.id,
