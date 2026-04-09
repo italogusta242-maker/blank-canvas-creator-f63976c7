@@ -1,46 +1,39 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, X, Smartphone } from "lucide-react";
+import { Download, X, Smartphone, ExternalLink, Share } from "lucide-react";
+import { detectPlatform, type Platform } from "@/lib/detectPlatform";
 
 interface PWAInstallBannerProps {
   isInstallable: boolean;
   onInstall: () => void;
 }
 
-/**
- * Bottom-right toast popup that appears for users who haven't installed the app.
- * Only shows if:
- * - The browser supports install (beforeinstallprompt) OR it's iOS Safari (manual instructions)
- * - The app is NOT already running in standalone mode (already installed)
- * - The user hasn't dismissed it recently (24h cooldown)
- */
 const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) => {
   const [visible, setVisible] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [platform, setPlatform] = useState<Platform>("desktop");
 
   useEffect(() => {
-    // Don't show if already in standalone mode (app is installed)
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    if (isStandalone) return;
+    const p = detectPlatform();
+    setPlatform(p);
+
+    // Don't show if already installed
+    if (p === "standalone") return;
 
     // Check dismiss cooldown (24h)
     const dismissedAt = localStorage.getItem("pwa_install_dismissed");
     if (dismissedAt) {
       const elapsed = Date.now() - parseInt(dismissedAt, 10);
-      if (elapsed < 24 * 60 * 60 * 1000) return; // Less than 24h ago
+      if (elapsed < 24 * 60 * 60 * 1000) return;
     }
 
-    // Detect iOS Safari (no beforeinstallprompt)
-    const ua = navigator.userAgent;
-    const isiOS = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
-    const isSafari = /safari/i.test(ua) && !/chrome|crios|fxios/i.test(ua);
-    setIsIOS(isiOS && isSafari);
-
-    // Show after a short delay for better UX
     const timer = setTimeout(() => {
-      if (isInstallable || (isiOS && isSafari)) {
+      // Show for: webviews (always), iOS safari (always), android/desktop (only if installable)
+      if (
+        p === "ios-webview" ||
+        p === "android-webview" ||
+        p === "ios-safari" ||
+        isInstallable
+      ) {
         setVisible(true);
       }
     }, 3000);
@@ -53,15 +46,49 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
     localStorage.setItem("pwa_install_dismissed", Date.now().toString());
   };
 
-  const handleInstall = () => {
-    if (isIOS) {
-      // Can't programmatically install on iOS - show instructions
-      setVisible(false);
-      return;
+  const handleAction = () => {
+    if (platform === "android-chrome" || platform === "desktop") {
+      onInstall();
     }
-    onInstall();
     setVisible(false);
   };
+
+  const renderContent = () => {
+    switch (platform) {
+      case "ios-webview":
+      case "android-webview":
+        return {
+          icon: <ExternalLink size={20} className="text-primary" />,
+          title: "Abra no navegador",
+          description:
+            platform === "ios-webview"
+              ? "Toque no ícone do Safari (🧭) ou nos 3 pontinhos e escolha \"Abrir no navegador\"."
+              : "Toque nos 3 pontinhos (⋮) e escolha \"Abrir no Chrome\".",
+          buttonText: null,
+          dismissText: "Entendi",
+        };
+      case "ios-safari":
+        return {
+          icon: <Share size={20} className="text-primary" />,
+          title: "Instale o App",
+          description:
+            "Toque em Compartilhar (↑) e depois em \"Adicionar à Tela Inicial\".",
+          buttonText: null,
+          dismissText: "Entendi",
+        };
+      default:
+        return {
+          icon: <Smartphone size={20} className="text-primary" />,
+          title: "Instale o App",
+          description:
+            "Acesse mais rápido direto da sua tela inicial, como um app de verdade.",
+          buttonText: "Instalar Agora",
+          dismissText: "Depois",
+        };
+    }
+  };
+
+  const content = renderContent();
 
   return (
     <AnimatePresence>
@@ -73,7 +100,6 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
           className="fixed bottom-24 right-4 z-50 w-[300px] bg-card border border-border rounded-2xl shadow-2xl shadow-black/20 overflow-hidden"
         >
-          {/* Accent bar */}
           <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
           <div className="p-4">
@@ -86,40 +112,31 @@ const PWAInstallBanner = ({ isInstallable, onInstall }: PWAInstallBannerProps) =
 
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Smartphone size={20} className="text-primary" />
+                {content.icon}
               </div>
               <div className="flex-1 min-w-0 pr-4">
-                <h4 className="text-sm font-bold text-foreground">
-                  Instale o App
-                </h4>
-                {isIOS ? (
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    Toque em <span className="font-semibold">Compartilhar</span> (ícone ↑) e depois em{" "}
-                    <span className="font-semibold">"Adicionar à Tela Inicial"</span>.
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    Acesse mais rápido direto da sua tela inicial, como um app de verdade.
-                  </p>
-                )}
+                <h4 className="text-sm font-bold text-foreground">{content.title}</h4>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  {content.description}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 mt-3">
-              {!isIOS && (
+              {content.buttonText && (
                 <button
-                  onClick={handleInstall}
+                  onClick={handleAction}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 transition-colors"
                 >
                   <Download size={14} />
-                  Instalar Agora
+                  {content.buttonText}
                 </button>
               )}
               <button
                 onClick={handleDismiss}
-                className={`${isIOS ? "flex-1" : ""} py-2 px-3 text-xs font-medium text-muted-foreground hover:text-foreground rounded-xl hover:bg-secondary/50 transition-colors`}
+                className={`${!content.buttonText ? "flex-1" : ""} py-2 px-3 text-xs font-medium text-muted-foreground hover:text-foreground rounded-xl hover:bg-secondary/50 transition-colors`}
               >
-                {isIOS ? "Entendi" : "Depois"}
+                {content.dismissText}
               </button>
             </div>
           </div>
