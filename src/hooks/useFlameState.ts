@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toLocalDate, getToday, getYesterday } from "@/lib/dateUtils";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 export type FlameState = "normal" | "ativa" | "frozen" | "tregua" | "extinta";
 
@@ -72,6 +73,8 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
           
           const isSunday = d.getDay() === 0;
 
+          if (dateStr < CHALLENGE_START_DATE) break;
+
           if (activeDates.has(dateStr)) {
             calculatedStreak++;
             consecutiveMisses = 0;
@@ -117,7 +120,8 @@ async function calculateAdherence(userId: string): Promise<number> {
   const now = new Date();
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const startStr = toLocalDate(sevenDaysAgo);
+  const rawStart = toLocalDate(sevenDaysAgo);
+  const startStr = rawStart < CHALLENGE_START_DATE ? CHALLENGE_START_DATE : rawStart;
   const endStr = toLocalDate(now);
   
   // Count days with posts OR workouts in last 7 days

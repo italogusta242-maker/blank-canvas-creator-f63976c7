@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toLocalDate, parseSafeDate } from "@/lib/dateUtils";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 export interface StreakDay {
   date: string;
@@ -33,7 +34,7 @@ export function useStreakHistory() {
         });
       }
 
-      const earliestDate = days[0].date;
+      const earliestDate = days[0].date < CHALLENGE_START_DATE ? CHALLENGE_START_DATE : days[0].date;
       const latestDate = days[6].date;
 
       // Fetch workouts in this range

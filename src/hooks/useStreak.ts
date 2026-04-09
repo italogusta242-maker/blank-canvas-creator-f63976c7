@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toLocalDate, getToday, getYesterday } from "@/lib/dateUtils";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 /**
  * Calcula o streak (dias ativos consecutivos) do usuário.
@@ -54,6 +55,8 @@ export const useStreak = (userId?: string) => {
           if (dateStr > today) continue;
           
           const isSunday = d.getDay() === 0;
+
+          if (dateStr < CHALLENGE_START_DATE) break;
 
           if (activeDates.has(dateStr)) {
             calculatedStreak++;
