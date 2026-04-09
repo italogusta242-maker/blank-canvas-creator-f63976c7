@@ -1,67 +1,72 @@
 
 
-## Unificar Streak + Pontos em "Dias Ativos"
+## Plano: Figurinha no Perfil + Botão Instalar + Push Subscriptions
 
-### Resumo
+### Contexto
 
-Remover "Pontos" e "Streak" como métricas separadas. Tudo vira **"Dias Ativos"** -- um único número baseado em dias com pelo menos 1 post na comunidade. O ranking passa a ordenar por dias ativos. A chama continua funcionando igual, mas o label muda de "Streak" para "Dias Ativos".
+O desafio está no dia 2. Três problemas urgentes:
+1. Alunas não conseguem baixar a "figurinha" (sticker de dias ativos) fora do fluxo de treino
+2. O botão "Instalar" do PWA não aparece no app publicado
+3. O admin mostra 0 sininhos ativados — e de fato há 0 registros em `push_subscriptions` (confirmado via query direta). O service worker só se registra fora de iframe/preview, mas o fluxo de push depende de: SW registrado → permissão concedida → fetch VAPID key → subscribe → POST subscription ao backend. Qualquer falha silenciosa nessa cadeia impede o registro.
 
 ---
 
-### Mudanças
+### 1. Figurinha no Perfil (Prioridade 1)
 
-**1. Lógica de dias ativos: `useFlameState.ts` e `useStreak.ts`**
-- Trocar `workouts.started_at` por `community_posts.created_at` como fonte de dias ativos
-- UNION com `workouts.started_at` histórico para preservar dias já contabilizados
-- O número exibido (hoje chamado "streak") passa a ser a contagem de dias únicos com post OU treino histórico
-- A lógica de chama (ativa/trégua/extinta) continua igual, mas baseada em posts
+**O que muda:** No `Perfil.tsx`, o bloco "Dias Ativos" (linha ~459-462) vira clicável. Ao tocar, abre um modal/sheet com um card visual (estilo VictoryCard simplificado) mostrando nome da aluna, avatar, dias ativos e chama. Botão "Baixar Figurinha" gera PNG via `html2canvas` e faz download direto.
 
-**2. Ativar chama ao postar: `CreatePost.tsx`**
-- Após inserir post, chamar `shouldIncrementFlame` + `optimisticFlameUpdate`
-- Invalidar queries de flame/streak
-- Não dar hustle_points separados (pontos deixam de existir)
+**Arquivos:**
+- Criar `src/components/ActiveDaysSticker.tsx` — componente que renderiza o card visual + lógica de `html2canvas` + download (reutilizando o padrão do VictoryCard)
+- Editar `src/pages/Perfil.tsx` — ao clicar em "Dias Ativos", abre o Sheet com o `ActiveDaysSticker`
 
-**3. Remover ativação de chama nos treinos: `Treinos.tsx` e `RunningSection.tsx`**
-- Remover chamadas de `shouldIncrementFlame` e `optimisticFlameUpdate` do save de treino/corrida
+**Lógica do download:**
+- Usar `html2canvas` para capturar o card
+- `canvas.toBlob()` → criar URL → `<a download>` click programático (mesmo padrão do VictoryCard que já funciona)
+- Fallback: se clipboard disponível, oferecer "Copiar" também
 
-**4. Dashboard Hero: `DashboardHero.tsx`**
-- Remover prop `totalPoints` e a coluna "Pontos"
-- Renomear label "Streak" → "Dias Ativos"
-- Manter "Ranking" e "Adesão"
+---
 
-**5. Dashboard: `Dashboard.tsx`**
-- Remover import/uso de `useHustlePoints`
-- Não passar `totalPoints` para o Hero
+### 2. Botão de Instalação PWA (Prioridade 2)
 
-**6. Ranking da Liga: `Comunidade.tsx` (useSegmentedRanking)**
-- Em vez de somar `hustle_points` do mês, contar dias únicos com `community_posts` + `workouts` históricos no mês
-- `score` = quantidade de dias ativos no mês
-- Ordenar por dias ativos
+**Diagnóstico:** O `PWAInstallBanner` e o `PushPermissionBanner` dependem de `beforeinstallprompt`, que só dispara se:
+- O site tem manifest.json válido com ícones ✓
+- O site é servido via HTTPS ✓  
+- Há um service worker registrado ✓ (push-handler.js)
+- O usuário **não** está já em standalone mode ✓
 
-**7. PodiumCard: `PodiumCard.tsx`**
-- Trocar label "pts" → "dias"
-- Remover exibição separada de streak (já é o mesmo número)
+O banner aparece após 3s, mas **apenas se `isInstallable` for true** (vindo do hook). O `beforeinstallprompt` só dispara no Chrome/Edge Android — nunca no iOS Safari (tratado separadamente) e nunca no Firefox.
 
-**8. GymRatsTab: `GymRatsTab.tsx`**
-- Remover categorias "Pontos Totais" e "Treinos"
-- Manter uma única visão: ranking por dias ativos
-- Renomear para "Dias Ativos" com ícone Flame
+**Problema provável:** No domínio publicado `anaacclub.lovable.app`, o SW pode estar falhando silenciosamente (ex: arquivo não encontrado, scope errado), impedindo o `beforeinstallprompt`.
 
-**9. GymRatsHub: `GymRatsHub.tsx`**
-- Trocar lógica de pontos para contar dias ativos (dias com post) por período
-- Labels: "Semana", "Mês", "Geral" continuam, mas contam dias ativos
+**Correções:**
+- Adicionar logs de diagnóstico temporários no `PushPermissionBanner` e no `usePushNotifications` para entender o estado real no device da aluna
+- Garantir que o banner iOS (instruções manuais) funcione independentemente — atualmente ele já detecta iOS, mas o banner pode estar sendo escondido pelo `localStorage` dismiss
+- No `PushPermissionBanner`: mostrar o banner de "Instalar" com instruções manuais para **todos** os mobile browsers (não só iOS Safari), caso `beforeinstallprompt` não dispare em 5s. Texto: "Adicione à tela inicial pelo menu do navegador"
 
-**10. FlameCard: `FlameCard.tsx`**
-- Onde aparece "streak", trocar o label para "Dias Ativos"
+**Arquivos:**
+- Editar `src/components/PushPermissionBanner.tsx` — fallback para instrução manual se `beforeinstallprompt` não disparou
+- Editar `src/components/PWAInstallBanner.tsx` — mesma lógica de fallback
 
-**11. Trilha de 7 dias na Comunidade: `Comunidade.tsx`**
-- Trocar query de `workouts.finished_at` por `community_posts.created_at` + workouts históricos
+---
 
-**12. Edge Function `daily-flame-check`**
-- Na função `isDayApproved`, checar `community_posts` em vez de workouts/dieta
+### 3. Push Subscriptions = 0 (Prioridade 3)
 
-**13. Perfil: `Perfil.tsx`**
-- Onde exibe "streak", trocar label para "Dias Ativos"
+**Diagnóstico confirmado:** A tabela `push_subscriptions` tem 0 registros. Não há nenhum log de chamada à edge function `push-notifications`. Isso significa que nenhuma aluna completou o fluxo: SW register → requestPermission → registerSubscription.
+
+**Causas prováveis:**
+- O banner de push só aparece se `!isInstallable` (ou seja, se o beforeinstallprompt não disparou E não é iOS). Se `isInstallable` for true, ele mostra "Instalar" em vez de "Ativar notificações"
+- Após instalar, o banner de push não reaparece automaticamente
+- O `requestPermission()` pode estar falhando silenciosamente no `registerSubscription` (fetch VAPID key pode dar erro de CORS ou 500)
+
+**Correções:**
+- No `PushPermissionBanner`: após instalação bem-sucedida, mostrar imediatamente o prompt de push (segundo passo)
+- Adicionar `console.error` detalhado em cada etapa do `registerSubscription` para diagnóstico
+- No `AdminAvisos.tsx`: adicionar um card de diagnóstico que mostra se a edge function `push-notifications` está respondendo (teste ao vivo com `?action=vapid-key`)
+
+**Arquivos:**
+- Editar `src/hooks/usePushNotifications.ts` — melhorar logs de erro em cada etapa
+- Editar `src/components/PushPermissionBanner.tsx` — fluxo sequencial: instalar → push
+- Editar `src/pages/admin/AdminAvisos.tsx` — botão de diagnóstico de push
 
 ---
 
@@ -69,23 +74,10 @@ Remover "Pontos" e "Streak" como métricas separadas. Tudo vira **"Dias Ativos"*
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/hooks/useFlameState.ts` | Posts como fonte + UNION workouts |
-| `src/hooks/useStreak.ts` | Posts como fonte + UNION workouts |
-| `src/components/community/CreatePost.tsx` | Ativar chama ao postar |
-| `src/pages/Treinos.tsx` | Remover ativação de chama |
-| `src/components/training/RunningSection.tsx` | Remover ativação de chama |
-| `src/components/dashboard/DashboardHero.tsx` | Remover "Pontos", renomear "Streak" → "Dias Ativos" |
-| `src/pages/Dashboard.tsx` | Remover useHustlePoints |
-| `src/pages/Comunidade.tsx` | Ranking por dias ativos, trilha 7 dias por posts |
-| `src/components/community/PodiumCard.tsx` | Label "pts" → "dias", remover streak separado |
-| `src/components/comunidade/GymRatsTab.tsx` | Categoria única: dias ativos |
-| `src/components/community/GymRatsHub.tsx` | Contar dias ativos por período |
-| `src/components/FlameCard.tsx` | Label "Streak" → "Dias Ativos" |
-| `src/pages/Perfil.tsx` | Label "Streak" → "Dias Ativos" |
-| `supabase/functions/daily-flame-check/index.ts` | isDayApproved checa posts |
-
-### O que NÃO muda
-- Visual da chama (cores, animações, estados)
-- Hustle points continuam no banco (dados históricos), mas não são mais exibidos
-- Workouts históricos preservados na contagem
+| `src/components/ActiveDaysSticker.tsx` | **Novo** — card visual + download PNG |
+| `src/pages/Perfil.tsx` | Dias Ativos clicável → abre sticker sheet |
+| `src/components/PushPermissionBanner.tsx` | Fallback manual para install + fluxo sequencial push |
+| `src/components/PWAInstallBanner.tsx` | Fallback instrução manual mobile |
+| `src/hooks/usePushNotifications.ts` | Logs detalhados de diagnóstico |
+| `src/pages/admin/AdminAvisos.tsx` | Botão de diagnóstico de push |
 
