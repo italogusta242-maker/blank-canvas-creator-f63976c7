@@ -1,40 +1,31 @@
 
 
-## Plano: Corrigir sistema de Push Notifications (sininho mostrando zero)
+## Plano: Garantir que o banner de push/instalação apareça para alunas
 
-### Diagnóstico
+### Problema
 
-O "sininho ativado" mostra 0 porque a tabela `push_subscriptions` está genuinamente vazia. A cadeia está quebrada em múltiplos pontos:
+O `PushPermissionBanner` tem condições que podem impedir sua exibição:
 
-1. **Edge Function nunca foi chamada** — zero logs no `push-notifications`, o que significa que nunca foi deployada ou nunca respondeu
-2. **Falta unique index** — o upsert usa `onConflict: "user_id,endpoint"` mas não existe constraint unique nesses campos, causando falha
-3. **VAPID keys nunca foram geradas** — `app_settings` não tem registro de VAPID
-4. **Service Worker só registra no domínio publicado** — no preview do Lovable, o SW é desregistrado (comportamento correto, mas impede testes no preview)
+1. **iOS Safari (não PWA)**: `PushManager` não existe fora do modo standalone no iOS. O hook retorna `"unsupported"` e o banner nunca aparece.
+2. **Android Chrome**: O evento `beforeinstallprompt` pode demorar a disparar. Se `isInstallable` for `false` e `pushState` for `"prompt"`, o banner de push aparece — mas se `beforeinstallprompt` disparar, muda para o banner de instalação (que some ao dismiss sem persistir).
+3. **Dismiss sem persistência**: O dismiss não persiste no localStorage (por design), mas numa mesma sessão a aluna pode ter dismissado sem perceber.
 
 ### Correções
 
-| # | Arquivo/Ação | Mudança |
-|---|-------------|---------|
-| 1 | **Migração SQL** | Criar unique index em `push_subscriptions(user_id, endpoint)` para o upsert funcionar |
-| 2 | **Deploy Edge Function** | Forçar re-deploy da `push-notifications` (fazer qualquer mudança trivial para triggerar deploy automático) |
-| 3 | **`src/hooks/usePushNotifications.ts`** | Adicionar logs de erro mais visíveis (console.error) quando VAPID key fetch falha, para facilitar debug futuro |
-| 4 | **Teste no domínio publicado** | Após deploy, testar no `anaacclub.lovable.app` (o push só funciona lá, não no preview) |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/PushPermissionBanner.tsx` | Adicionar modo iOS: quando `pushState === "unsupported"` e é iOS, mostrar banner com botão que leva para `/instalar` (tutorial de PWA) em vez de esconder completamente |
+| `src/hooks/usePushNotifications.ts` | Nenhuma mudança necessária |
 
-### Detalhes técnicos
+### Detalhes
 
-**Migração SQL:**
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_user_endpoint_idx 
-ON public.push_subscriptions(user_id, endpoint);
-```
+No `PushPermissionBanner.tsx`:
+- Detectar iOS + `pushState === "unsupported"` como um terceiro modo: **"iOS install guide"**
+- Nesse modo, mostrar texto "Para receber notificações, instale o app" com botão "Como instalar" que navega para `/instalar`
+- Manter os modos existentes para Android (install via `beforeinstallprompt`) e push (quando PushManager existe)
+- Isso garante que **em qualquer cenário**, a aluna vê alguma forma de ativação
 
-**Edge Function re-deploy:**
-Adicionar um comentário ou atualizar timestamp no `push-notifications/index.ts` para forçar o deploy automático do Lovable.
+### Resultado
 
-**Melhoria no hook:**
-No `registerSubscription`, trocar o `return` silencioso por `console.error` + `toast.error` quando o VAPID fetch falha, para que o admin consiga ver quando algo dá errado.
-
-### Resultado esperado
-
-Após as correções e deploy, quando uma aluna acessar `anaacclub.lovable.app`, aceitar notificações, a subscription será salva na tabela e o contador do admin refletirá o número real.
+Todas as alunas verão o banner: Android mostra instalação/push nativo, iOS mostra tutorial de instalação manual.
 
