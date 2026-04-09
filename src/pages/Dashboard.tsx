@@ -116,6 +116,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
+  const { pushState, requestPermission, isInstallable, installPWA } = usePushNotifications();
 
   // Real performance data
   const {
