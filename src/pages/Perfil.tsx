@@ -599,6 +599,21 @@ const Perfil = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Sticker Sheet */}
+      <Sheet open={stickerOpen} onOpenChange={setStickerOpen}>
+        <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="text-center">Sua Figurinha 🔥</SheetTitle>
+          </SheetHeader>
+          <ActiveDaysSticker
+            streak={streakNum}
+            userName={full_name}
+            flameState={streakData?.flameState ?? "normal"}
+            onClose={() => setStickerOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
