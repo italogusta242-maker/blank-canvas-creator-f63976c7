@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { SFX } from "@/hooks/useSoundEffects";
 import { optimisticFlameUpdate } from "@/lib/flameOptimistic";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target } from "lucide-react";
+import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target, Download } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNavigate } from "react-router-dom";
 import InsanoLogo from "@/components/InsanoLogo";
@@ -28,7 +28,9 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
-// useHustlePoints removed — unified into "Dias Ativos"
+import { useIsAppInstalled } from "@/hooks/useIsAppInstalled";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { detectPlatform } from "@/lib/detectPlatform";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
@@ -115,7 +117,27 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
-  // totalPoints removed — unified into streak/"Dias Ativos"
+  const isAppInstalled = useIsAppInstalled();
+  const { isInstallable, installPWA } = usePushNotifications();
+  const platform = detectPlatform();
+  const [installDismissed, setInstallDismissed] = useState(() => {
+    const d = localStorage.getItem("install_banner_dismissed");
+    return d ? Date.now() - Number(d) < 7 * 24 * 60 * 60 * 1000 : false;
+  });
+  const showInstallCard = !isAppInstalled && platform !== "standalone" && !installDismissed;
+
+  const handleInstallClick = async () => {
+    if (isInstallable) {
+      await installPWA();
+    } else {
+      navigate("/instalar");
+    }
+  };
+
+  const dismissInstall = () => {
+    localStorage.setItem("install_banner_dismissed", String(Date.now()));
+    setInstallDismissed(true);
+  };
 
   // Real performance data
   const {
@@ -425,6 +447,31 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {showInstallCard && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 relative min-h-[72px]"
+          >
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Download className="text-accent" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground">Instale o app</p>
+              <p className="text-xs text-muted-foreground">Para uma experiência completa</p>
+            </div>
+            <button
+              onClick={handleInstallClick}
+              className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold shrink-0 active:scale-95 transition-transform"
+            >
+              Instalar
+            </button>
+            <button onClick={dismissInstall} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground p-1">
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
 
         <DashboardHero 
           hasTrainingPlan={hasRealPlan}
@@ -565,6 +612,31 @@ const Dashboard = () => {
         />
       </div>
 
+      {showInstallCard && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 relative min-h-[80px]"
+        >
+          <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+            <Download className="text-accent" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold text-foreground">Instale o aplicativo</p>
+            <p className="text-sm text-muted-foreground">Para uma experiência completa no seu celular</p>
+          </div>
+          <button
+            onClick={handleInstallClick}
+            className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold shrink-0 hover:opacity-90 transition-opacity"
+          >
+            Instalar
+          </button>
+          <button onClick={dismissInstall} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-1">
+            <X size={16} />
+          </button>
+        </motion.div>
+      )}
 
 
       {/* DailyCheckIn popup removed */}
