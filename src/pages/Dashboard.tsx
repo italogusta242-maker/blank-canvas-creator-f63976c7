@@ -28,6 +28,8 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
+import PushPermissionBanner from "@/components/PushPermissionBanner";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
@@ -114,6 +116,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
+  const { pushState, requestPermission, isInstallable, installPWA } = usePushNotifications();
 
   // Real performance data
   const {
@@ -425,6 +428,13 @@ const Dashboard = () => {
 
 
 
+        <PushPermissionBanner
+          pushState={pushState}
+          onRequestPermission={requestPermission}
+          isInstallable={isInstallable}
+          onInstall={installPWA}
+        />
+
 
         <DashboardHero 
           hasTrainingPlan={hasRealPlan}
@@ -526,6 +536,13 @@ const Dashboard = () => {
         ranking={(profile as any)?.ranking || 1}
         
         flameState={flameState}
+      />
+
+      <PushPermissionBanner
+        pushState={pushState}
+        onRequestPermission={requestPermission}
+        isInstallable={isInstallable}
+        onInstall={installPWA}
       />
 
       {/* Balanced 2-Column Grid */}
