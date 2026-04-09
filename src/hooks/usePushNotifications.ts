@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 type PushState = "loading" | "granted" | "denied" | "prompt" | "unsupported";
 
@@ -13,14 +14,35 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
+// ─── Badge API helpers ──────────────────────────────────────────
+function updateAppBadge(count: number) {
+  if ("setAppBadge" in navigator) {
+    if (count > 0) {
+      (navigator as any).setAppBadge(count).catch(() => {});
+    } else {
+      (navigator as any).clearAppBadge().catch(() => {});
+    }
+  }
+}
+
 export function usePushNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [pushState, setPushState] = useState<PushState>("loading");
+  const navigateRef = useRef<ReturnType<typeof useNavigate> | null>(null);
+
+  // Safe navigate — we store it via ref so the SW listener can use it
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    navigateRef.current = useNavigate();
+  } catch {
+    // Outside router context — ignore
+  }
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
+  // ─── Subscribe current user to push ───────────────────────────
   const subscribeCurrentUser = useCallback(async () => {
     if (!user) throw new Error("Usuária não autenticada");
 
@@ -43,9 +65,7 @@ export function usePushNotifications() {
     }
 
     const { publicKey } = await vapidRes.json();
-    if (!publicKey) {
-      throw new Error("VAPID key não retornada pelo backend");
-    }
+    if (!publicKey) throw new Error("VAPID key não retornada pelo backend");
 
     console.log("[Push] Waiting for service worker...");
     const registration = await Promise.race([
@@ -83,9 +103,7 @@ export function usePushNotifications() {
 
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
-    if (!token) {
-      throw new Error("Sessão inválida para salvar a inscrição push");
-    }
+    if (!token) throw new Error("Sessão inválida para salvar a inscrição push");
 
     console.log("[Push] Sending subscription to backend...");
     const res = await fetch(
@@ -109,7 +127,7 @@ export function usePushNotifications() {
     console.log("[Push] ✅ Subscription saved successfully");
   }, [user]);
 
-  // Detect push state silently
+  // ─── Detect push state silently ───────────────────────────────
   useEffect(() => {
     if (!user) {
       setPushState("loading");
@@ -117,27 +135,47 @@ export function usePushNotifications() {
     }
 
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      console.log("[Push] Unsupported: SW or PushManager missing");
       setPushState("unsupported");
       return;
     }
 
     const perm = Notification.permission;
-    if (perm === "denied") {
-      setPushState("denied");
-      return;
-    }
-
-    if (perm === "default") {
-      setPushState("prompt");
-      return;
-    }
-
-    // Permission is granted - subscribe
+    if (perm === "denied") { setPushState("denied"); return; }
+    if (perm === "default") { setPushState("prompt"); return; }
     setPushState("granted");
   }, [user]);
 
-  // PWA install prompt
+  // ─── Foreground push listener (postMessage from SW) ───────────
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== "PUSH_FOREGROUND") return;
+
+      const { title, body, url } = event.data.payload || {};
+
+      toast(title || "🔔 Nova notificação", {
+        description: body || "",
+        duration: 6000,
+        action: url
+          ? {
+              label: "Ver",
+              onClick: () => navigateRef.current?.(url),
+            }
+          : undefined,
+      });
+
+      // Invalidate notifications query so the bell updates
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, [user, queryClient]);
+
+  // ─── PWA install prompt ───────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -156,6 +194,7 @@ export function usePushNotifications() {
     setDeferredPrompt(null);
   };
 
+  // ─── Request permission (user-initiated only) ────────────────
   const requestPermission = useCallback(async () => {
     if (!("Notification" in window)) {
       setPushState("unsupported");
@@ -181,7 +220,7 @@ export function usePushNotifications() {
     }
   }, [subscribeCurrentUser]);
 
-  // Notifications from DB (in-app)
+  // ─── Notifications from DB (in-app) ──────────────────────────
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -200,7 +239,12 @@ export function usePushNotifications() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Realtime for in-app toast
+  // ─── Badge API — sync badge with unread count ─────────────────
+  useEffect(() => {
+    updateAppBadge(unreadCount);
+  }, [unreadCount]);
+
+  // ─── Realtime for in-app toast ────────────────────────────────
   useEffect(() => {
     if (!user) return;
 
@@ -220,9 +264,9 @@ export function usePushNotifications() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            const newNotification = payload.new as any;
-            toast.success(newNotification.title, {
-              description: newNotification.body,
+            const n = payload.new as any;
+            toast.success(n.title, {
+              description: n.body,
               icon: "🔔",
             });
             queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
@@ -238,6 +282,7 @@ export function usePushNotifications() {
     };
   }, [user?.id, queryClient]);
 
+  // ─── Mark as read (+ clear badge) ────────────────────────────
   const markAsRead = async (notificationId: string) => {
     if (!user) return;
     await supabase.from("notifications").update({ read: true }).eq("id", notificationId);
