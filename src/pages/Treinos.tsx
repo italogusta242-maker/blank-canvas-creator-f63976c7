@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Dumbbell, Play, ChevronDown, ChevronUp, ArrowLeft, Check,
   Timer, RefreshCw, Weight, Clock, Flame, MessageSquare,
-  History, X, AlertTriangle, FileText
+  History, X, AlertTriangle, FileText, Download
 } from "lucide-react";
 
 import VictoryCard from "@/components/training/VictoryCard";
@@ -36,6 +36,9 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ActiveDaysSticker from "@/components/ActiveDaysSticker";
+import { useStreak } from "@/hooks/useStreak";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -107,8 +110,22 @@ const Treinos = () => {
   const [setPickerData, setSetPickerData] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [swapData, setSwapData] = useState<{ exIdx: number; oldName: string; pattern: string | null } | null>(null);
   const [runningCapture, setRunningCapture] = useState<{ durationSecs: number; distanceKm: number } | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
 
   const { state: flameState, streak } = useFlameState();
+  const { data: streakData } = useStreak();
+  const streakNum = streakData?.streak ?? streak ?? 0;
+
+  const { data: profileData } = useQuery({
+    queryKey: ["profile-name", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 10 * 60 * 1000,
+  });
 
   const [timer, setTimer] = useState(() => {
     if (persisted?.startedAt) {
@@ -477,9 +494,14 @@ const Treinos = () => {
             <button onClick={() => navigate("/aluno")} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={24} /></button>
             <div className="flex items-center gap-2"><Dumbbell size={20} className="text-accent" /><span className="font-cinzel font-bold text-foreground">SALA DE TREINOS</span></div>
           </div>
-          <button onClick={() => setView("history")} className="flex items-center gap-1.5 bg-card/50 border border-border rounded-lg px-3 py-1.5 hover:border-accent/40 transition-colors">
-            <History size={14} className="text-muted-foreground" /><span className="text-xs text-muted-foreground">Histórico</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setStickerOpen(true)} className="flex items-center gap-1.5 bg-card/50 border border-border rounded-lg px-3 py-1.5 hover:border-accent/40 transition-colors">
+              <Download size={14} className="text-muted-foreground" /><span className="text-xs text-muted-foreground">Dias Ativos</span>
+            </button>
+            <button onClick={() => setView("history")} className="flex items-center gap-1.5 bg-card/50 border border-border rounded-lg px-3 py-1.5 hover:border-accent/40 transition-colors">
+              <History size={14} className="text-muted-foreground" /><span className="text-xs text-muted-foreground">Histórico</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex bg-secondary/50 p-1 rounded-xl mb-6">
@@ -556,6 +578,20 @@ const Treinos = () => {
         {plan && activeTab === "extra" && (
           <PlanilhaCorrida />
         )}
+
+        <Sheet open={stickerOpen} onOpenChange={setStickerOpen}>
+          <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle className="text-center">Sua Figurinha 🔥</SheetTitle>
+            </SheetHeader>
+            <ActiveDaysSticker
+              streak={streakNum}
+              userName={profileData?.full_name ?? ""}
+              flameState={streakData?.flameState ?? flameState ?? "normal"}
+              onClose={() => setStickerOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
