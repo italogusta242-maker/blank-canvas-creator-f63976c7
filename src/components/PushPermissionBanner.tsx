@@ -1,6 +1,8 @@
 import { Bell, X, Download } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const DISMISS_KEY = "push_banner_dismissed";
 
 interface PushPermissionBannerProps {
   pushState: "loading" | "granted" | "denied" | "prompt" | "unsupported";
@@ -10,13 +12,34 @@ interface PushPermissionBannerProps {
 }
 
 const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, onInstall }: PushPermissionBannerProps) => {
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(DISMISS_KEY) === "true"; } catch { return false; }
+  });
 
-  // Detect iOS — on iOS, beforeinstallprompt never fires, so show push directly
+  // If permission was granted, hide forever
+  useEffect(() => {
+    if (pushState === "granted") {
+      try { localStorage.setItem(DISMISS_KEY, "true"); } catch {}
+      setDismissed(true);
+    }
+  }, [pushState]);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    // Don't persist dismiss — show again next session to encourage activation
+  };
+
+  const handleActivate = () => {
+    if (isInstallable && onInstall && !isIOS) {
+      onInstall();
+    } else {
+      onRequestPermission();
+    }
+  };
+
+  // Detect iOS — on iOS, beforeinstallprompt never fires
   const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-  // Show install banner OR push prompt banner, never both at once
-  // On iOS, skip install banner (it's manual) and go straight to push prompt
   const showInstall = isInstallable && !isIOS && !dismissed;
   const showPush = (!isInstallable || isIOS) && pushState === "prompt" && !dismissed;
 
@@ -43,16 +66,16 @@ const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, o
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground">
-            {isInstallMode ? "Instale o Aplicativo" : "Ative as notificações"}
+            {isInstallMode ? "Instale o Aplicativo" : "🔔 Não perca nenhum aviso!"}
           </p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {isInstallMode
               ? "Adicione à tela inicial para uma experiência rápida e com notificações."
-              : "Receba alertas de mensagens, treinos e atualizações no celular"}
+              : "Ative as notificações do Clube para receber avisos importantes e aulas ao vivo."}
           </p>
         </div>
         <button
-          onClick={isInstallMode && onInstall ? onInstall : onRequestPermission}
+          onClick={handleActivate}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors shrink-0 ${
             isInstallMode
               ? "bg-white text-black hover:bg-white/90"
@@ -62,7 +85,7 @@ const PushPermissionBanner = ({ pushState, onRequestPermission, isInstallable, o
           {isInstallMode ? "Instalar" : "Ativar"}
         </button>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
           className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           <X size={14} />
