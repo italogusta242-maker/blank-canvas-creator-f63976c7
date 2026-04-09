@@ -396,8 +396,8 @@ serve(async (req) => {
 
     // POST: send push to a specific user (called by DB webhook/trigger)
     if (req.method === "POST" && action === "send-to-user") {
-      const body = await req.json();
-      const { user_id, title, body: notifBody, data } = body;
+      const bodyData = _preReadBody || await req.json();
+      const { user_id, title, body: notifBody, data } = bodyData;
 
       if (!user_id || !title) {
         return new Response(JSON.stringify({ error: "user_id and title required" }), {
