@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { SFX } from "@/hooks/useSoundEffects";
 import { optimisticFlameUpdate } from "@/lib/flameOptimistic";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target } from "lucide-react";
+import { Brain, Dumbbell, UtensilsCrossed, TrendingUp, Calendar, AlertTriangle, ChevronRight, X, Droplets, Plus, Minus, Flame, User, Check, Moon, Target, Download } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNavigate } from "react-router-dom";
 import InsanoLogo from "@/components/InsanoLogo";
@@ -28,7 +28,9 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
-// useHustlePoints removed — unified into "Dias Ativos"
+import { useIsAppInstalled } from "@/hooks/useIsAppInstalled";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { detectPlatform } from "@/lib/detectPlatform";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
