@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CHALLENGE_START_DATE = "2026-04-08";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -70,6 +72,11 @@ Deno.serve(async (req) => {
 
       const todayStr = brtNow.toISOString().split("T")[0];
       if (flame.last_approved_date === todayStr) {
+        unchanged++;
+        continue;
+      }
+
+      if (yesterdayStr < CHALLENGE_START_DATE) {
         unchanged++;
         continue;
       }
