@@ -28,8 +28,7 @@ import { useChangePasswordTrigger } from "@/components/ChangePasswordSection";
 import { getUnlockedRewards } from "@/lib/flameMotor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useStreak } from "@/hooks/useStreak";
-import ActiveDaysSticker from "@/components/ActiveDaysSticker";
-import { Download } from "lucide-react";
+import { PostDetailModal } from "@/components/community/PostDetailModal";
 import { PostDetailModal } from "@/components/community/PostDetailModal";
 
 // ── Photo Zoom Dialog Component ──
