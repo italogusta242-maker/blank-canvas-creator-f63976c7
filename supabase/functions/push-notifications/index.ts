@@ -88,7 +88,7 @@ async function createVAPIDAuth(
       JSON.stringify({
         aud: audience,
         exp: Math.floor(Date.now() / 1000) + 86400,
-        sub: "mailto:contato@shapeinsano.com",
+        sub: "mailto:contato@anaacclub.com.br",
       })
     )
   );
@@ -357,7 +357,7 @@ serve(async (req) => {
         if (previewPref === "partial") {
           pushBody = body && body.length > 40 ? body.slice(0, 40) + "…" : body;
         } else if (previewPref === "none") {
-          pushTitle = "Shape Insano";
+        pushTitle = "ANAAC Club";
           pushBody = "Você recebeu uma nova mensagem";
         }
 
@@ -423,7 +423,7 @@ serve(async (req) => {
       if (previewPref === "partial") {
         pushBody = pushBody.length > 40 ? pushBody.slice(0, 40) + "…" : pushBody;
       } else if (previewPref === "none") {
-        pushTitle = "Shape Insano";
+        pushTitle = "ANAAC Club";
         pushBody = "Você tem uma nova notificação";
       }
 
