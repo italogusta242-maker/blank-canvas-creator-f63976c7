@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,53 +10,132 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-/** Wait for SW ready with a timeout */
-async function waitForSWReady(timeoutMs = 8000): Promise<ServiceWorkerRegistration> {
-  return Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Service Worker not ready after " + timeoutMs + "ms")), timeoutMs)
-    ),
-  ]);
+  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
 export function usePushNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const attemptedRef = useRef(false);
   const [pushState, setPushState] = useState<PushState>("loading");
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
+  // Detect push state
   useEffect(() => {
+    if (!user) {
+      setPushState("loading");
+      return;
+    }
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       console.log("[Push] Unsupported: SW or PushManager missing");
       setPushState("unsupported");
       return;
     }
-    const permission = Notification.permission as PermissionState | "default";
-    if (permission === "granted") {
-      setPushState("granted");
-    } else if (permission === "denied") {
+
+    const perm = Notification.permission;
+    if (perm === "denied") {
       setPushState("denied");
-    } else {
+      return;
+    }
+
+    if (perm === "default") {
       setPushState("prompt");
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (pushState === "granted" && user) {
-      registerSubscription();
-    }
-  }, [pushState, user]);
+    // Permission is granted - subscribe
+    setPushState("granted");
 
+    if (attemptedRef.current) return;
+    attemptedRef.current = true;
+
+    const subscribe = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        console.log("[Push] Fetching VAPID key...");
+        const vapidRes = await fetch(
+          `${supabaseUrl}/functions/v1/push-notifications?action=vapid-key`,
+          { headers: { apikey } }
+        );
+        if (!vapidRes.ok) {
+          console.error("[Push] Failed to get VAPID key:", vapidRes.status);
+          return;
+        }
+        const { publicKey } = await vapidRes.json();
+        if (!publicKey) return;
+        console.log("[Push] VAPID key obtained");
+
+        const registration = await navigator.serviceWorker.ready;
+        console.log("[Push] SW ready, scope:", registration.scope);
+
+        // Check/renew subscription
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (subscription) {
+          try {
+            const testRes = await fetch(subscription.endpoint, { method: "HEAD" }).catch(() => null);
+            if (testRes && (testRes.status === 410 || testRes.status === 404)) {
+              console.log("[Push] Subscription expired, resubscribing...");
+              await subscription.unsubscribe();
+              subscription = null;
+            }
+          } catch {
+            // Keep existing subscription
+          }
+        }
+
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+          });
+          console.log("[Push] New subscription created");
+        } else {
+          console.log("[Push] Reusing existing subscription");
+        }
+
+        // Send subscription to server
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (!token) return;
+
+        console.log("[Push] Sending subscription to backend...");
+        const res = await fetch(
+          `${supabaseUrl}/functions/v1/push-notifications?action=subscribe`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey,
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ subscription: subscription.toJSON() }),
+          }
+        );
+
+        if (res.ok) {
+          console.log("[Push] ✅ Subscription saved successfully");
+        } else {
+          const errBody = await res.text().catch(() => "");
+          console.error("[Push] Failed to save subscription:", res.status, errBody);
+          toast.error("Erro ao salvar notificação push. Tente novamente.");
+        }
+      } catch (e) {
+        console.error("[Push] Subscription failed:", e);
+        toast.error("Erro ao ativar notificações. Verifique as permissões do navegador.");
+      }
+    };
+
+    const timer = setTimeout(subscribe, 2000);
+    return () => clearTimeout(timer);
+  }, [user]);
+
+  // PWA install prompt
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -75,85 +154,6 @@ export function usePushNotifications() {
     setDeferredPrompt(null);
   };
 
-  const registerSubscription = useCallback(async () => {
-    try {
-      if (!user) return;
-      console.log("[Push] Starting subscription registration for user", user.id);
-
-      // 1. Wait for SW with timeout
-      let registration: ServiceWorkerRegistration;
-      try {
-        registration = await waitForSWReady(8000);
-        console.log("[Push] SW ready, scope:", registration.scope);
-      } catch (swErr) {
-        console.error("[Push] SW not ready:", swErr);
-        toast.error("Erro: Service Worker não carregou. Tente reinstalar o app.");
-        return;
-      }
-
-      // 2. Fetch VAPID key
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      console.log("[Push] Fetching VAPID key...");
-      const vapidRes = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/push-notifications?action=vapid-key`,
-        {
-          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        }
-      );
-      if (!vapidRes.ok) {
-        const errText = await vapidRes.text().catch(() => "");
-        console.error("[Push] VAPID key fetch failed:", vapidRes.status, errText);
-        toast.error("Erro ao configurar notificações push.");
-        return;
-      }
-      const { publicKey: vapidPublicKey } = await vapidRes.json();
-      console.log("[Push] VAPID key obtained:", vapidPublicKey?.slice(0, 20) + "...");
-
-      // 3. Subscribe to push
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        console.log("[Push] No existing subscription, creating new...");
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as ArrayBuffer,
-        });
-        console.log("[Push] New subscription created");
-      } else {
-        console.log("[Push] Reusing existing subscription");
-      }
-
-      // 4. Send subscription to backend
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      console.log("[Push] Sending subscription to backend...");
-      const subRes = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/push-notifications?action=subscribe`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ subscription: subscription.toJSON() }),
-        }
-      );
-
-      if (!subRes.ok) {
-        const errBody = await subRes.text().catch(() => "");
-        console.error("[Push] Subscribe call failed:", subRes.status, errBody);
-        toast.error("Erro ao salvar notificação push. Tente novamente.");
-        return;
-      }
-
-      console.log("[Push] ✅ Subscription registered successfully!");
-    } catch (err) {
-      console.error("[Push] Registration error:", err);
-      toast.error("Erro ao ativar notificações. Verifique as permissões do navegador.");
-    }
-  }, [user]);
-
   const requestPermission = useCallback(async () => {
     if (!("Notification" in window)) {
       setPushState("unsupported");
@@ -164,8 +164,8 @@ export function usePushNotifications() {
       const result = await Notification.requestPermission();
       if (result === "granted") {
         setPushState("granted");
+        attemptedRef.current = false; // Allow re-subscribe attempt
         toast.success("Notificações ativadas! 🔔");
-        await registerSubscription();
       } else if (result === "denied") {
         setPushState("denied");
         toast.error("Permissão de notificações negada. Ative nas configurações do navegador.");
@@ -176,7 +176,7 @@ export function usePushNotifications() {
       console.error("[Push] Permission request error:", err);
       toast.error("Erro ao solicitar permissão de notificações.");
     }
-  }, [registerSubscription]);
+  }, []);
 
   // Notifications from DB (in-app)
   const { data: notifications = [] } = useQuery({
@@ -265,24 +265,23 @@ export async function sendPushToConversation(
   body: string
 ) {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
     if (!token) return;
 
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    await fetch(
-      `https://${projectId}.supabase.co/functions/v1/push-notifications?action=send-to-conversation`,
+    fetch(
+      `${supabaseUrl}/functions/v1/push-notifications?action=send-to-conversation`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          apikey,
           Authorization: `Bearer ${token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ conversation_id: conversationId, title, body }),
       }
-    );
-  } catch (err) {
-    console.error("[Push] Send to conversation error:", err);
-  }
+    ).catch(() => {});
+  } catch {}
 }
