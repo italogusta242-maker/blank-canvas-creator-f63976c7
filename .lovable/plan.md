@@ -1,37 +1,44 @@
 
 
-## Figurinha de "Dias Ativos" no Perfil
+## Plano: Figurinha igual ao VictoryCard + Botão na Tela de Treinos
 
-### O que será feito
+### O que muda
 
-Ao tocar no bloco "Dias Ativos" no perfil, abre um Sheet (bottom drawer) com um card visual mostrando chama, número de dias ativos e branding ANAAC. Botões "Baixar" e "Copiar". Imagem gerada via `html2canvas`. Fallback: imagem visível no modal para long-press nativo.
+1. **`ActiveDaysSticker.tsx`** — Refazer o visual do card para ficar **idêntico** ao do VictoryCard (Flame SVG com cor `#ff2a5f`, texto "DIAS ATIVOS" em vermelho, número grande branco, "ANAAC CLUB" embaixo). Hoje ele usa emoji 🔥 e gradiente azul diferente.
+
+2. **`Perfil.tsx`** — Remover o Sheet/sticker do perfil (a funcionalidade migra para a tela de treinos).
+
+3. **`Treinos.tsx`** — Adicionar um botão com ícone de download + "Dias Ativos" na view `"list"` (header da Sala de Treinos). Ao clicar, abre um Sheet com o `ActiveDaysSticker` usando o mesmo visual do VictoryCard.
+
+---
+
+### Detalhes técnicos
+
+**`ActiveDaysSticker.tsx`** — Card oculto para captura:
+- Trocar emoji `🔥` por componente `<Flame>` do Lucide renderizado como SVG inline (html2canvas captura melhor)
+- Cor: `#ff2a5f` (mesmo do VictoryCard)
+- Texto "DIAS ATIVOS" em `fontSize: 26, fontWeight: 900, color: #ff2a5f`
+- Número em `fontSize: 64, fontWeight: 900, color: #ffffff`
+- "ANAAC CLUB" em `fontSize: 14, letterSpacing: 4px, opacity: 0.8`
+- Fundo: `transparent` (igual VictoryCard — o fundo escuro vem do container externo `bg-black/40`)
+- Manter lógica de pré-render 500ms, download blob e copy clipboard
+
+**`Perfil.tsx`** (linha 462):
+- Remover `onClick={() => setStickerOpen(true)}` e o ícone Download
+- Remover o `<Sheet>` do `ActiveDaysSticker`
+- Manter o número de "Dias Ativos" como texto estático
+
+**`Treinos.tsx`** (view `"list"`, ~linha 475-483):
+- Adicionar botão ao lado do "Histórico" com ícone `Download` + texto "Dias Ativos"
+- Estado `stickerOpen` para controlar o Sheet
+- Importar `ActiveDaysSticker`, `Sheet`, `SheetContent`
+- Passar `streak`, `full_name` (do profile query) e `flameState`
 
 ### Arquivos
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/ActiveDaysSticker.tsx` | **Novo** — card visual + html2canvas + download/copiar |
-| `src/pages/Perfil.tsx` | "Dias Ativos" clicável → abre Sheet |
-
-### Detalhes técnicos
-
-**`ActiveDaysSticker.tsx`**
-- Props: `streak`, `userName`, `flameState`, `onClose`
-- Card visual renderizado em div oculta (`position: fixed; top: -9999px`) para evitar conflito com animação do Sheet (ponto levantado pelo Gemini)
-- `useEffect` com 500ms delay para pré-render via `html2canvas` → `setPreparedBlob`
-- Card visível no Sheet como preview (imagem já renderizada ou fallback estático)
-- Botão "Baixar": blob → `<a download>` programático
-- Botão "Copiar": `ClipboardItem` com fallback para download
-- Imagem visível para long-press nativo (fallback supremo mobile)
-
-**`Perfil.tsx`** (linhas 459-462)
-- Adicionar estado `stickerOpen`
-- Envolver div "Dias Ativos" com `onClick={() => setStickerOpen(true)}` + `cursor-pointer`
-- Adicionar ícone `Download` (12px) ao lado do label
-- Renderizar `<Sheet open={stickerOpen}>` com `<ActiveDaysSticker>`
-- Passar `streakNum`, `full_name`, flame state do `useStreak`
-
-### Ponto de atenção do Gemini aplicado
-
-O `html2canvas` captura uma div **fora** da área animada do Sheet (renderizada com `position: fixed; top: -9999px`). A preview no Sheet mostra a imagem já convertida em `<img src={blobUrl}>`, não o DOM original. Isso evita canvas cortado/branco durante animação.
+| `src/components/ActiveDaysSticker.tsx` | Visual idêntico ao VictoryCard |
+| `src/pages/Perfil.tsx` | Remover Sheet/sticker, manter texto estático |
+| `src/pages/Treinos.tsx` | Adicionar botão "Dias Ativos" + Sheet |
 
