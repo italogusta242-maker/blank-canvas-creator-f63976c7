@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Dumbbell, Play, ChevronDown, ChevronUp, ArrowLeft, Check,
   Timer, RefreshCw, Weight, Clock, Flame, MessageSquare,
-  History, X, AlertTriangle, FileText
+  History, X, AlertTriangle, FileText, Download
 } from "lucide-react";
 
 import VictoryCard from "@/components/training/VictoryCard";
@@ -36,6 +36,9 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ActiveDaysSticker from "@/components/ActiveDaysSticker";
+import { useStreak } from "@/hooks/useStreak";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

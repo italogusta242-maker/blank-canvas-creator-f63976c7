@@ -459,8 +459,8 @@ const Perfil = () => {
                  <p className="text-base font-black text-foreground">{socialCounts?.followers ?? 0}</p>
                  <p className="text-[9px] text-muted-foreground uppercase tracking-tighter">Seguidores</p>
                </div>
-                <div className="text-center text-orange-500 cursor-pointer active:scale-95 transition-transform" onClick={() => setStickerOpen(true)}>
-                  <p className="text-base font-black flex items-center justify-center gap-1">{streakNum} <Download size={10} className="opacity-50" /></p>
+                <div className="text-center text-orange-500">
+                  <p className="text-base font-black">{streakNum}</p>
                   <p className="text-[9px] uppercase tracking-tighter">Dias Ativos</p>
                 </div>
                <div className="text-center">
@@ -600,20 +600,6 @@ const Perfil = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Sticker Sheet */}
-      <Sheet open={stickerOpen} onOpenChange={setStickerOpen}>
-        <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl">
-          <SheetHeader>
-            <SheetTitle className="text-center">Sua Figurinha 🔥</SheetTitle>
-          </SheetHeader>
-          <ActiveDaysSticker
-            streak={streakNum}
-            userName={full_name}
-            flameState={streakData?.flameState ?? "normal"}
-            onClose={() => setStickerOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 };
