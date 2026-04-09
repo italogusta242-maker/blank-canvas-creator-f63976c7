@@ -160,11 +160,12 @@ const ActiveDaysSticker = ({ streak, userName, flameState, onClose }: ActiveDays
         {/* Checkerboard background for transparency preview */}
         <style>{`
           .checkerboard-bg {
+            background-color: #1a1a1a;
             background-image:
-              linear-gradient(45deg, hsl(var(--muted)/0.5) 25%, transparent 25%),
-              linear-gradient(-45deg, hsl(var(--muted)/0.5) 25%, transparent 25%),
-              linear-gradient(45deg, transparent 75%, hsl(var(--muted)/0.5) 75%),
-              linear-gradient(-45deg, transparent 75%, hsl(var(--muted)/0.5) 75%);
+              linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+              linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+              linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
             background-size: 16px 16px;
             background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
           }
