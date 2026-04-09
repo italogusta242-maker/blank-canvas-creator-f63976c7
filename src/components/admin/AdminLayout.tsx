@@ -33,7 +33,7 @@ const navItems = [
   { title: "Importar Alunos", path: "/admin/importar-alunos", icon: Upload },
   { title: "Premiações", path: "/admin/premiacoes", icon: Trophy },
   { title: "Pontuação", path: "/admin/pontuacao", icon: ListChecks },
-  { title: "Avisos Gerais", path: "/admin/avisos", icon: Megaphone },
+  { title: "Notificações", path: "/admin/avisos", icon: Megaphone },
   { title: "Logs do Sistema", path: "/admin/webhook-logs", icon: Wifi },
 ];
 
