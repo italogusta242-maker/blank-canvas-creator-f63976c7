@@ -1,31 +1,33 @@
 
 
-## Plano: Botão "Instalar App" fixo no Dashboard
+## Plano: Remover popups de instalação + Adicionar opção nos 3 pontinhos do Perfil
 
-### O que será feito
+### O que muda
 
-Um banner/card na Dashboard (abaixo do Hero, acima dos goals) com botão "Instalar Aplicativo". Ele desaparece automaticamente quando o app já está instalado (standalone) ou logo após a instalação (evento `appinstalled`).
+1. **Remover todos os popups/banners de instalação PWA**
+2. **Adicionar "Instalar App" no menu de 3 pontinhos do Perfil**
+3. **Investigar e corrigir o bug de download/instalação**
 
 ### Arquivos
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/hooks/useIsAppInstalled.ts` | **Novo** — hook que retorna `true` se standalone ou após `appinstalled` |
-| `src/pages/Dashboard.tsx` | Importar hook + `usePushNotifications`; renderizar card de install entre Hero e DailyGoals (mobile e desktop) |
+| `src/pages/Dashboard.tsx` | Remover card de instalação (mobile + desktop), remover imports `useIsAppInstalled`, `usePushNotifications`, `detectPlatform`, `Download`, e toda lógica `showInstallCard`/`installDismissed`/`handleInstallClick`/`dismissInstall` |
+| `src/components/AppLayout.tsx` | Remover `<PWAInstallBanner>` e `<PushPermissionBanner>` + imports relacionados |
+| `src/pages/Perfil.tsx` | Adicionar `DropdownMenuItem` "Instalar App" com ícone `Download` no menu dos 3 pontinhos. Importar `useIsAppInstalled`, `usePushNotifications`, `useNavigate`, `detectPlatform`. Só exibir o item se `!isAppInstalled && platform !== "standalone"`. `onClick`: se `isInstallable` → `installPWA()`, senão → `navigate("/instalar")` |
 
-### Detalhes
+### Detalhes do Perfil (menu 3 pontinhos)
 
-**`useIsAppInstalled.ts`**
-- Checa `matchMedia("(display-mode: standalone)")` e `navigator.standalone`
-- Escuta evento `appinstalled` para sumiço instantâneo
-- Retorna `boolean`
+Antes de "Editar Perfil", adicionar:
+```
+<DropdownMenuItem onClick={handleInstallClick} className="gap-2 cursor-pointer">
+  <Download size={15} /> Instalar App
+</DropdownMenuItem>
+```
 
-**`Dashboard.tsx`**
-- Importar `useIsAppInstalled`, `usePushNotifications` (para `isInstallable` + `installPWA`), `useNavigate`, `detectPlatform`
-- Entre o `<DashboardHero>` e o grid de goals, renderizar condicionalmente (só se `!isInstalled && platform !== "standalone"`):
-  - Card com ícone Download, texto "Instale o app para uma experiência completa", botão "Instalar Aplicativo"
-  - `onClick`: se `isInstallable` → `installPWA()`, senão → `navigate("/instalar")`
-  - Botão X para dismiss (localStorage cooldown 7 dias)
-  - Estilo: `bg-card border border-border rounded-2xl p-4` com gradiente sutil
-- Mesmo card no layout desktop
+Condicionalmente renderizado apenas quando o app ainda não foi instalado.
+
+### Bug de download
+
+O `installPWA()` vem do `usePushNotifications` e depende do `deferredPrompt` capturado via `beforeinstallprompt`. Se o prompt não foi capturado (iOS, webview, ou Chrome que não disparou o evento), `deferredPrompt` é null e `installPWA()` retorna sem fazer nada silenciosamente. O fallback correto (navegar para `/instalar`) já existe na lógica `handleInstallClick`, que será movida para o Perfil.
 
