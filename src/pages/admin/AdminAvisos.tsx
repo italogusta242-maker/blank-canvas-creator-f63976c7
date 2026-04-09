@@ -128,7 +128,7 @@ export default function AdminAvisos() {
         }
       } else {
         if (!selectedUser) throw new Error("Selecione uma aluna!");
-        // 1. Save notification
+        // Save notification — the DB trigger automatically fires push via pg_net
         const { error } = await supabase.from("notifications").insert({
           user_id: selectedUser.id,
           title,
@@ -136,12 +136,6 @@ export default function AdminAvisos() {
           type: "admin_broadcast",
         });
         if (error) throw new Error(error.message);
-
-        // 2. Send real push
-        await supabase.functions.invoke("push-notifications", {
-          body: { user_id: selectedUser.id, title, body },
-          headers: { "Content-Type": "application/json" },
-        });
       }
     },
     onSuccess: () => {
