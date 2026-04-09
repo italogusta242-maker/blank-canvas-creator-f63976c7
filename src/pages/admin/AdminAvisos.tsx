@@ -45,17 +45,61 @@ export default function AdminAvisos() {
     );
   }, [activeProfiles, search]);
 
-  const { data: broadcasts, isLoading } = useQuery({
-    queryKey: ["admin_broadcasts"],
+  // History: broadcasts + individual notifications sent by admin
+  const { data: history, isLoading } = useQuery({
+    queryKey: ["admin_notification_history"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("broadcast_notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data;
+      const [broadcastRes, individualRes] = await Promise.all([
+        supabase
+          .from("broadcast_notifications")
+          .select("id, title, body, created_at")
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase
+          .from("notifications")
+          .select("id, title, body, created_at, user_id, type")
+          .eq("type", "admin_broadcast")
+          .order("created_at", { ascending: false })
+          .limit(30),
+      ]);
+
+      const broadcasts = (broadcastRes.data || []).map((b) => ({
+        ...b,
+        kind: "broadcast" as const,
+        recipient: "Todas as alunas",
+      }));
+
+      const individuals = (individualRes.data || []).map((n) => ({
+        ...n,
+        kind: "individual" as const,
+        recipient: n.user_id,
+      }));
+
+      const merged = [...broadcasts, ...individuals];
+      merged.sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+      return merged.slice(0, 40);
     },
+  });
+
+  // Resolve user names for individual notifications in history
+  const individualUserIds = useMemo(() => {
+    if (!history) return [];
+    return history.filter((h) => h.kind === "individual").map((h) => (h as any).user_id).filter(Boolean);
+  }, [history]);
+
+  const { data: userNames } = useQuery({
+    queryKey: ["user_names_for_history", individualUserIds],
+    queryFn: async () => {
+      if (individualUserIds.length === 0) return {};
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", individualUserIds);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p) => { map[p.id] = p.full_name || "Sem nome"; });
+      return map;
+    },
+    enabled: individualUserIds.length > 0,
   });
 
   const sendNotification = useMutation({
@@ -63,13 +107,28 @@ export default function AdminAvisos() {
       if (!title || !body) throw new Error("Título e mensagem são obrigatórios!");
 
       if (mode === "all") {
-        const { error } = await supabase.from("broadcast_notifications").insert({
-          title,
-          body,
-        });
+        // 1. Save broadcast
+        const { error } = await supabase.from("broadcast_notifications").insert({ title, body });
         if (error) throw new Error(error.message);
+
+        // 2. Send real push to ALL subscribers
+        const { data: subs } = await supabase.from("push_subscriptions" as any).select("user_id");
+        const uniqueUserIds = [...new Set((subs || []).map((s: any) => s.user_id))];
+
+        // Fire push for each user (don't await all — fire and forget for speed)
+        const pushPromises = uniqueUserIds.map((uid) =>
+          supabase.functions.invoke("push-notifications", {
+            body: { user_id: uid, title, body },
+            headers: { "Content-Type": "application/json" },
+          }).catch((e) => console.warn("[push] broadcast push failed for", uid, e))
+        );
+        // Send in batches of 10
+        for (let i = 0; i < pushPromises.length; i += 10) {
+          await Promise.allSettled(pushPromises.slice(i, i + 10));
+        }
       } else {
         if (!selectedUser) throw new Error("Selecione uma aluna!");
+        // 1. Save notification
         const { error } = await supabase.from("notifications").insert({
           user_id: selectedUser.id,
           title,
@@ -77,6 +136,12 @@ export default function AdminAvisos() {
           type: "admin_broadcast",
         });
         if (error) throw new Error(error.message);
+
+        // 2. Send real push
+        await supabase.functions.invoke("push-notifications", {
+          body: { user_id: selectedUser.id, title, body },
+          headers: { "Content-Type": "application/json" },
+        });
       }
     },
     onSuccess: () => {
@@ -86,7 +151,7 @@ export default function AdminAvisos() {
       setBody("");
       setSelectedUser(null);
       setSearch("");
-      queryClient.invalidateQueries({ queryKey: ["admin_broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_notification_history"] });
     },
     onError: (err: any) => {
       toast.error(`Falha ao enviar: ${err.message}`);
@@ -245,21 +310,30 @@ export default function AdminAvisos() {
         {/* Histórico */}
         <div className="bg-card p-6 rounded-xl border border-border flex flex-col h-full">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-            <Clock size={18} /> Histórico de Disparos
+            <Clock size={18} /> Histórico de Envios
           </h2>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {isLoading ? (
               <p className="text-muted-foreground text-sm">Carregando histórico...</p>
-            ) : broadcasts?.length === 0 ? (
-              <p className="text-muted-foreground text-sm italic">Nenhum disparo realizado ainda.</p>
+            ) : history?.length === 0 ? (
+              <p className="text-muted-foreground text-sm italic">Nenhum envio realizado ainda.</p>
             ) : (
-              broadcasts?.map((b) => (
-                <div key={b.id} className="p-4 rounded-lg bg-background border border-border">
-                  <h3 className="font-bold text-sm text-foreground">{b.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{b.body}</p>
+              history?.map((item) => (
+                <div key={`${item.kind}-${item.id}`} className="p-4 rounded-lg bg-background border border-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    {item.kind === "broadcast" ? (
+                      <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">Todas</span>
+                    ) : (
+                      <span className="text-[10px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-medium">
+                        Individual — {userNames?.[(item as any).user_id] || "..."}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground">{item.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.body}</p>
                   <p className="text-[10px] text-muted-foreground/50 mt-3 font-mono">
-                    Enviado em: {new Date(b.created_at!).toLocaleString("pt-BR")}
+                    {new Date(item.created_at!).toLocaleString("pt-BR")}
                   </p>
                 </div>
               ))
