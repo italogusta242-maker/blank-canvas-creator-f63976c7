@@ -99,8 +99,8 @@ const WebviewGuide = ({ platform }: { platform: Platform }) => {
 
 const StandaloneGuide = () => (
   <div className="space-y-4">
-    <div className="w-14 h-14 rounded-full bg-green-500/15 flex items-center justify-center mx-auto">
-      <CheckCircle className="w-7 h-7 text-green-500" />
+    <div className="w-14 h-14 rounded-full bg-accent/15 flex items-center justify-center mx-auto">
+      <CheckCircle className="w-7 h-7 text-accent" />
     </div>
     <h1 className="text-xl font-bold font-cinzel text-foreground">App já instalado!</h1>
     <p className="text-sm text-muted-foreground">
