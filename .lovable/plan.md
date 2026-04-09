@@ -1,31 +1,27 @@
 
 
-## Plano: Garantir que o banner de push/instalação apareça para alunas
+## Plano: Corrigir sistema de push notifications end-to-end
 
-### Problema
+### Problemas encontrados
 
-O `PushPermissionBanner` tem condições que podem impedir sua exibição:
+1. **Coluna `keys` NOT NULL sem default** — A tabela `push_subscriptions` tem uma coluna `keys` (jsonb, NOT NULL) sem default. O edge function insere `p256dh` e `auth` como colunas separadas mas nunca preenche `keys`, fazendo o INSERT/UPSERT falhar silenciosamente.
 
-1. **iOS Safari (não PWA)**: `PushManager` não existe fora do modo standalone no iOS. O hook retorna `"unsupported"` e o banner nunca aparece.
-2. **Android Chrome**: O evento `beforeinstallprompt` pode demorar a disparar. Se `isInstallable` for `false` e `pushState` for `"prompt"`, o banner de push aparece — mas se `beforeinstallprompt` disparar, muda para o banner de instalação (que some ao dismiss sem persistir).
-3. **Dismiss sem persistência**: O dismiss não persiste no localStorage (por design), mas numa mesma sessão a aluna pode ter dismissado sem perceber.
+2. **Edge function precisa re-deploy** — A tabela `app_settings` está vazia (sem VAPID keys), indicando que a edge function nunca executou com sucesso.
+
+3. **Banner dismiss permanente** — Se a aluna fechou o banner uma vez, `localStorage` guarda `push_banner_dismissed = "true"` pra sempre, mesmo que nunca tenha ativado. Deveria só persistir quando `pushState === "granted"`.
 
 ### Correções
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/PushPermissionBanner.tsx` | Adicionar modo iOS: quando `pushState === "unsupported"` e é iOS, mostrar banner com botão que leva para `/instalar` (tutorial de PWA) em vez de esconder completamente |
-| `src/hooks/usePushNotifications.ts` | Nenhuma mudança necessária |
-
-### Detalhes
-
-No `PushPermissionBanner.tsx`:
-- Detectar iOS + `pushState === "unsupported"` como um terceiro modo: **"iOS install guide"**
-- Nesse modo, mostrar texto "Para receber notificações, instale o app" com botão "Como instalar" que navega para `/instalar`
-- Manter os modos existentes para Android (install via `beforeinstallprompt`) e push (quando PushManager existe)
-- Isso garante que **em qualquer cenário**, a aluna vê alguma forma de ativação
+| # | O que | Como |
+|---|-------|------|
+| 1 | **Migração SQL** | `ALTER TABLE push_subscriptions ALTER COLUMN keys SET DEFAULT '{}'::jsonb;` — permite o upsert funcionar mesmo sem preencher `keys` |
+| 2 | **Re-deploy edge function** | Forçar deploy da `push-notifications` para garantir que está ativa |
+| 3 | **`PushPermissionBanner.tsx`** | Remover persistência do dismiss no localStorage — dismiss só dura a sessão (state local). Persistir dismiss APENAS quando `pushState === "granted"` |
+| 4 | **`push-notifications/index.ts`** | Também preencher a coluna `keys` no upsert com `JSON.stringify({p256dh, auth})` para robustez |
 
 ### Resultado
 
-Todas as alunas verão o banner: Android mostra instalação/push nativo, iOS mostra tutorial de instalação manual.
+- Banner aparece para toda aluna que não ativou notificações
+- Ao clicar "Ativar", solicita permissão do navegador → registra subscription no banco
+- Admin vê o contador real em "Sininho ativado" na aba Avisos
 
