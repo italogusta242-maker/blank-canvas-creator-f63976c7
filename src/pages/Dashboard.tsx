@@ -428,6 +428,13 @@ const Dashboard = () => {
 
 
 
+        <PushPermissionBanner
+          pushState={pushState}
+          onRequestPermission={requestPermission}
+          isInstallable={isInstallable}
+          onInstall={installPWA}
+        />
+
 
         <DashboardHero 
           hasTrainingPlan={hasRealPlan}
