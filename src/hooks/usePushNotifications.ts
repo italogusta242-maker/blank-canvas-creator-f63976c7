@@ -95,7 +95,9 @@ export function usePushNotifications() {
         }
       );
       if (!vapidRes.ok) {
-        console.error("[Push] Failed to fetch VAPID key:", vapidRes.status);
+        const errText = await vapidRes.text().catch(() => "");
+        console.error("[Push] Failed to fetch VAPID key:", vapidRes.status, errText);
+        toast.error("Erro ao configurar notificações push. Tente novamente.");
         return;
       }
       const { publicKey: vapidPublicKey } = await vapidRes.json();
