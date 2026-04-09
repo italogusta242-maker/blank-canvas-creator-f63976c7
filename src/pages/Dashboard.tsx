@@ -28,9 +28,6 @@ import PerformanceEvolution from "@/components/dashboard/PerformanceEvolution";
 // WeeklyVolume removed
 import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
-import { useIsAppInstalled } from "@/hooks/useIsAppInstalled";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { detectPlatform } from "@/lib/detectPlatform";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
@@ -117,27 +114,6 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = getToday();
-  const isAppInstalled = useIsAppInstalled();
-  const { isInstallable, installPWA } = usePushNotifications();
-  const platform = detectPlatform();
-  const [installDismissed, setInstallDismissed] = useState(() => {
-    const d = localStorage.getItem("install_banner_dismissed");
-    return d ? Date.now() - Number(d) < 7 * 24 * 60 * 60 * 1000 : false;
-  });
-  const showInstallCard = !isAppInstalled && platform !== "standalone" && !installDismissed;
-
-  const handleInstallClick = async () => {
-    if (isInstallable) {
-      await installPWA();
-    } else {
-      navigate("/instalar");
-    }
-  };
-
-  const dismissInstall = () => {
-    localStorage.setItem("install_banner_dismissed", String(Date.now()));
-    setInstallDismissed(true);
-  };
 
   // Real performance data
   const {
@@ -612,31 +588,6 @@ const Dashboard = () => {
         />
       </div>
 
-      {showInstallCard && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 relative min-h-[80px]"
-        >
-          <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-            <Download className="text-accent" size={24} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-base font-bold text-foreground">Instale o aplicativo</p>
-            <p className="text-sm text-muted-foreground">Para uma experiência completa no seu celular</p>
-          </div>
-          <button
-            onClick={handleInstallClick}
-            className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold shrink-0 hover:opacity-90 transition-opacity"
-          >
-            Instalar
-          </button>
-          <button onClick={dismissInstall} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-1">
-            <X size={16} />
-          </button>
-        </motion.div>
-      )}
 
 
       {/* DailyCheckIn popup removed */}

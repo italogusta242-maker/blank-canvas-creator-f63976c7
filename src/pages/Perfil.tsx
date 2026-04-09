@@ -4,7 +4,7 @@ import {
   User, Camera, CreditCard, LogOut, Shield,
   MessageCircle, MoreHorizontal,
   Flame, ImageIcon, Trophy, Grid3x3, Settings, Check, Users, Loader2, X,
-  CheckCircle2, ExternalLink, Zap, Gift, HelpCircle, BadgeCheck
+  CheckCircle2, ExternalLink, Zap, Gift, HelpCircle, BadgeCheck, Download
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +29,9 @@ import { getUnlockedRewards } from "@/lib/flameMotor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useStreak } from "@/hooks/useStreak";
 import { PostDetailModal } from "@/components/community/PostDetailModal";
+import { useIsAppInstalled } from "@/hooks/useIsAppInstalled";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { detectPlatform } from "@/lib/detectPlatform";
 
 // ── Photo Zoom Dialog Component ──
 function PhotoZoomDialog({ url, isOpen, onClose }: { url: string | null; isOpen: boolean; onClose: () => void }) {
@@ -264,6 +267,18 @@ const Perfil = () => {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAppInstalled = useIsAppInstalled();
+  const { isInstallable, installPWA } = usePushNotifications();
+  const platform = detectPlatform();
+  const showInstallOption = isOwnProfile && !isAppInstalled && platform !== "standalone";
+
+  const handleInstallClick = async () => {
+    if (isInstallable) {
+      await installPWA();
+    } else {
+      navigate("/instalar");
+    }
+  };
 
   const { data: profile, isLoading: isLoadingProfile } = useQuery({
     queryKey: ["profile", targetUserId],
@@ -395,6 +410,11 @@ const Perfil = () => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 bg-card border-border shadow-xl">
+                {showInstallOption && (
+                  <DropdownMenuItem onClick={handleInstallClick} className="gap-2 cursor-pointer">
+                    <Download size={15} /> Instalar App
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setEditOpen(true)} className="gap-2 cursor-pointer">
                   <Settings size={15} /> Editar Perfil
                 </DropdownMenuItem>
