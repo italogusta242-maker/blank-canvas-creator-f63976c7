@@ -370,7 +370,9 @@ serve(async (req) => {
         const pushPayload = JSON.stringify({
           title: pushTitle,
           body: pushBody,
-          data: { conversation_id },
+          vibrate: [200, 100, 200],
+          tag: "chat-" + conversation_id,
+          data: { conversation_id, url: "/chat/" + conversation_id },
         });
 
         for (const sub of subs || []) {
@@ -435,10 +437,17 @@ serve(async (req) => {
 
       console.log("[push] send-to-user for:", user_id, "subs found:", subs?.length || 0, "error:", subsError?.message || "none");
 
+      // Derive tag and deep link from notification type/metadata
+      const notifType = data?.type || data?.trigger || "general";
+      const deepUrl = data?.url || data?.conversation_id ? "/chat/" + data.conversation_id : "/";
+      const tag = data?.tag || notifType + "-" + user_id.slice(0, 8);
+
       const pushPayload = JSON.stringify({
         title: pushTitle,
         body: pushBody,
-        data: data || {},
+        vibrate: [200, 100, 200],
+        tag,
+        data: { ...(data || {}), url: deepUrl },
       });
 
       let totalSent = 0;
