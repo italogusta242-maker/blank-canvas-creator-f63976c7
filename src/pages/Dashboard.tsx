@@ -494,6 +494,8 @@ const Dashboard = () => {
           onClose={() => setShowPerformanceModal(false)}
           weekData={performanceData}
           monthData={performanceData30}
+          plannerType={(profile as any)?.planner_type}
+          planDaysElapsed={planDaysElapsed}
         />
 
         {/* Debug buttons removed for production */}
@@ -590,6 +592,8 @@ const Dashboard = () => {
         onClose={() => setShowPerformanceModal(false)}
         weekData={performanceData}
         monthData={performanceData30}
+        plannerType={(profile as any)?.planner_type}
+        planDaysElapsed={planDaysElapsed}
       />
     </div>
   );
