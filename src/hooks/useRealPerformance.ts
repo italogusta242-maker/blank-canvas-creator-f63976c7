@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toLocalDate, parseSafeDate } from "@/lib/dateUtils";
 import { useDailyHabitsRange } from "@/hooks/useDailyHabits";
+import { getGoalsForUser, getPhase } from "@/lib/progressiveGoals";
 
 // ── Muscle group mapping by keyword ──
 const muscleGroupKeywords: Record<string, string[]> = {
@@ -103,6 +104,42 @@ function calcTrainingForDay(workouts: any[], workoutMaxPoints: number = 40): { s
   return { score, setsCompleted: doneSets, totalSets, groupName };
 }
 
+// ── Auto-detected goal keys that should not be double-counted from completed_goals ──
+const AUTO_GOAL_KEYS = new Set(["agua", "treino", "sono"]);
+
+/**
+ * Calculate daily goals score with deduplication and proportional math.
+ * 
+ * Auto-detected goals (água, treino, sono) are counted from thresholds.
+ * Manual goals from completed_goals are counted ONLY if they are NOT auto-detected keys,
+ * OR if the auto threshold was NOT met (allowing manual override).
+ */
+function calcDailyGoalsScore(
+  waterLiters: number,
+  waterGoal: number,
+  trainingScore: number,
+  sleepHours: number,
+  sleepGoal: number,
+  completedGoals: string[],
+  totalExpectedGoals: number,
+): number {
+  const uniqueCompleted = new Set<string>();
+
+  // Auto-detected goals
+  if (waterLiters >= waterGoal) uniqueCompleted.add("agua");
+  if (trainingScore > 0) uniqueCompleted.add("treino");
+  if (sleepHours >= sleepGoal) uniqueCompleted.add("sono");
+
+  // Manual goals from DB — skip if already auto-detected
+  for (const key of completedGoals) {
+    if (AUTO_GOAL_KEYS.has(key) && uniqueCompleted.has(key)) continue;
+    uniqueCompleted.add(key);
+  }
+
+  const safeTotal = Math.max(1, totalExpectedGoals);
+  return Math.round(Math.min(20, (uniqueCompleted.size / safeTotal) * 20));
+}
+
 export const useRealPerformance = () => {
   const { user } = useAuth();
   const today = toLocalDate(new Date());
@@ -119,14 +156,13 @@ export const useRealPerformance = () => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error && error.code !== "PGRST116") throw error; // ignore if missing
+      if (error && error.code !== "PGRST116") throw error;
       return data;
     },
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 60,
   });
 
   const scoringRules = useMemo(() => {
-    // PHASE 1: Fixed scoring — Training 40pts, Diet 40pts, Daily Goals 20pts
     return { workout: 40, diet: 40, dailyGoals: 20 };
   }, []);
 
@@ -145,20 +181,51 @@ export const useRealPerformance = () => {
       return data ?? [];
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30,  // 30 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
   });
-  
+
   const { data: profile } = useQuery({
     queryKey: ["profile-performance", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase.from('profiles').select('id, full_name, status').eq('id', user.id).maybeSingle();
+      const { data, error } = await supabase.from('profiles').select('id, full_name, status, planner_type').eq('id', user.id).maybeSingle();
       if (error) throw error;
       return data;
     },
     enabled: !!user
   });
+
+  // ── NEW: Fetch active diet plan to get real meal count ──
+  const { data: activeDietPlan } = useQuery({
+    queryKey: ["active-diet-plan-meals", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("diet_plans")
+        .select("meals")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 60, // 1 hour — diet plan changes rarely
+  });
+
+  // Dynamic total meals from the student's real diet plan
+  const expectedTotalMeals = useMemo(() => {
+    if (!activeDietPlan?.meals) return 0; // no plan → will use fallback logic
+    try {
+      const meals = activeDietPlan.meals as any[];
+      return Array.isArray(meals) ? meals.length : 0;
+    } catch {
+      return 0;
+    }
+  }, [activeDietPlan]);
 
   // Fetch workouts from last 30 days (for chart)
   const { data: last30Workouts } = useQuery({
@@ -175,8 +242,8 @@ export const useRealPerformance = () => {
       return data ?? [];
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    gcTime: 1000 * 60 * 15,  // 15 minutes
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 15,
   });
 
   // Fetch checkins from last 30 days
@@ -194,9 +261,8 @@ export const useRealPerformance = () => {
       return data ?? [];
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
-
 
   // Fetch today's training plan
   const { data: activePlan } = useQuery({
@@ -215,7 +281,7 @@ export const useRealPerformance = () => {
       return data;
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 60, // 1 hour (training plan changes rarely)
+    staleTime: 1000 * 60 * 60,
   });
 
   // Today's checkin
@@ -229,45 +295,53 @@ export const useRealPerformance = () => {
     return toLocalDate(parseSafeDate(w.started_at));
   };
 
+  // Get planner config for daily goals total
+  const plannerType = profile?.planner_type ?? undefined;
+  // We don't have planDaysElapsed here — use a safe default (phase 1 = 8 goals)
+  // This is fine because all phases have 8 goals in the matrix
+  const plannerConfig = useMemo(() => getGoalsForUser(plannerType, 1), [plannerType]);
+  const totalExpectedGoals = plannerConfig.goals.length; // typically 8
+  const waterGoalFromPlanner = plannerConfig.waterGoal;
+  const sleepGoalFromPlanner = plannerConfig.sleepGoal;
+
   // ── Calculate today's scores ──
   const todayWorkouts = (weekWorkouts ?? []).filter(
     (w) => workoutLocalDate(w) === today
   );
 
   const todayTraining = calcTrainingForDay(todayWorkouts, 40);
-
   const trainingScore = todayTraining.score;
 
   const todayHabits = habitsRange.find((h) => h.date === today);
 
+  // ── FIXED: Dynamic diet score using real meal count ──
   const dietScore = (() => {
-    const mealsCount = todayHabits?.completed_meals?.length ?? 0;
-    return Math.round((mealsCount / 6) * 40);
+    const mealsCompleted = todayHabits?.completed_meals?.length ?? 0;
+    // Use real plan count; fallback to completed count (so 4/4 = 100%) or 1 to avoid /0
+    const divisor = expectedTotalMeals > 0
+      ? expectedTotalMeals
+      : Math.max(mealsCompleted, 1);
+    return Math.min(40, Math.round((mealsCompleted / divisor) * 40));
   })();
 
-  // ── Calculate Daily Goals score (20pts) based on Planner ──
+  // ── FIXED: Daily Goals with deduplication and proportional math ──
   const { waterScore, sleepScore, dailyGoalsScore } = (() => {
-    const waterGoal = 1.5; // Minimum phase 1 goal — conservative threshold
-    const sleepGoal = 8;
-    
-    const wScore = Math.round(Math.min((todayHabits?.water_liters ?? 0) / waterGoal, 1) * 10);
-    const sScore = Math.round(Math.min((todayCheckin?.sleep_hours ?? 0) / sleepGoal, 1) * 10);
+    const wScore = Math.round(Math.min((todayHabits?.water_liters ?? 0) / waterGoalFromPlanner, 1) * 10);
+    const sScore = Math.round(Math.min((todayCheckin?.sleep_hours ?? 0) / sleepGoalFromPlanner, 1) * 10);
 
-    const doneQualitative = todayHabits?.completed_goals ?? [];
-    
-    let plannerDoneCount = 0;
-    if ((todayHabits?.water_liters ?? 0) >= waterGoal) plannerDoneCount++;
-    if (trainingScore > 0) plannerDoneCount++;
-    if ((todayCheckin?.sleep_hours ?? 0) >= sleepGoal) plannerDoneCount++;
-    
-    // Count ALL completed goals from the DB (cardio, foco, autocuidado, nao_beliscar, etc.)
-    plannerDoneCount += doneQualitative.length;
+    const completedGoals = Array.isArray(todayHabits?.completed_goals) ? todayHabits!.completed_goals as string[] : [];
 
-    return {
-      waterScore: wScore,
-      sleepScore: sScore,
-      dailyGoalsScore: Math.round(Math.min(20, plannerDoneCount * 2.5))
-    };
+    const dgs = calcDailyGoalsScore(
+      todayHabits?.water_liters ?? 0,
+      waterGoalFromPlanner,
+      trainingScore,
+      todayCheckin?.sleep_hours ? Number(todayCheckin.sleep_hours) : 0,
+      sleepGoalFromPlanner,
+      completedGoals,
+      totalExpectedGoals,
+    );
+
+    return { waterScore: wScore, sleepScore: sScore, dailyGoalsScore: dgs };
   })();
 
   const performanceScore = Math.min(100, trainingScore + dietScore + dailyGoalsScore);
@@ -326,39 +400,38 @@ export const useRealPerformance = () => {
 
       // Diet & Water from database
       const dayHabits = habitsRange.find((h) => h.date === dateStr);
-      let dietPts = 0;
       let mealsCompleted = 0;
       if (dayHabits?.completed_meals) {
         mealsCompleted = dayHabits.completed_meals.length;
-        dietPts = Math.round((mealsCompleted / 6) * 40);
       }
+      // FIXED: use dynamic meal count
+      const mealDivisor = expectedTotalMeals > 0
+        ? expectedTotalMeals
+        : Math.max(mealsCompleted, 1);
+      const dietPts = Math.min(40, Math.round((mealsCompleted / mealDivisor) * 40));
 
-      let waterPts = 0;
       let waterLiters = 0;
+      let waterPts = 0;
       if (dayHabits?.water_liters) {
         waterLiters = Number(dayHabits.water_liters);
-        // Keep for display only — not part of composite score
         waterPts = Math.round(Math.min(waterLiters / 3, 1) * 10);
       }
 
-      // Sleep from DB (display only — not part of composite score)
-      let sleepPts = 0;
       const sleepHours = dayCheckin?.sleep_hours ? Number(dayCheckin.sleep_hours) : 0;
-      sleepPts = Math.round(Math.min(sleepHours / 8, 1) * 10);
+      const sleepPts = Math.round(Math.min(sleepHours / 8, 1) * 10);
 
-      // Daily Goals calculation from Planner
-      const doneQualitative = dayHabits?.completed_goals ?? [];
-      let plannerDoneCount = 0;
-      if (waterLiters >= 1.5) plannerDoneCount++; // conservative min threshold
-      if (training.score > 0) plannerDoneCount++;
-      if (sleepHours >= 8) plannerDoneCount++;
-      
-      // Count ALL completed goals from DB (includes cardio, foco, autocuidado, etc.)
-      plannerDoneCount += doneQualitative.length;
-      
-      const dailyGoalsPts = Math.round(Math.min(20, plannerDoneCount * 2.5));
+      // FIXED: Daily Goals with deduplication & proportional math
+      const completedGoals = Array.isArray(dayHabits?.completed_goals) ? dayHabits!.completed_goals as string[] : [];
+      const dailyGoalsPts = calcDailyGoalsScore(
+        waterLiters,
+        waterGoalFromPlanner,
+        training.score,
+        sleepHours,
+        sleepGoalFromPlanner,
+        completedGoals,
+        totalExpectedGoals,
+      );
 
-      // Composite score: Treino(40) + Dieta(40) + Metas Diárias(20) = 100
       const score = Math.min(100, training.score + dietPts + dailyGoalsPts);
 
       days.push({
@@ -374,18 +447,17 @@ export const useRealPerformance = () => {
         setsCompleted: training.setsCompleted,
         totalSets: training.totalSets,
         mealsCompleted,
-        totalMeals: 6,
+        totalMeals: mealDivisor,
         waterLiters,
         sleepHours,
       });
     }
 
     return days;
-  }, [last30Workouts, last30Checkins, habitsRange, scoringRules]); // Updated deps
+  }, [last30Workouts, last30Checkins, habitsRange, expectedTotalMeals, totalExpectedGoals, waterGoalFromPlanner, sleepGoalFromPlanner]);
 
   const performanceData = useMemo(() => buildPerformanceData(7), [buildPerformanceData]);
   const performanceData30 = useMemo(() => buildPerformanceData(30), [buildPerformanceData]);
-
 
   // ── Today's schedule from real plan ──
   const todaySchedule = (() => {
@@ -419,5 +491,6 @@ export const useRealPerformance = () => {
     hasTrainingPlan,
     todayWorkouts,
     todayCheckin,
+    expectedTotalMeals: expectedTotalMeals > 0 ? expectedTotalMeals : undefined,
   };
 };
