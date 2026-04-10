@@ -1,72 +1,57 @@
 
 
-## Plano: Corrigir registro de push subscriptions (alunas clicam "Ativar" mas nada é salvo)
+## Plano: Simplificar Motor de Performance — Adesão = Metas Diárias
 
-### Diagnóstico
+### Problema Atual
 
-A edge function `push-notifications?action=subscribe` funciona corretamente (testei agora — inseriu com sucesso na tabela). O problema está no **frontend**: erros são engolidos silenciosamente no hook `usePushNotifications.ts`.
+O score de performance é composto por 3 pilares separados:
+- Treino: 40 pts (baseado em séries completadas)
+- Dieta: 40 pts (baseado em refeições completadas)
+- Metas Diárias: 20 pts (baseado em goals do planner)
 
-Possíveis causas:
-1. **Service Worker não registra** — `navigator.serviceWorker.ready` trava para sempre se o SW falhou ao registrar (ex: `push-handler.js` não encontrado no domínio custom)
-2. **Fetch do subscribe falha silenciosamente** — o hook não verifica o `response.status` da chamada de subscribe, nem loga o erro
-3. **VAPID key fetch falha** — se a requisição ao edge function falhar (CORS, rede), o hook retorna silenciosamente sem feedback
+Isso é complexo, propenso a bugs, e desacoplado da experiência visual das alunas.
 
-### Correções
+### Nova Lógica
 
-**1. `src/hooks/usePushNotifications.ts` — Adicionar logging robusto e fallback**
+A adesão (%) e o gráfico de evolução serão derivados **exclusivamente das metas diárias**:
 
-- Adicionar `console.log` em cada etapa (SW ready, VAPID fetch, subscribe)
-- Verificar `response.ok` na chamada de subscribe e logar o body de erro
-- Adicionar timeout no `navigator.serviceWorker.ready` (5s) — se não resolver, logar erro e mostrar toast
-- Adicionar `toast.error` quando o subscribe falha para que a aluna saiba que algo deu errado
-
-**2. `src/main.tsx` — Garantir SW registra em todos os domínios de produção**
-
-- A condição atual exclui `id-preview--` e `lovableproject.com`, mas pode haver edge cases. Verificar que `anaacclub.com.br` e `anaacclub.lovable.app` passam pela condição.
-
-**3. Criar trigger automático `push_on_notification_insert`**
-
-Conforme a arquitetura descrita, criar o trigger no banco que chama a edge function via `pg_net` a cada INSERT em `notifications`:
-
-```sql
-CREATE OR REPLACE FUNCTION public.trigger_push_on_notification()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  PERFORM net.http_post(
-    url := 'https://iimkmfhgjupjvrsseqro.supabase.co/functions/v1/push-notifications?action=send-to-user',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-    ),
-    body := jsonb_build_object('user_id', NEW.user_id, 'title', NEW.title, 'body', COALESCE(NEW.body, ''))
-  );
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER push_on_notification_insert
-  AFTER INSERT ON public.notifications
-  FOR EACH ROW
-  EXECUTE FUNCTION public.trigger_push_on_notification();
+```text
+adherence = (metas concluídas / total de metas do dia) × 100
 ```
 
-**Nota**: O trigger usará os secrets do Vault (`SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`) já configurados.
+As metas diárias já incluem treino, água, sono, dieta e metas comportamentais — então elas já capturam tudo. Conforme a aluna marca cada meta, a % sobe proporcionalmente.
 
-**4. Limpar dado de teste** — Deletar o registro de teste que inseri em `push_subscriptions` durante o diagnóstico.
+### Alterações
 
-**5. `supabase/functions/push-notifications/index.ts`** — Trocar referências "Shape Insano" → "ANAAC Club".
+**1. `src/hooks/useRealPerformance.ts`**
+- Remover cálculos separados de `trainingScore` e `dietScore` do score final
+- O `performanceScore` passa a ser: `Math.round((completedGoals / totalGoals) * 100)`
+- Manter a lógica de deduplicação (auto-detected agua/treino/sono)
+- Manter volume semanal e dados de treino (usados em outros componentes)
+- `buildPerformanceData` para o gráfico de evolução: cada dia usa a mesma fórmula (goals concluídas / total)
 
-### Arquivos a editar
+**2. `src/components/dashboard/DailyGoals.tsx`**
+- Atualizar o cálculo otimista do histórico de 7 dias para usar a mesma fórmula simplificada
+- Remover referências a `trainingPts` e `dietPts` no cálculo do score
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/hooks/usePushNotifications.ts` | Logging robusto, timeout no SW ready, verificar response do subscribe |
-| `supabase/functions/push-notifications/index.ts` | Branding "ANAAC Club" |
-| Migração SQL | Trigger `push_on_notification_insert` + limpar dado de teste |
+**3. `src/pages/Dashboard.tsx`**
+- `adherence` já consome `performanceScore` — continua funcionando automaticamente
+- Nenhuma mudança estrutural necessária
+
+**4. `src/components/dashboard/DashboardHero.tsx`**
+- Nenhuma mudança — já consome `adherence` como prop
+
+**5. `src/components/dashboard/PerformanceEvolution.tsx`**
+- Nenhuma mudança — já consome `performanceData` com `score`
 
 ### Resultado
 
-- Quando aluna clica "Ativar", erros são visíveis (console + toast)
-- Subscriptions são salvas corretamente
-- Toda notificação inserida no banco dispara push nativo automaticamente via trigger
+- Aluna com 5 de 8 metas = 62% de adesão
+- Aluna com 8 de 8 metas = 100% de adesão
+- Gráfico de evolução reflete exatamente o progresso das metas ao longo dos dias
+- Zero dependência de queries extras (diet_plans, workouts) para calcular o score
+
+### Dados Preservados
+
+Os dados de treino (volume semanal, séries, grupos musculares) e dieta continuam sendo buscados e expostos pelo hook — são usados em outros componentes (cards de volume, modal de detalhes). Apenas o `performanceScore` muda de fórmula.
 
