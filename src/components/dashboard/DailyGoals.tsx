@@ -286,8 +286,8 @@ const DailyGoals = ({
                       <span className="text-[10px] md:text-xs text-muted-foreground/60">{sleepHours} / {sleepGoal}h</span>
                     </div>
                   </div>
-                  <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${sleepDone ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
-                    {sleepDone ? "OK" : "P"}
+                  <span className={`hidden md:inline text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${sleepDone || completedGoals.has("sono") ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}`}>
+                    {sleepDone || completedGoals.has("sono") ? "OK" : "P"}
                   </span>
                 </div>
               </div>
