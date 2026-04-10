@@ -1,38 +1,57 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Dumbbell, UtensilsCrossed, Target, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Dumbbell, UtensilsCrossed, Target, Droplets, Moon, Flame, Activity, Shield, Heart, Smartphone, CandyOff, CheckCircle2 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import type { DayPerformance } from "@/hooks/useRealPerformance";
+import { getGoalsForUser, type GoalKey } from "@/lib/progressiveGoals";
 
 interface PerformanceDetailModalProps {
   open: boolean;
   onClose: () => void;
   weekData: DayPerformance[];
   monthData: DayPerformance[];
+  plannerType?: string;
+  planDaysElapsed?: number;
 }
 
-const ScoreBar = ({ label, icon: Icon, value, max, color }: {
-  label: string; icon: any; value: number; max: number; color: string;
-}) => (
-  <div className="flex items-center gap-3">
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}20` }}>
-      <Icon size={14} style={{ color }} />
-    </div>
-    <div className="flex-1">
-      <div className="flex items-center justify-between mb-0.5">
-        <span className="text-[11px] text-muted-foreground">{label}</span>
-        <span className="text-xs font-bold text-foreground">{value}/{max}</span>
-      </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(var(--secondary))" }}>
-        <div className="h-full rounded-full transition-all" style={{ width: `${(value / max) * 100}%`, background: color }} />
-      </div>
-    </div>
-  </div>
-);
+const GOAL_ICONS: Record<string, any> = {
+  treino: Flame,
+  agua: Droplets,
+  sono: Moon,
+  cardio: Activity,
+  dieta_cafe: UtensilsCrossed,
+  dieta_almoco: UtensilsCrossed,
+  dieta_jantar: UtensilsCrossed,
+  dieta_completa: UtensilsCrossed,
+  nao_beliscar: Shield,
+  autocuidado: Heart,
+  sem_preguica: Flame,
+  sem_celular: Smartphone,
+  sem_acucar: CandyOff,
+};
 
-const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: PerformanceDetailModalProps) => {
+const GOAL_COLORS: Record<string, string> = {
+  treino: "hsl(var(--primary))",
+  agua: "#3b82f6",
+  sono: "#8b5cf6",
+  cardio: "#f97316",
+  dieta_cafe: "#f59e0b",
+  dieta_almoco: "#f59e0b",
+  dieta_jantar: "#f59e0b",
+  dieta_completa: "#f59e0b",
+  nao_beliscar: "#10b981",
+  autocuidado: "#06b6d4",
+  sem_preguica: "hsl(var(--primary))",
+  sem_celular: "#6366f1",
+  sem_acucar: "#ef4444",
+};
+
+const PerformanceDetailModal = ({ open, onClose, weekData, monthData, plannerType, planDaysElapsed = 1 }: PerformanceDetailModalProps) => {
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [selectedDay, setSelectedDay] = useState<DayPerformance | null>(null);
+
+  const goalsConfig = useMemo(() => getGoalsForUser(plannerType, planDaysElapsed), [plannerType, planDaysElapsed]);
+  const activeGoals = goalsConfig.goals;
 
   if (!open) return null;
 
@@ -44,6 +63,12 @@ const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: Performa
   const handleDotClick = (dayLabel: string) => {
     const day = data.find(d => d.day === dayLabel);
     if (day) setSelectedDay(selectedDay?.date === day.date ? null : day);
+  };
+
+  // Compute completed goals count for a day
+  const getCompletedCount = (day: DayPerformance) => {
+    const total = activeGoals.length || 8;
+    return Math.round((day.score / 100) * total);
   };
 
   return (
@@ -82,11 +107,11 @@ const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: Performa
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-secondary/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-foreground">{avgScore}</p>
+              <p className="text-lg font-bold text-foreground">{avgScore}%</p>
               <p className="text-[10px] text-muted-foreground">Média</p>
             </div>
             <div className="bg-secondary/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-accent">{maxScore}</p>
+              <p className="text-lg font-bold text-accent">{maxScore}%</p>
               <p className="text-[10px] text-muted-foreground">Máximo</p>
             </div>
             <div className="bg-secondary/30 rounded-lg p-3 text-center">
@@ -118,10 +143,10 @@ const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: Performa
                   <YAxis tick={{ fontSize: 10, fill: "hsl(43, 10%, 55%)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
                   <Tooltip
                     contentStyle={{
-                      background: "hsl(0, 0%, 10%)", border: "1px solid hsl(0, 0%, 16%)",
-                      borderRadius: "8px", fontSize: "12px", color: "hsl(43, 30%, 85%)",
+                      background: "hsl(var(--background))", border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px", fontSize: "12px",
                     }}
-                    formatter={(value: number) => [`${value} pts`, "Score"]}
+                    formatter={(value: number) => [`${value}%`, "Adesão"]}
                   />
                   <Area
                     type="monotone"
@@ -140,7 +165,7 @@ const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: Performa
             </p>
           </div>
 
-          {/* Selected day breakdown */}
+          {/* Selected day breakdown — expanded goals */}
           <AnimatePresence>
             {selectedDay && (
               <motion.div
@@ -154,32 +179,47 @@ const PerformanceDetailModal = ({ open, onClose, weekData, monthData }: Performa
                     <h3 className="font-cinzel text-sm font-bold text-foreground">
                       {selectedDay.day} — {selectedDay.date}
                     </h3>
-                    <span className="text-lg font-bold text-accent">{selectedDay.score}/100</span>
+                    <span className="text-lg font-bold text-accent">{selectedDay.score}%</span>
                   </div>
 
-                  <ScoreBar
-                    label={selectedDay.groupName ? `Treino (${selectedDay.groupName})` : "Treino"}
-                    icon={Dumbbell}
-                    value={selectedDay.training}
-                    max={40}
-                    color="hsl(var(--primary))"
-                  />
+                  <div className="flex items-center gap-2 mb-1">
+                    <Target size={14} className="text-accent" />
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Metas Concluídas: {getCompletedCount(selectedDay)}/{activeGoals.length}
+                    </span>
+                  </div>
 
-                  <ScoreBar
-                    label="Alimentação"
-                    icon={UtensilsCrossed}
-                    value={selectedDay.diet}
-                    max={40}
-                    color="hsl(140, 60%, 40%)"
-                  />
+                  {/* Progress bar */}
+                  <div className="h-2 rounded-full overflow-hidden bg-secondary">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${selectedDay.score}%`,
+                        background: selectedDay.score >= 70
+                          ? "hsl(140, 60%, 40%)"
+                          : selectedDay.score >= 40
+                          ? "hsl(40, 80%, 50%)"
+                          : "hsl(var(--primary))",
+                      }}
+                    />
+                  </div>
 
-                  <ScoreBar
-                    label="Metas Diárias"
-                    icon={Target}
-                    value={selectedDay.dailyGoals}
-                    max={20}
-                    color="hsl(var(--accent))"
-                  />
+                  {/* Individual goals list */}
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {activeGoals.map((goal) => {
+                      const GoalIcon = GOAL_ICONS[goal.key] || Target;
+                      const color = GOAL_COLORS[goal.key] || "hsl(var(--accent))";
+                      return (
+                        <div
+                          key={goal.key}
+                          className="flex items-center gap-2 p-1.5 rounded-lg bg-secondary/30"
+                        >
+                          <GoalIcon size={12} style={{ color }} />
+                          <span className="text-[10px] text-muted-foreground truncate">{goal.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             )}
