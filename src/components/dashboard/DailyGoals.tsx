@@ -334,25 +334,22 @@ const DailyGoals = ({
           const optimisticLast7 = last7.map((d, i) => {
             if (i !== last7.length - 1) return d;
             
-            const trainingPts = d.training || 0;
-            const dietPts = d.diet || 0;
-            
             // Deduplicated daily goals count from LOCAL UI state
             const uniqueDone = new Set<string>();
             if (waterDone) uniqueDone.add("agua");
             if (sleepDone) uniqueDone.add("sono");
-            if (trainingPts > 0) uniqueDone.add("treino");
+            if (d.training && d.training > 0) uniqueDone.add("treino");
             
             activeGoals.forEach(g => {
-              if (uniqueDone.has(g.key)) return; // already auto-detected
+              if (uniqueDone.has(g.key)) return;
               if (isGoalDone(g.key)) uniqueDone.add(g.key);
             });
             
             const totalGoals = Math.max(1, activeGoals.length);
-            const localDailyGoals = Math.round(Math.min(20, (uniqueDone.size / totalGoals) * 20));
-            const optimisticScore = Math.min(100, trainingPts + dietPts + localDailyGoals);
+            // Score = % of daily goals completed (simplified formula)
+            const optimisticScore = Math.min(100, Math.round((uniqueDone.size / totalGoals) * 100));
             
-            return { ...d, score: optimisticScore, dailyGoals: localDailyGoals };
+            return { ...d, score: optimisticScore };
           });
           
           return (
