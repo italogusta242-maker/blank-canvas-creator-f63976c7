@@ -334,23 +334,22 @@ const DailyGoals = ({
           const optimisticLast7 = last7.map((d, i) => {
             if (i !== last7.length - 1) return d;
             
-            // Use server values for training & diet (authoritative)
             const trainingPts = d.training || 0;
             const dietPts = d.diet || 0;
             
-            // Compute dailyGoals entirely from current LOCAL UI state
-            let plannerCount = 0;
-            if (waterDone) plannerCount++;
-            if (sleepDone) plannerCount++;
+            // Deduplicated daily goals count from LOCAL UI state
+            const uniqueDone = new Set<string>();
+            if (waterDone) uniqueDone.add("agua");
+            if (sleepDone) uniqueDone.add("sono");
+            if (trainingPts > 0) uniqueDone.add("treino");
             
-            // Count all manually checked goals right now
             activeGoals.forEach(g => {
-              if (["agua", "sono"].includes(g.key)) return; // already counted above
-              if (isGoalDone(g.key)) plannerCount++;
+              if (uniqueDone.has(g.key)) return; // already auto-detected
+              if (isGoalDone(g.key)) uniqueDone.add(g.key);
             });
             
-            const localDailyGoals = Math.round(Math.min(20, plannerCount * 2.5));
-            // Compute fresh score — no Math.max, this IS the authoritative optimistic score
+            const totalGoals = Math.max(1, activeGoals.length);
+            const localDailyGoals = Math.round(Math.min(20, (uniqueDone.size / totalGoals) * 20));
             const optimisticScore = Math.min(100, trainingPts + dietPts + localDailyGoals);
             
             return { ...d, score: optimisticScore, dailyGoals: localDailyGoals };
