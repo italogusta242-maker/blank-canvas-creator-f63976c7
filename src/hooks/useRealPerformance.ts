@@ -314,17 +314,16 @@ export const useRealPerformance = () => {
 
   const todayHabits = habitsRange.find((h) => h.date === today);
 
-  // ── FIXED: Dynamic diet score using real meal count ──
+  // ── Diet score (kept for detail cards, NOT used in performanceScore) ──
   const dietScore = (() => {
     const mealsCompleted = todayHabits?.completed_meals?.length ?? 0;
-    // Use real plan count; fallback to completed count (so 4/4 = 100%) or 1 to avoid /0
     const divisor = expectedTotalMeals > 0
       ? expectedTotalMeals
       : Math.max(mealsCompleted, 1);
     return Math.min(40, Math.round((mealsCompleted / divisor) * 40));
   })();
 
-  // ── FIXED: Daily Goals with deduplication and proportional math ──
+  // ── Daily Goals — the SOLE source of performanceScore ──
   const { waterScore, sleepScore, dailyGoalsScore } = (() => {
     const wScore = Math.round(Math.min((todayHabits?.water_liters ?? 0) / waterGoalFromPlanner, 1) * 10);
     const sScore = Math.round(Math.min((todayCheckin?.sleep_hours ?? 0) / sleepGoalFromPlanner, 1) * 10);
@@ -344,7 +343,20 @@ export const useRealPerformance = () => {
     return { waterScore: wScore, sleepScore: sScore, dailyGoalsScore: dgs };
   })();
 
-  const performanceScore = Math.min(100, trainingScore + dietScore + dailyGoalsScore);
+  // ── SIMPLIFIED: performanceScore = % of daily goals completed ──
+  const completedGoalsToday = (() => {
+    const unique = new Set<string>();
+    if ((todayHabits?.water_liters ?? 0) >= waterGoalFromPlanner) unique.add("agua");
+    if (trainingScore > 0) unique.add("treino");
+    if ((todayCheckin?.sleep_hours ? Number(todayCheckin.sleep_hours) : 0) >= sleepGoalFromPlanner) unique.add("sono");
+    const cg = Array.isArray(todayHabits?.completed_goals) ? todayHabits!.completed_goals as string[] : [];
+    for (const key of cg) {
+      if (AUTO_GOAL_KEYS.has(key) && unique.has(key)) continue;
+      unique.add(key);
+    }
+    return unique.size;
+  })();
+  const performanceScore = Math.min(100, Math.round((completedGoalsToday / Math.max(1, totalExpectedGoals)) * 100));
 
   // ── Volume Semanal ──
   const volumeDetalhado: VolumeEntry[] = useMemo(() => {
@@ -432,7 +444,16 @@ export const useRealPerformance = () => {
         totalExpectedGoals,
       );
 
-      const score = Math.min(100, training.score + dietPts + dailyGoalsPts);
+      // SIMPLIFIED: score = % of daily goals completed (not pillars)
+      const uniqueGoalsForDay = new Set<string>();
+      if (waterLiters >= waterGoalFromPlanner) uniqueGoalsForDay.add("agua");
+      if (training.score > 0) uniqueGoalsForDay.add("treino");
+      if (sleepHours >= sleepGoalFromPlanner) uniqueGoalsForDay.add("sono");
+      for (const key of completedGoals) {
+        if (AUTO_GOAL_KEYS.has(key) && uniqueGoalsForDay.has(key)) continue;
+        uniqueGoalsForDay.add(key);
+      }
+      const score = Math.min(100, Math.round((uniqueGoalsForDay.size / Math.max(1, totalExpectedGoals)) * 100));
 
       days.push({
         day: numDays <= 7 ? dayLabel : `${d.getDate()}/${d.getMonth() + 1}`,
