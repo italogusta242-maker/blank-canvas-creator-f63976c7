@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Trophy, User, ChevronUp, ChevronDown, Calendar, Infinity as InfinityIcon, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 type RankPeriod = "weekly" | "monthly" | "alltime";
 
