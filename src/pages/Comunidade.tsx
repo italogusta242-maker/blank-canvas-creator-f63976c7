@@ -60,27 +60,13 @@ function useSegmentedRanking(category: PlanCategory) {
         .in("user_id", userIds)
         .gte("created_at", monthStart);
 
-      // 3. Also count historic workout days this month
-      const { data: workouts } = await supabase
-        .from("workouts")
-        .select("user_id, started_at")
-        .in("user_id", userIds)
-        .gte("started_at", monthStart);
-
-      // Build active days per user
+      // Build active days per user (only community posts count)
       const activeDaysMap: Record<string, Set<string>> = {};
       for (const p of (posts || [])) {
         const d = p.created_at?.split('T')[0];
         if (d) {
           if (!activeDaysMap[p.user_id]) activeDaysMap[p.user_id] = new Set();
           activeDaysMap[p.user_id].add(d);
-        }
-      }
-      for (const w of (workouts || [])) {
-        const d = (w as any).started_at?.split('T')[0];
-        if (d) {
-          if (!activeDaysMap[(w as any).user_id]) activeDaysMap[(w as any).user_id] = new Set();
-          activeDaysMap[(w as any).user_id].add(d);
         }
       }
 

@@ -48,16 +48,14 @@ function useRanking(period: RankPeriod, plannerType?: string) {
       const profileMap: Record<string, any> = {};
       for (const p of profiles) profileMap[p.id] = p;
 
-      // Fetch community_posts + workouts for the period
+      // Fetch community_posts for the period (only posts count as active days)
       let postsQuery = supabase.from("community_posts").select("user_id, created_at").in("user_id", userIds);
-      let workoutsQuery = supabase.from("workouts").select("user_id, started_at").in("user_id", userIds);
       
       if (periodStart) {
         postsQuery = postsQuery.gte("created_at", periodStart);
-        workoutsQuery = workoutsQuery.gte("started_at", periodStart);
       }
 
-      const [{ data: posts }, { data: workouts }] = await Promise.all([postsQuery, workoutsQuery]);
+      const { data: posts } = await postsQuery;
 
       // Count unique active days per user
       const activeDaysMap: Record<string, Set<string>> = {};
@@ -66,13 +64,6 @@ function useRanking(period: RankPeriod, plannerType?: string) {
         if (d) {
           if (!activeDaysMap[p.user_id]) activeDaysMap[p.user_id] = new Set();
           activeDaysMap[p.user_id].add(d);
-        }
-      }
-      for (const w of (workouts || [])) {
-        const d = (w as any).started_at?.split('T')[0];
-        if (d) {
-          if (!activeDaysMap[(w as any).user_id]) activeDaysMap[(w as any).user_id] = new Set();
-          activeDaysMap[(w as any).user_id].add(d);
         }
       }
 
