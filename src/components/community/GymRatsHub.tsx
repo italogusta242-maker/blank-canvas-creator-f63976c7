@@ -54,11 +54,9 @@ function useRanking(period: RankPeriod, plannerType?: string) {
       for (const p of profiles) profileMap[p.id] = p;
 
       // Fetch community_posts for the period (only posts count as active days)
-      let postsQuery = supabase.from("community_posts").select("user_id, created_at").in("user_id", userIds);
-      
-      if (periodStart) {
-        postsQuery = postsQuery.gte("created_at", periodStart);
-      }
+      const postsQuery = supabase.from("community_posts").select("user_id, created_at")
+        .in("user_id", userIds)
+        .gte("created_at", periodStart);
 
       const { data: posts } = await postsQuery;
 
