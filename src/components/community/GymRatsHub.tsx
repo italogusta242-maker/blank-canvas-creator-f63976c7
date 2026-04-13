@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Trophy, User, ChevronUp, ChevronDown, Calendar, Infinity as InfinityIcon, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 type RankPeriod = "weekly" | "monthly" | "alltime";
 
@@ -13,19 +14,23 @@ const PERIOD_LABELS: Record<RankPeriod, { label: string; icon: React.ComponentTy
   alltime: { label: "Geral",   icon: InfinityIcon, desc: "Total de dias ativos" },
 };
 
-function getPeriodStart(period: RankPeriod): string | null {
+function getPeriodStart(period: RankPeriod): string {
+  const challengeFloor = new Date(CHALLENGE_START_DATE).toISOString();
   const now = new Date();
+  let start: string;
   if (period === "weekly") {
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(now.getFullYear(), now.getMonth(), diff);
     monday.setHours(0, 0, 0, 0);
-    return monday.toISOString();
+    start = monday.toISOString();
+  } else if (period === "monthly") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  } else {
+    return challengeFloor; // alltime still respects challenge start
   }
-  if (period === "monthly") {
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  }
-  return null; // alltime
+  // Never go before challenge start date
+  return start > challengeFloor ? start : challengeFloor;
 }
 
 function useRanking(period: RankPeriod, plannerType?: string) {
@@ -49,11 +54,9 @@ function useRanking(period: RankPeriod, plannerType?: string) {
       for (const p of profiles) profileMap[p.id] = p;
 
       // Fetch community_posts for the period (only posts count as active days)
-      let postsQuery = supabase.from("community_posts").select("user_id, created_at").in("user_id", userIds);
-      
-      if (periodStart) {
-        postsQuery = postsQuery.gte("created_at", periodStart);
-      }
+      const postsQuery = supabase.from("community_posts").select("user_id, created_at")
+        .in("user_id", userIds)
+        .gte("created_at", periodStart);
 
       const { data: posts } = await postsQuery;
 

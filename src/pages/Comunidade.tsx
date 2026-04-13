@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +43,8 @@ function useSegmentedRanking(category: PlanCategory) {
       // Get the start of current month
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      // Use challenge start date as minimum floor
+      const effectiveStart = monthStart > CHALLENGE_START_DATE ? monthStart : new Date(CHALLENGE_START_DATE).toISOString();
 
       // 1. Fetch users in this category via profiles.planner_type
       const { data: profiledUsers, error: profErr } = await supabase
@@ -58,7 +61,7 @@ function useSegmentedRanking(category: PlanCategory) {
         .from("community_posts")
         .select("user_id, created_at")
         .in("user_id", userIds)
-        .gte("created_at", monthStart);
+        .gte("created_at", effectiveStart);
 
       // Build active days per user (only community posts count)
       const activeDaysMap: Record<string, Set<string>> = {};
