@@ -1,57 +1,24 @@
 
 
-## Plano: Simplificar Motor de Performance — Adesão = Metas Diárias
+## Plano: Corrigir Ranking — Dias Ativos Apenas por Posts
 
-### Problema Atual
-
-O score de performance é composto por 3 pilares separados:
-- Treino: 40 pts (baseado em séries completadas)
-- Dieta: 40 pts (baseado em refeições completadas)
-- Metas Diárias: 20 pts (baseado em goals do planner)
-
-Isso é complexo, propenso a bugs, e desacoplado da experiência visual das alunas.
-
-### Nova Lógica
-
-A adesão (%) e o gráfico de evolução serão derivados **exclusivamente das metas diárias**:
-
-```text
-adherence = (metas concluídas / total de metas do dia) × 100
-```
-
-As metas diárias já incluem treino, água, sono, dieta e metas comportamentais — então elas já capturam tudo. Conforme a aluna marca cada meta, a % sobe proporcionalmente.
+### Problema
+Os rankings em `Comunidade.tsx` e `GymRatsHub.tsx` contam dias ativos como UNION de `community_posts` + `workouts`, contradizendo a regra oficial: **dias ativos = dias com post na comunidade**.
 
 ### Alterações
 
-**1. `src/hooks/useRealPerformance.ts`**
-- Remover cálculos separados de `trainingScore` e `dietScore` do score final
-- O `performanceScore` passa a ser: `Math.round((completedGoals / totalGoals) * 100)`
-- Manter a lógica de deduplicação (auto-detected agua/treino/sono)
-- Manter volume semanal e dados de treino (usados em outros componentes)
-- `buildPerformanceData` para o gráfico de evolução: cada dia usa a mesma fórmula (goals concluídas / total)
+**1. `src/pages/Comunidade.tsx` (linhas 63-84)**
+- Remover a query de `workouts` e o loop que adiciona dias de treino ao `activeDaysMap`
+- Dias ativos passam a ser contados exclusivamente por `community_posts`
 
-**2. `src/components/dashboard/DailyGoals.tsx`**
-- Atualizar o cálculo otimista do histórico de 7 dias para usar a mesma fórmula simplificada
-- Remover referências a `trainingPts` e `dietPts` no cálculo do score
+**2. `src/components/community/GymRatsHub.tsx` (linhas 51-75)**
+- Remover a query de `workouts` e o loop correspondente
+- Remover o `Promise.all` (fica só a query de posts)
+- Dias ativos contados apenas por `community_posts`
 
-**3. `src/pages/Dashboard.tsx`**
-- `adherence` já consome `performanceScore` — continua funcionando automaticamente
-- Nenhuma mudança estrutural necessária
-
-**4. `src/components/dashboard/DashboardHero.tsx`**
-- Nenhuma mudança — já consome `adherence` como prop
-
-**5. `src/components/dashboard/PerformanceEvolution.tsx`**
-- Nenhuma mudança — já consome `performanceData` com `score`
+**3. `src/components/comunidade/GymRatsTab.tsx`**
+- Verificar se também usa workouts para ranking e aplicar a mesma correção
 
 ### Resultado
-
-- Aluna com 5 de 8 metas = 62% de adesão
-- Aluna com 8 de 8 metas = 100% de adesão
-- Gráfico de evolução reflete exatamente o progresso das metas ao longo dos dias
-- Zero dependência de queries extras (diet_plans, workouts) para calcular o score
-
-### Dados Preservados
-
-Os dados de treino (volume semanal, séries, grupos musculares) e dieta continuam sendo buscados e expostos pelo hook — são usados em outros componentes (cards de volume, modal de detalhes). Apenas o `performanceScore` muda de fórmula.
+Uma aluna que postou 4 dias e treinou 5 dias terá **4 dias ativos** no ranking, alinhado com a regra de gamificação oficial.
 
