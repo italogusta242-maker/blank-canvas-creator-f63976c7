@@ -14,19 +14,23 @@ const PERIOD_LABELS: Record<RankPeriod, { label: string; icon: React.ComponentTy
   alltime: { label: "Geral",   icon: InfinityIcon, desc: "Total de dias ativos" },
 };
 
-function getPeriodStart(period: RankPeriod): string | null {
+function getPeriodStart(period: RankPeriod): string {
+  const challengeFloor = new Date(CHALLENGE_START_DATE).toISOString();
   const now = new Date();
+  let start: string;
   if (period === "weekly") {
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(now.getFullYear(), now.getMonth(), diff);
     monday.setHours(0, 0, 0, 0);
-    return monday.toISOString();
+    start = monday.toISOString();
+  } else if (period === "monthly") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  } else {
+    return challengeFloor; // alltime still respects challenge start
   }
-  if (period === "monthly") {
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  }
-  return null; // alltime
+  // Never go before challenge start date
+  return start > challengeFloor ? start : challengeFloor;
 }
 
 function useRanking(period: RankPeriod, plannerType?: string) {
