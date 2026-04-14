@@ -12,13 +12,12 @@ const corsHeaders = {
  * Motor 2: O Juiz da Meia-Noite
  *
  * Runs at 03:00 UTC (00:00 BRT) via cron.
- * Checks all users with flame_status and demotes those who didn't
+ * Checks all users with flame_status and freezes those who didn't
  * post anything yesterday in the community.
  *
- * - Ativa → Trégua (if yesterday not approved)
- * - Trégua → Extinta (if yesterday not approved)
+ * - Ativa → Frozen (if yesterday not approved)
+ * - Frozen stays Frozen (never resets/extinguishes)
  * - Normal stays Normal
- * - Extinta stays Extinta
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,10 +39,11 @@ Deno.serve(async (req) => {
 
     console.log(`[daily-flame-check] Running for date: ${yesterdayStr}`);
 
+    // Only process active flames (frozen ones stay frozen automatically)
     const { data: activeFlames, error: fetchErr } = await supabase
       .from("flame_status")
       .select("user_id, state, streak, last_approved_date")
-      .in("state", ["ativa", "tregua"]);
+      .eq("state", "ativa");
 
     if (fetchErr) {
       console.error("Error fetching flame statuses:", fetchErr);
@@ -54,14 +54,13 @@ Deno.serve(async (req) => {
     }
 
     if (!activeFlames || activeFlames.length === 0) {
-      console.log("[daily-flame-check] No active/truce flames to process");
+      console.log("[daily-flame-check] No active flames to process");
       return new Response(JSON.stringify({ processed: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let demotedToTruce = 0;
-    let demotedToExtinct = 0;
+    let frozenCount = 0;
     let unchanged = 0;
 
     for (const flame of activeFlames) {
@@ -90,27 +89,19 @@ Deno.serve(async (req) => {
           .eq("user_id", flame.user_id);
         unchanged++;
       } else {
-        if (flame.state === "ativa") {
-          await supabase
-            .from("flame_status")
-            .update({ state: "tregua", updated_at: new Date().toISOString() })
-            .eq("user_id", flame.user_id);
-          demotedToTruce++;
-        } else if (flame.state === "tregua") {
-          await supabase
-            .from("flame_status")
-            .update({ state: "extinta", updated_at: new Date().toISOString() })
-            .eq("user_id", flame.user_id);
-          demotedToExtinct++;
-        }
+        // Ativa → Frozen (never extinta)
+        await supabase
+          .from("flame_status")
+          .update({ state: "frozen", updated_at: new Date().toISOString() })
+          .eq("user_id", flame.user_id);
+        frozenCount++;
       }
     }
 
     const result = {
       processed: activeFlames.length,
       unchanged,
-      demotedToTruce,
-      demotedToExtinct,
+      frozenCount,
       date: yesterdayStr,
     };
 
@@ -129,7 +120,7 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Check if a day is "approved" for the flame system (server-side version).
+ * Check if a day is "approved" for the flame system.
  * Approved if user made at least 1 community post that day.
  */
 async function isDayApproved(
@@ -137,7 +128,6 @@ async function isDayApproved(
   userId: string,
   dateStr: string
 ): Promise<boolean> {
-  // Check community posts
   const { data: posts } = await supabase
     .from("community_posts")
     .select("id")
@@ -146,7 +136,5 @@ async function isDayApproved(
     .lt("created_at", `${dateStr}T23:59:59.999`)
     .limit(1);
 
-  if (posts && posts.length > 0) return true;
-
-  return false;
+  return posts && posts.length > 0;
 }

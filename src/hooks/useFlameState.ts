@@ -23,86 +23,38 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
       if (!user) return { state: "normal", streak: 0, adherence: 0 };
 
       const adherence = await calculateAdherence(user.id);
-      
-      const { data: flameStatus } = await supabase
-        .from("flame_status")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
 
       const today = getToday();
       const yesterday = getYesterday();
-      
-      // Get active dates from community_posts + historic workouts (UNION)
-      const [{ data: posts }, { data: workouts }] = await Promise.all([
-        supabase
-          .from("community_posts")
-          .select("created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase
-          .from("workouts")
-          .select("started_at")
-          .eq("user_id", user.id)
-          .order("started_at", { ascending: false })
-          .limit(100),
-      ]);
+
+      // Get active dates from community_posts ONLY
+      const { data: posts } = await supabase
+        .from("community_posts")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .gte("created_at", `${CHALLENGE_START_DATE}T00:00:00`)
+        .order("created_at", { ascending: false })
+        .limit(200);
 
       const activeDates = new Set<string>();
       (posts || []).forEach(p => {
         if (p.created_at) activeDates.add(p.created_at.split('T')[0]);
       });
-      (workouts || []).forEach(w => {
-        if (w.started_at) activeDates.add(w.started_at.split('T')[0]);
-      });
-      
-      // Streak counts if today or yesterday is active
-      const isActive = activeDates.has(today) || activeDates.has(yesterday);
-      
-      let calculatedStreak = 0;
-      let consecutiveMisses = 0;
-      const now = new Date();
 
-      if (isActive) {
-        for (let i = 0; i < 90; i++) {
-          const d = new Date(now);
-          d.setDate(d.getDate() - i);
-          const dateStr = toLocalDate(d);
-          if (dateStr > today) continue;
-          
-          const isSunday = d.getDay() === 0;
+      // Streak = total unique days with posts since challenge start
+      const streak = activeDates.size;
 
-          if (dateStr < CHALLENGE_START_DATE) break;
-
-          if (activeDates.has(dateStr)) {
-            calculatedStreak++;
-            consecutiveMisses = 0;
-          } else {
-            if (!isSunday && i > 0) {
-              consecutiveMisses++;
-            }
-            if (consecutiveMisses > 1) {
-              break;
-            }
-          }
-        }
-      }
-
-      const finalStreak = calculatedStreak;
-
+      // State: ativa if posted today/yesterday, frozen if has days but inactive, normal if zero
       let computedState: FlameState = "normal";
-      if (activeDates.has(today)) {
+      if (activeDates.has(today) || activeDates.has(yesterday)) {
         computedState = "ativa";
-      } else if (activeDates.has(yesterday)) {
-        computedState = "ativa"; // Grace period
-      } else if (finalStreak > 0) {
+      } else if (streak > 0) {
         computedState = "frozen";
       }
 
-      console.log(`[Flame Debug] Calc: ${calculatedStreak}, Table: ${flameStatus?.streak}, Final: ${finalStreak}, State: ${computedState}`);
+      console.log(`[Flame Debug] Unique days: ${streak}, State: ${computedState}`);
 
-      return { state: computedState, streak: finalStreak, adherence };
+      return { state: computedState, streak, adherence };
     },
     enabled: !!user || isMock,
     staleTime: 5 * 60 * 1000,
@@ -123,33 +75,20 @@ async function calculateAdherence(userId: string): Promise<number> {
   const rawStart = toLocalDate(sevenDaysAgo);
   const startStr = rawStart < CHALLENGE_START_DATE ? CHALLENGE_START_DATE : rawStart;
   const endStr = toLocalDate(now);
-  
-  // Count days with posts OR workouts in last 7 days
-  const [{ data: posts }, { data: workouts }] = await Promise.all([
-    supabase
-      .from("community_posts")
-      .select("created_at")
-      .eq("user_id", userId)
-      .gte("created_at", `${startStr}T00:00:00`)
-      .lte("created_at", `${endStr}T23:59:59.999`),
-    supabase
-      .from("workouts")
-      .select("finished_at")
-      .eq("user_id", userId)
-      .not("finished_at", "is", null)
-      .gte("finished_at", `${startStr}T00:00:00`)
-      .lte("finished_at", `${endStr}T23:59:59.999`),
-  ]);
-  
+
+  // Count days with posts ONLY in last 7 days
+  const { data: posts } = await supabase
+    .from("community_posts")
+    .select("created_at")
+    .eq("user_id", userId)
+    .gte("created_at", `${startStr}T00:00:00`)
+    .lte("created_at", `${endStr}T23:59:59.999`);
+
   const uniqueDays = new Set<string>();
   (posts || []).forEach((p: any) => {
     const d = p.created_at?.split("T")[0];
     if (d) uniqueDays.add(d);
   });
-  (workouts || []).forEach((w: any) => {
-    const d = w.finished_at?.split("T")[0];
-    if (d) uniqueDays.add(d);
-  });
-  
+
   return Math.min(100, Math.round((uniqueDays.size / 7) * 100));
 }
