@@ -22,7 +22,7 @@ export default function AdminAvisos() {
         <TabsList className="w-full justify-start">
           <TabsTrigger value="send-now">📢 Enviar Agora</TabsTrigger>
           <TabsTrigger value="schedule">⏰ Agendar</TabsTrigger>
-          <TabsTrigger value="pool">🎲 Pool de Mensagens</TabsTrigger>
+          <TabsTrigger value="pool">🎲 Banco de Mensagens</TabsTrigger>
           <TabsTrigger value="history">📋 Histórico</TabsTrigger>
         </TabsList>
 
