@@ -120,7 +120,7 @@ export function GymRatsTab() {
           full_name: p.full_name || "Miri",
           avatar_url: p.avatar_url,
           hustle_points: pointsMap.get(p.id) || 0,
-          streak: flameMap.get(p.id) || 0,
+          streak: streakMap.get(p.id) || 0,
           workouts_count: workoutMap.get(p.id) || 0,
           rank: 0,
           level: deriveLevel(pointsMap.get(p.id) || 0),
