@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Trophy, Medal, Flame, User, Dumbbell, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
