@@ -1,35 +1,56 @@
 
 
-## Diagnóstico: Figurinha/Ranking mostrando 1 dia em vez de 6
+## Diagnóstico: "meu dia não contabilizou, está azul"
 
-### Problema encontrado
+### O que as alunas relataram (print)
+- **Renata Ricci**: "meu não contabilizou o de **segunda** (13/04), por isso está azul"
+- **Fernanda**: "meu não contabilizou o de **terça** (14/04), tá azul. Eu postei"
 
-A aluna **Karol** (8b58935c) tem **6 dias ativos reais** (posts em 09, 10, 13, 14, 15, 16 de abril), mas a tabela `flame_status` contém **10 linhas duplicadas**, todas com `streak: 1`.
+### Verificação no banco
 
-O componente **GymRatsTab** (aba "Ofensiva" no ranking) lê o streak diretamente de `flame_status`, pegando o valor errado (1). A figurinha no Treinos.tsx usa `useStreak()` que conta posts diretamente — deveria mostrar 6 corretamente.
+Confirmei consultando `community_posts` com timezone BRT vs UTC:
 
-### Outras alunas afetadas
+| Aluna | Post em BRT | Salvo no banco (UTC) | Bug |
+|---|---|---|---|
+| Renata | Domingo 13/04 às 21:12 | `2026-04-14 00:12 UTC` | Vira **terça 14** no UI |
+| Fernanda | Segunda 12/04 às 22:49 | `2026-04-13 01:49 UTC` | Vira **terça 13** no UI |
+| Fernanda | Quarta 15/04 às 22:13 | `2026-04-16 01:13 UTC` | Vira **quinta 16** no UI |
 
-| Aluna | Dias Reais | flame_streak | Linhas duplicadas |
-|-------|-----------|-------------|-------------------|
-| Karol | 6 | 1 | 10 |
-| Lorrayne | 7 | 1 | 8 |
-| Ariana | 5 | 1 | 1 |
-| Alana | 6 | null | 0 |
+Posts feitos **após 21h no horário de Brasília** (BRT = UTC-3) viram o dia seguinte em UTC. O trilho "7 dias" da Comunidade mostra o dia errado como inativo (azul) e o seguinte como ativo.
 
-Várias outras também têm divergência (ex: Duda tem 9 dias reais mas flame_streak=7).
+### Causa raiz (linha 288-289 de `src/pages/Comunidade.tsx`)
 
-### Causa raiz
+```ts
+(posts || []).forEach((p) => { 
+  const d = p.created_at?.split("T")[0];  // ❌ Usa data UTC crua
+  if (d) activeDays.add(d); 
+});
+```
 
-A `flame_status` é uma tabela legada que não está sendo atualizada corretamente. Enquanto `useStreak()` e `useFlameState()` calculam o streak diretamente dos `community_posts` (correto), o `GymRatsTab` ainda lê de `flame_status.streak` (stale).
+O código pega o trecho antes do "T" da string ISO (que é UTC). Para um post de domingo 21:12 BRT salvo como `2026-04-14T00:12Z`, o split retorna `"2026-04-14"` (terça), não `"2026-04-13"` (domingo, dia real do post).
+
+O mesmo bug ocorre com `workouts.finished_at` na linha 289.
+
+### Escopo
+
+Afeta **todas as alunas que postaram entre 21h-23:59 BRT**. Não é só Renata e Fernanda — é qualquer post noturno. Os outros componentes corretos (`useStreak`, `useFlameState`, `GymRatsTab` recém-corrigido) também usam `.split("T")[0]` cru, então têm o mesmo bug latente — mas o impacto é menor lá porque contam apenas dias únicos totais, não associam a dias da semana.
+
+Mais grave: na **trilha de 7 dias** o usuário vê visualmente o "dia errado" colorido.
 
 ### Plano de correção
 
-1. **Corrigir `GymRatsTab`**: Remover a dependência de `flame_status` para streak. Calcular o streak contando dias únicos de `community_posts` diretamente (mesmo padrão do `useStreak` e `GymRatsHub`).
+1. **Criar helper `toLocalDate(isoString)`** em `src/lib/dateUtils.ts` (já existe `toLocalDate(Date)` — adicionar overload para string ISO) que converte UTC → data local BRT antes de extrair YYYY-MM-DD.
 
-2. **Limpar dados duplicados**: Executar uma migration para:
-   - Deletar linhas duplicadas de `flame_status` (manter apenas 1 por user)
-   - Atualizar o `streak` para o valor real calculado de `community_posts`
+2. **Corrigir `src/pages/Comunidade.tsx`** (trilha 7 dias) — substituir os dois `.split("T")[0]` por `toLocalDate(parseSafeDate(...))`. Também ajustar o intervalo de busca para incluir 3h extras de margem (posts de 21-23:59 BRT = UTC do dia seguinte).
 
-3. **Verificar a figurinha**: Confirmar que `ActiveDaysSticker` recebe `streakNum` do `useStreak()` (que já calcula corretamente). Se a aluna vê "1", pode ser cache — a correção do passo 1 resolve.
+3. **Corrigir `src/components/comunidade/GymRatsTab.tsx`** (linha que monta `flameMap`) — mesma correção, para o ranking de Ofensiva contar dias únicos pelo BRT real.
+
+4. **Corrigir `src/hooks/useStreak.ts` e `src/hooks/useFlameState.ts`** — mesma correção, para consistência total entre figurinha, ranking e perfil.
+
+### Verificação pós-fix
+
+Re-rodar a query mental:
+- Renata domingo 13/04 21:12 BRT → trilha mostra **domingo aceso** (não terça)
+- Fernanda segunda 12/04 22:49 BRT → trilha mostra **segunda acesa** (não terça)
+- Streak total não muda (mesmo número de dias únicos), mas a **distribuição visual** fica correta.
 
