@@ -2,6 +2,18 @@
 export const toLocalDate = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/** 
+ * Converts a UTC ISO timestamp string from the database to a local YYYY-MM-DD string.
+ * Critical for fixing timezone bugs where posts after 21h BRT (UTC-3) are stored
+ * as the next day in UTC. Use this instead of `iso.split('T')[0]`.
+ */
+export const isoToLocalDate = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return toLocalDate(d);
+};
+
 export const getToday = (): string => toLocalDate(new Date());
 
 /** Returns yesterday's local date string */

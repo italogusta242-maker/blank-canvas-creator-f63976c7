@@ -3,6 +3,7 @@ import { Trophy, Medal, Flame, User, Dumbbell, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
+import { isoToLocalDate } from "@/lib/dateUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -87,7 +88,7 @@ export function GymRatsTab() {
         .in("user_id", userIds);
       const flameMap = new Map<string, number>();
       for (const p of posts || []) {
-        const day = p.created_at?.split("T")[0];
+        const day = isoToLocalDate(p.created_at);
         if (day) {
           const key = `${p.user_id}__${day}`;
           if (!flameMap.has(key)) {

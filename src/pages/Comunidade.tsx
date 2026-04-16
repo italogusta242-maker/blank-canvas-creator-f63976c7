@@ -14,6 +14,7 @@ import { PodiumCard, type PodiumEntry } from "@/components/community/PodiumCard"
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useStreak } from "@/hooks/useStreak";
+import { isoToLocalDate } from "@/lib/dateUtils";
 
 // ── Plan type map ──
 const PLAN_MAPPING: Record<string, { label: string; color: string }> = {
@@ -63,10 +64,10 @@ function useSegmentedRanking(category: PlanCategory) {
         .in("user_id", userIds)
         .gte("created_at", effectiveStart);
 
-      // Build active days per user (only community posts count)
+      // Build active days per user (only community posts count) — convert UTC to local BRT
       const activeDaysMap: Record<string, Set<string>> = {};
       for (const p of (posts || [])) {
-        const d = p.created_at?.split('T')[0];
+        const d = isoToLocalDate(p.created_at);
         if (d) {
           if (!activeDaysMap[p.user_id]) activeDaysMap[p.user_id] = new Set();
           activeDaysMap[p.user_id].add(d);
@@ -268,25 +269,30 @@ export default function Comunidade() {
         d.setDate(d.getDate() - (6 - i));
         return { date: d.toISOString().split("T")[0], obj: d };
       });
-      // Fetch posts + workouts for the week
+      // Fetch posts + workouts for the week — buffer 1 day on each side to capture late-night BRT posts
+      // that were stored in UTC of the next/previous day.
+      const fetchStart = new Date(days[0].obj);
+      fetchStart.setDate(fetchStart.getDate() - 1);
+      const fetchEnd = new Date(days[6].obj);
+      fetchEnd.setDate(fetchEnd.getDate() + 1);
       const [{ data: posts }, { data: workouts }] = await Promise.all([
         supabase
           .from("community_posts")
           .select("created_at")
           .eq("user_id", user.id)
-          .gte("created_at", `${days[0].date}T00:00:00`)
-          .lte("created_at", `${days[6].date}T23:59:59`),
+          .gte("created_at", fetchStart.toISOString())
+          .lte("created_at", fetchEnd.toISOString()),
         supabase
           .from("workouts")
           .select("finished_at")
           .eq("user_id", user.id)
           .not("finished_at", "is", null)
-          .gte("finished_at", `${days[0].date}T00:00:00`)
-          .lte("finished_at", `${days[6].date}T23:59:59`),
+          .gte("finished_at", fetchStart.toISOString())
+          .lte("finished_at", fetchEnd.toISOString()),
       ]);
       const activeDays = new Set<string>();
-      (posts || []).forEach((p: any) => { const d = p.created_at?.split("T")[0]; if (d) activeDays.add(d); });
-      (workouts || []).forEach((w: any) => { const d = w.finished_at?.split("T")[0]; if (d) activeDays.add(d); });
+      (posts || []).forEach((p: any) => { const d = isoToLocalDate(p.created_at); if (d) activeDays.add(d); });
+      (workouts || []).forEach((w: any) => { const d = isoToLocalDate(w.finished_at); if (d) activeDays.add(d); });
       
       const today = new Date();
       today.setHours(0,0,0,0);

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getToday, getYesterday } from "@/lib/dateUtils";
+import { getToday, getYesterday, isoToLocalDate } from "@/lib/dateUtils";
 import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 /**
@@ -28,7 +28,8 @@ export const useStreak = (userId?: string) => {
 
       const activeDates = new Set<string>();
       (posts || []).forEach(p => {
-        if (p.created_at) activeDates.add(p.created_at.split('T')[0]);
+        const d = isoToLocalDate(p.created_at);
+        if (d) activeDates.add(d);
       });
 
       const streak = activeDates.size;
