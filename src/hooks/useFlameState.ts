@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toLocalDate, getToday, getYesterday } from "@/lib/dateUtils";
+import { toLocalDate, getToday, getYesterday, isoToLocalDate } from "@/lib/dateUtils";
 import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 
 export type FlameState = "normal" | "ativa" | "frozen" | "tregua" | "extinta";
@@ -38,7 +38,8 @@ export function useFlameState(): FlameResult & { isLoading: boolean } {
 
       const activeDates = new Set<string>();
       (posts || []).forEach(p => {
-        if (p.created_at) activeDates.add(p.created_at.split('T')[0]);
+        const d = isoToLocalDate(p.created_at);
+        if (d) activeDates.add(d);
       });
 
       // Streak = total unique days with posts since challenge start
@@ -86,7 +87,7 @@ async function calculateAdherence(userId: string): Promise<number> {
 
   const uniqueDays = new Set<string>();
   (posts || []).forEach((p: any) => {
-    const d = p.created_at?.split("T")[0];
+    const d = isoToLocalDate(p.created_at);
     if (d) uniqueDays.add(d);
   });
 
