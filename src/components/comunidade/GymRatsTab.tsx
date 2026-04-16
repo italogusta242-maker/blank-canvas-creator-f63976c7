@@ -79,13 +79,28 @@ export function GymRatsTab() {
 
       const userIds = (profiles || []).map((p: any) => p.id);
 
-      // 3. Fetch streaks
-      const { data: flames } = await supabase
-        .from("flame_status")
-        .select("user_id, streak")
+      // 3. Calculate streaks from community_posts (unique days with posts)
+      const { data: posts } = await supabase
+        .from("community_posts")
+        .select("user_id, created_at")
+        .gte("created_at", `${CHALLENGE_START_DATE}T00:00:00`)
         .in("user_id", userIds);
       const flameMap = new Map<string, number>();
-      for (const f of flames || []) flameMap.set(f.user_id, f.streak ?? 0);
+      for (const p of posts || []) {
+        const day = p.created_at?.split("T")[0];
+        if (day) {
+          const key = `${p.user_id}__${day}`;
+          if (!flameMap.has(key)) {
+            flameMap.set(key, 1);
+          }
+        }
+      }
+      // Aggregate unique days per user
+      const streakMap = new Map<string, number>();
+      for (const key of flameMap.keys()) {
+        const uid = key.split("__")[0];
+        streakMap.set(uid, (streakMap.get(uid) || 0) + 1);
+      }
 
       // 4. Count finished workouts
       const { data: workouts } = await supabase
