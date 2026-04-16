@@ -1,32 +1,35 @@
 
 
-## Plano: Criar Mensagens no Banco de Mensagens
+## Diagnóstico: Figurinha/Ranking mostrando 1 dia em vez de 6
 
-Inserir 12 templates de notificação na tabela `notification_templates`, distribuídos em 4 categorias.
+### Problema encontrado
 
-### Mensagens a criar
+A aluna **Karol** (8b58935c) tem **6 dias ativos reais** (posts em 09, 10, 13, 14, 15, 16 de abril), mas a tabela `flame_status` contém **10 linhas duplicadas**, todas com `streak: 1`.
 
-**Motivacional (4)**
-1. "🔥 Bora treinar!" / "Seu corpo agradece cada repetição. Levanta e vai!"
-2. "💪 Você é mais forte do que pensa" / "Lembre-se: disciplina supera motivação. Hoje é dia de vencer!"
-3. "🏆 Campeãs não descansam" / "Cada treino te aproxima do seu objetivo. Não pare agora!"
-4. "⚡ Energia no máximo!" / "O treino de hoje é o investimento no corpo de amanhã."
+O componente **GymRatsTab** (aba "Ofensiva" no ranking) lê o streak diretamente de `flame_status`, pegando o valor errado (1). A figurinha no Treinos.tsx usa `useStreak()` que conta posts diretamente — deveria mostrar 6 corretamente.
 
-**Lembrete (3)**
-1. "⏰ Hora do treino!" / "Não deixe pra depois. Seu treino de hoje está te esperando!"
-2. "💧 Já bebeu água hoje?" / "Hidratação é essencial. Bora bater a meta de água!"
-3. "📸 Registre seu progresso" / "Tire uma foto e acompanhe sua evolução. Você vai se surpreender!"
+### Outras alunas afetadas
 
-**Engajamento (3)**
-1. "🎯 Confira seu ranking" / "Veja como você está no desafio! Sua posição pode te surpreender."
-2. "👥 A comunidade te espera" / "Compartilhe seu treino e inspire outras guerreiras!"
-3. "🏅 Seus pontos estão subindo!" / "Continue assim e conquiste o topo do ranking!"
+| Aluna | Dias Reais | flame_streak | Linhas duplicadas |
+|-------|-----------|-------------|-------------------|
+| Karol | 6 | 1 | 10 |
+| Lorrayne | 7 | 1 | 8 |
+| Ariana | 5 | 1 | 1 |
+| Alana | 6 | null | 0 |
 
-**Geral (2)**
-1. "📢 Novidades no app!" / "Temos atualizações que vão turbinar sua experiência. Confira!"
-2. "❤️ Estamos com você" / "Qualquer dúvida, fale com a gente. Sua jornada importa pra nós!"
+Várias outras também têm divergência (ex: Duda tem 9 dias reais mas flame_streak=7).
 
-### Execução
+### Causa raiz
 
-Uma única query SQL `INSERT INTO notification_templates (title, body, category)` com os 12 registros.
+A `flame_status` é uma tabela legada que não está sendo atualizada corretamente. Enquanto `useStreak()` e `useFlameState()` calculam o streak diretamente dos `community_posts` (correto), o `GymRatsTab` ainda lê de `flame_status.streak` (stale).
+
+### Plano de correção
+
+1. **Corrigir `GymRatsTab`**: Remover a dependência de `flame_status` para streak. Calcular o streak contando dias únicos de `community_posts` diretamente (mesmo padrão do `useStreak` e `GymRatsHub`).
+
+2. **Limpar dados duplicados**: Executar uma migration para:
+   - Deletar linhas duplicadas de `flame_status` (manter apenas 1 por user)
+   - Atualizar o `streak` para o valor real calculado de `community_posts`
+
+3. **Verificar a figurinha**: Confirmar que `ActiveDaysSticker` recebe `streakNum` do `useStreak()` (que já calcula corretamente). Se a aluna vê "1", pode ser cache — a correção do passo 1 resolve.
 
