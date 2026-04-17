@@ -17,6 +17,12 @@ export interface FlameResult {
  * EXCLUSIVAMENTE de posts únicos por dia na comunidade.
  * Treino finalizado, dieta logada, etc NÃO contam mais (decisão de produto).
  *
+ * REGRA CRÍTICA — STREAK NUNCA DECREMENTA:
+ * - O streak é a contagem TOTAL de dias únicos com post desde CHALLENGE_START_DATE.
+ * - Se a aluna ficar X dias sem postar, a chama apenas CONGELA (frozen) — o número
+ *   de dias acumulados NUNCA é resetado nem reduzido.
+ * - Quando ela voltar a postar, o estado volta para "ativa" e o streak incrementa.
+ *
  * Fonte da verdade: community_posts.created_at agrupado por data local (BRT).
  * Ignora `flame_status.streak` (legado, pode estar desatualizado).
  */

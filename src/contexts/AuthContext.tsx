@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, type ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
+import { logAuthFailure } from "@/lib/authFailureLog";
 
 interface AuthContextType {
   user: User | null;
@@ -244,9 +245,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         SIGN_IN_TIMEOUT_MS,
         "Login"
       );
+      if (error?.message) {
+        logAuthFailure(email, error.message);
+      }
       return { error: error?.message ?? null };
     } catch (err: any) {
       console.error("AuthContext: signIn exception", err);
+      logAuthFailure(email, err?.message ?? "Erro ao fazer login.");
       return { error: err?.message ?? "Erro ao fazer login." };
     }
   };
