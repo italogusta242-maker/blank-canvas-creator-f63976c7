@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { shouldIncrementFlame } from "@/hooks/useDailyFlameCheck";
 import { optimisticFlameUpdate } from "@/lib/flameOptimistic";
 import { checkAndUpdateFlame } from "@/lib/flameMotor";
+import { enqueue } from "@/lib/offlineQueue";
 
 /* ── Compress image client-side before upload ── */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
@@ -97,44 +98,83 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
     },
     mutationFn: async ({ content, image }: any) => {
       if (!user || (!content.trim() && !image)) return;
-      let mediaUrl: string | null = null;
-      if (image) {
-        const compressed = await compressImage(image);
-        const path = `${user.id}/${Date.now()}.jpg`;
-        const { error: upErr } = await supabase.storage.from("community_media").upload(path, compressed, { contentType: "image/jpeg" });
-        if (upErr) throw upErr;
-        const { data: { publicUrl } } = supabase.storage.from("community_media").getPublicUrl(path);
-        mediaUrl = publicUrl;
-      }
-      const { error: insErr } = await (supabase as any).from("community_posts").insert({
-        user_id: user.id,
-        content: content.trim(),
-        image_url: mediaUrl,
-      });
-      if (insErr) throw insErr;
 
-      // Update flame in DB
+      // Se offline, joga direto na fila e sai (UI já mostra otimisticamente)
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        const blob = image ? await compressImage(image) : undefined;
+        await enqueue({
+          type: "community_post",
+          userId: user.id,
+          content: content.trim(),
+          imageBlob: blob,
+          imageType: "image/jpeg",
+        });
+        toast.success("Salvo offline. Será enviado ao voltar a conexão.");
+        return;
+      }
+
       try {
-        await checkAndUpdateFlame(user.id);
-      } catch (e) {
-        console.warn("Flame update failed (non-critical):", e);
-      }
-
-      // If verified user, trigger global broadcast notification
-      if ((profile as any)?.is_verified) {
-        try {
-          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          await fetch(`https://${projectId}.supabase.co/functions/v1/gamification-engine`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "admin_broadcast_webhook",
-              payload: { record: { user_id: user.id, content: content.trim() } },
-            }),
-          });
-        } catch (e) {
-          console.warn("Broadcast notification failed (non-critical):", e);
+        let mediaUrl: string | null = null;
+        if (image) {
+          const compressed = await compressImage(image);
+          const path = `${user.id}/${Date.now()}.jpg`;
+          const { error: upErr } = await supabase.storage.from("community_media").upload(path, compressed, { contentType: "image/jpeg" });
+          if (upErr) throw upErr;
+          const { data: { publicUrl } } = supabase.storage.from("community_media").getPublicUrl(path);
+          mediaUrl = publicUrl;
         }
+        const { error: insErr } = await (supabase as any).from("community_posts").insert({
+          user_id: user.id,
+          content: content.trim(),
+          image_url: mediaUrl,
+        });
+        if (insErr) throw insErr;
+
+        // Update flame in DB
+        try {
+          await checkAndUpdateFlame(user.id);
+        } catch (e) {
+          console.warn("Flame update failed (non-critical):", e);
+        }
+
+        // If verified user, trigger global broadcast notification
+        if ((profile as any)?.is_verified) {
+          try {
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            await fetch(`https://${projectId}.supabase.co/functions/v1/gamification-engine`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "admin_broadcast_webhook",
+                payload: { record: { user_id: user.id, content: content.trim() } },
+              }),
+            });
+          } catch (e) {
+            console.warn("Broadcast notification failed (non-critical):", e);
+          }
+        }
+      } catch (e: any) {
+        // Falha de rede / timeout / Load failed → cai pra fila offline
+        const msg = String(e?.message || "");
+        const isNetworkErr =
+          msg.includes("Load failed") ||
+          msg.includes("Failed to fetch") ||
+          msg.includes("NetworkError") ||
+          msg.includes("network") ||
+          msg.includes("timeout");
+        if (isNetworkErr) {
+          const blob = image ? await compressImage(image) : undefined;
+          await enqueue({
+            type: "community_post",
+            userId: user.id,
+            content: content.trim(),
+            imageBlob: blob,
+            imageType: "image/jpeg",
+          });
+          toast.success("Conexão instável. Salvo offline e será enviado em breve.");
+          return;
+        }
+        throw e;
       }
     },
     onSuccess: () => {

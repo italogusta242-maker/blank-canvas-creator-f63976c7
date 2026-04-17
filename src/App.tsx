@@ -3,10 +3,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import SkeletonLayout from "./components/SkeletonLayout";
+import OfflineBanner from "./components/OfflineBanner";
 import { recoverAppToLogin } from "@/lib/recoverApp";
+import { idbPersister, shouldDehydrateQuery } from "@/lib/queryPersister";
 
 // ── App error boundary ────────────────────────────────────
 class ChunkErrorBoundary extends Component<
@@ -68,7 +71,9 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       staleTime: 300_000,   // 5 min — evita re-fetch ao trocar de aba
-      gcTime: 1_800_000,    // 30 min — mantém cache em memória
+      gcTime: 24 * 60 * 60 * 1000, // 24h — mantém cache em memória/disco para uso offline
+      retry: 2,
+      networkMode: "offlineFirst", // mostra cache primeiro mesmo sem rede
     },
   },
 });
@@ -77,17 +82,25 @@ const App = () => {
   return (
     <ErrorBoundary>
       <ChunkErrorBoundary>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: idbPersister,
+            maxAge: 24 * 60 * 60 * 1000, // 24h
+            dehydrateOptions: { shouldDehydrateQuery },
+          }}
+        >
           <ThemeProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <OfflineBanner />
               <Suspense fallback={<SkeletonLayout />}>
                 <AuthenticatedApp />
               </Suspense>
             </TooltipProvider>
           </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </ChunkErrorBoundary>
     </ErrorBoundary>
   );

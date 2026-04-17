@@ -74,10 +74,19 @@ if ("serviceWorker" in navigator && !isInIframe && !isPreviewHost) {
 
 const bootstrapApp = async () => {
   try {
-    const [{ createRoot }, { default: App }] = await Promise.all([
+    // Restaura sessão do cookie ANTES de qualquer import que toque no Supabase
+    // (sobrevive ao Safari ITP que limpa localStorage após ~7 dias)
+    const { restoreSessionFromCookie } = await import("@/lib/sessionPersistence");
+    restoreSessionFromCookie();
+
+    const [{ createRoot }, { default: App }, { startSessionPersistence }] = await Promise.all([
       import("react-dom/client"),
       import("./App.tsx"),
+      import("@/lib/sessionPersistence"),
     ]);
+
+    // Ativa sync contínuo localStorage ↔ cookie
+    startSessionPersistence();
 
     const rootEl = document.getElementById("root");
     if (!rootEl) throw new Error("Elemento #root não encontrado no DOM");
