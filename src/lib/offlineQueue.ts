@@ -46,7 +46,11 @@ async function saveQueue(q: QueuedAction[]) {
   }
 }
 
-export async function enqueue(action: Omit<QueuedAction, "id" | "createdAt" | "attempts">) {
+type EnqueueInput =
+  | { type: "community_post"; userId: string; content: string; imageBlob?: Blob; imageType?: string }
+  | { type: "daily_habit"; userId: string; date: string; payload: Record<string, any> };
+
+export async function enqueue(action: EnqueueInput) {
   const queue = await getQueue();
   const newAction = {
     ...action,
