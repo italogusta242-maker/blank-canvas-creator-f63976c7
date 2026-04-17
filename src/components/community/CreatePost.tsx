@@ -148,10 +148,18 @@ export function CreatePost({ onPosted }: { onPosted: () => void }) {
       toast.error(err.message || "Erro ao publicar.");
     },
     onSettled: () => {
+      // Invalida TODAS as queries relacionadas à chama/streak para refletir
+      // imediatamente o novo post como dia ativo (regra: post = chama acesa).
       queryClient.invalidateQueries({ queryKey: ["community-posts"] });
       queryClient.invalidateQueries({ queryKey: ["flame-state"] });
       queryClient.invalidateQueries({ queryKey: ["streak"] });
       queryClient.invalidateQueries({ queryKey: ["week-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["streak-history"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-flame-check"] });
+      if (user?.id) {
+        queryClient.refetchQueries({ queryKey: ["flame-state", user.id] });
+        queryClient.refetchQueries({ queryKey: ["streak", user.id] });
+      }
       onPosted();
     }
   });
