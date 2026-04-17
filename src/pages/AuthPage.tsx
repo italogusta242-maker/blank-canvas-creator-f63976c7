@@ -43,6 +43,25 @@ const AuthPage = () => {
     return await signIn(cleanEmail, pwd);
   };
 
+  /** Warmup: força resolução DNS + handshake TLS antes do POST de login.
+   *  Combate o "Load failed" do Safari iOS em 4G no cold start. */
+  const warmupSupabase = async () => {
+    try {
+      const url = (import.meta as any).env?.VITE_SUPABASE_URL;
+      if (!url) return;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 4000);
+      await fetch(`${url}/auth/v1/health`, {
+        method: "GET",
+        cache: "no-store",
+        signal: ctrl.signal,
+      }).catch(() => {});
+      clearTimeout(t);
+    } catch {
+      // ignora — é só warmup
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -50,12 +69,21 @@ const AuthPage = () => {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
+      // 1) Aquece a conexão (DNS + TLS) antes do primeiro signIn
+      await warmupSupabase();
+
       let { error } = await attemptSignIn(cleanEmail, password);
 
-      // Retry once on network errors (not on credential errors)
-      if (error && isNetworkError(error)) {
-        console.warn("[AuthPage] network error on first attempt, retrying...", { email: cleanEmail, message: error });
-        await new Promise((r) => setTimeout(r, 800));
+      // 2) Retry agressivo apenas em network errors (não em credenciais)
+      const backoffs = [1500, 2500];
+      for (let i = 0; i < backoffs.length && error && isNetworkError(error); i++) {
+        console.warn(`[AuthPage] network error, retry ${i + 1}/${backoffs.length} after ${backoffs[i]}ms`, {
+          email: cleanEmail,
+          message: error,
+        });
+        setErrorMsg("Conexão lenta — tentando reconectar...");
+        await new Promise((r) => setTimeout(r, backoffs[i]));
+        await warmupSupabase();
         ({ error } = await attemptSignIn(cleanEmail, password));
       }
 
@@ -66,6 +94,8 @@ const AuthPage = () => {
           message: error,
         });
         setErrorMsg(translateError(error));
+      } else {
+        setErrorMsg(null);
       }
     } catch (err: any) {
       const raw = err?.message ?? "Erro de conexão.";
