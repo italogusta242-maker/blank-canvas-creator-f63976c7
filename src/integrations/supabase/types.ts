@@ -179,6 +179,36 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_failure_logs: {
+        Row: {
+          created_at: string
+          email: string | null
+          error_message: string | null
+          error_type: string | null
+          id: string
+          platform: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          platform?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          platform?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       battles: {
         Row: {
           challenger_id: string
