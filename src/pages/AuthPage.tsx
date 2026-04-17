@@ -3,29 +3,74 @@ import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import InsanoLogo from "@/components/InsanoLogo";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+const NETWORK_ERROR_PATTERNS = [
+  /load failed/i,
+  /failed to fetch/i,
+  /networkerror/i,
+  /network request failed/i,
+  /tempo limite excedido/i,
+  /timeout/i,
+  /aborterror/i,
+];
+
+const isNetworkError = (msg: string) => NETWORK_ERROR_PATTERNS.some((re) => re.test(msg));
+
+const translateError = (msg: string): string => {
+  if (!msg) return "Erro ao fazer login.";
+  if (isNetworkError(msg)) {
+    return "Falha de conexão. Verifique seu 4G/Wi-Fi e tente novamente.";
+  }
+  if (/invalid login credentials|invalid_grant/i.test(msg)) {
+    return "E-mail ou senha incorretos.";
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return "Confirme seu e-mail antes de entrar.";
+  }
+  return msg;
+};
 
 const AuthPage = () => {
+  const { signIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const attemptSignIn = async (cleanEmail: string, pwd: string) => {
+    return await signIn(cleanEmail, pwd);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      let { error } = await attemptSignIn(cleanEmail, password);
+
+      // Retry once on network errors (not on credential errors)
+      if (error && isNetworkError(error)) {
+        console.warn("[AuthPage] network error on first attempt, retrying...", { email: cleanEmail, message: error });
+        await new Promise((r) => setTimeout(r, 800));
+        ({ error } = await attemptSignIn(cleanEmail, password));
+      }
+
       if (error) {
-        setErrorMsg(error.message);
+        console.error("[AuthPage] sign-in failed", {
+          email: cleanEmail,
+          errorType: isNetworkError(error) ? "network" : "credential",
+          message: error,
+        });
+        setErrorMsg(translateError(error));
       }
     } catch (err: any) {
-      setErrorMsg(err?.message ?? "Erro de conexão.");
+      const raw = err?.message ?? "Erro de conexão.";
+      console.error("[AuthPage] sign-in exception", { email: cleanEmail, message: raw, stack: err?.stack });
+      setErrorMsg(translateError(raw));
     } finally {
       setLoading(false);
     }

@@ -25,6 +25,21 @@ const clearStorage = () => {
   }
 };
 
+/** Race signOut against a short timeout so a stuck lock can never block recovery. */
+const signOutWithTimeout = async (ms = 1500) => {
+  try {
+    await Promise.race([
+      supabase.auth.signOut({ scope: "local" }),
+      new Promise((resolve) => setTimeout(resolve, ms)),
+    ]);
+  } catch (error: any) {
+    // AbortError "Lock was stolen" is benign — storage cleanup below covers it.
+    if (error?.name !== "AbortError") {
+      console.error("[recoverApp] sign out failed", error);
+    }
+  }
+};
+
 export const recoverAppToLogin = async () => {
   try {
     if ("serviceWorker" in navigator) {
@@ -35,12 +50,9 @@ export const recoverAppToLogin = async () => {
     console.error("[recoverApp] service worker cleanup failed", error);
   }
 
-  try {
-    await supabase.auth.signOut({ scope: "local" });
-  } catch (error) {
-    console.error("[recoverApp] sign out failed", error);
-  }
-
+  // Run signOut and storage cleanup in parallel so a stuck lock cannot block recovery.
+  await Promise.all([signOutWithTimeout(1500), Promise.resolve().then(clearStorage)]);
+  // Final cleanup pass after signOut (in case SDK rewrote keys)
   clearStorage();
   window.location.replace("/");
 };

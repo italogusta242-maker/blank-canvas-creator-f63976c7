@@ -36,7 +36,22 @@ window.onerror = (_msg, _src, _line, _col, err) => {
 };
 
 window.addEventListener("unhandledrejection", (e) => {
-  showError("UnhandledRejection:\n" + String(e.reason?.stack || e.reason));
+  const reason: any = e.reason;
+  const name = reason?.name ?? "";
+  const message = String(reason?.message ?? reason ?? "");
+
+  // Benign Supabase/gotrue lock contention across tabs — never crash the app.
+  if (
+    name === "AbortError" ||
+    /Lock was stolen/i.test(message) ||
+    /NavigatorLockAcquireTimeoutError/i.test(message)
+  ) {
+    console.warn("[unhandledrejection] ignored benign lock error:", message);
+    e.preventDefault?.();
+    return;
+  }
+
+  showError("UnhandledRejection:\n" + String(reason?.stack || reason));
 });
 
 // Register push-handler service worker for Web Push notifications
