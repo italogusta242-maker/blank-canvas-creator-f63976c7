@@ -24,7 +24,7 @@ export const useAuth = () => {
 };
 
 const LOADING_TIMEOUT_MS = 8000;
-const SIGN_IN_TIMEOUT_MS = 12000;
+const SIGN_IN_TIMEOUT_MS = 20000;
 
 /** Race a promise against a timeout. If timeout wins, reject with a clear message. */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
