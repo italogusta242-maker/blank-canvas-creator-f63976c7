@@ -77,7 +77,9 @@ const ActiveDaysSticker = ({ streak, userName, flameState, onClose }: ActiveDays
     }
   }, [preparedBlob, handleDownload]);
 
-  const flameColor = flameState === "frozen" ? "hsl(200, 100%, 60%)" : "#ff2a5f";
+  // Sempre exibe estado ATIVO no sticker compartilhável (decisão de produto):
+  // a figurinha é peça de celebração — não mostramos "congelada" aqui.
+  const flameColor = "#ff2a5f";
 
   return (
     <>
@@ -125,7 +127,7 @@ const ActiveDaysSticker = ({ streak, userName, flameState, onClose }: ActiveDays
               marginBottom: -4,
             }}
           >
-            {flameState === "frozen" ? "CHAMA CONGELADA" : "DIAS ATIVOS"}
+            DIAS ATIVOS
           </p>
           <p
             style={{

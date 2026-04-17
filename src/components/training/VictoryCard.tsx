@@ -208,23 +208,23 @@ const VictoryCard = ({
                 <Flame
                   size={42}
                   strokeWidth={2.5}
-                  color={flameState === "frozen" ? "hsl(200, 100%, 60%)" : "#ff2a5f"}
+                  color="#ff2a5f"
                   className="relative z-10"
                 />
               </div>
 
-            {/* Days Active */}
+            {/* Days Active — sempre exibe estado ATIVO no sticker (peça de celebração) */}
             <p
               style={{
                 fontSize: 26,
                 fontWeight: 900,
-                color: flameState === "frozen" ? "hsl(200, 100%, 60%)" : "#ff2a5f",
+                color: "#ff2a5f",
                 letterSpacing: "1.5px",
                 textTransform: "uppercase",
                 marginBottom: -4,
               }}
             >
-              {flameState === "frozen" ? "CHAMA CONGELADA" : "DIAS ATIVOS"}
+              DIAS ATIVOS
             </p>
             <p
               style={{
