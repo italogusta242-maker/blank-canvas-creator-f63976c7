@@ -7,7 +7,11 @@ import { CHALLENGE_START_DATE } from "@/lib/challengeConfig";
 /**
  * Calcula o streak (dias ativos) do usuário.
  * Streak = total de dias únicos com post na comunidade desde CHALLENGE_START_DATE.
- * Nunca zera — chama congela quando inativa.
+ *
+ * REGRA CRÍTICA — STREAK NUNCA DECREMENTA:
+ * Se o usuário fica dias sem postar, a chama apenas CONGELA (frozen).
+ * O número acumulado de dias NUNCA é resetado nem reduzido.
+ * Voltar a postar reativa a chama e incrementa o streak.
  */
 export const useStreak = (userId?: string) => {
   const { user } = useAuth();
