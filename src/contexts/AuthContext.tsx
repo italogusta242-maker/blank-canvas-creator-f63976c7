@@ -245,9 +245,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         SIGN_IN_TIMEOUT_MS,
         "Login"
       );
+      if (error?.message) {
+        logAuthFailure(email, error.message);
+      }
       return { error: error?.message ?? null };
     } catch (err: any) {
       console.error("AuthContext: signIn exception", err);
+      logAuthFailure(email, err?.message ?? "Erro ao fazer login.");
       return { error: err?.message ?? "Erro ao fazer login." };
     }
   };
