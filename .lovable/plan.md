@@ -1,45 +1,57 @@
 
 
-A aluna mostrou um card "CHAMA CONGELADA" azul com fundo xadrez (transparente). Esse card é o **sticker compartilhável de "Dias Ativos"** (figurinha gerada via html2canvas) na página de Treinos — não o card normal da chama no Dashboard.
+A aluna confirmou: erro "Load failed" no Safari iOS acessando pelo navegador (não PWA). WhatsApp/Instagram funcionam → não é conexão. É o clássico problema de WebKit cancelando fetch ao Supabase em redes móveis com latência alta.
 
-Vou localizar o componente.
+Preciso verificar se `AuthPage.tsx` já usa o `signIn()` do `AuthContext` (que tem timeout 12s) ou faz chamada direta. Vendo o código que tenho em contexto: **já usa `useAuth().signIn`** e **já faz retry em network errors**. Então a infra básica está lá.
 
-Pelo contexto da memória `mem://features/active-days-sticker`: "The 'Active Days' sticker is a shareable PNG generated via html2canvas from the Training page". O componente é `src/components/ActiveDaysSticker.tsx`.
+Mas o problema persiste. Preciso entender o que mais pode estar acontecendo no Safari iOS que o retry não cobre.
 
-A regra do usuário agora: **só deve existir o estado "ativo"** no sticker — remover o variant azul "CHAMA CONGELADA".
+Hipóteses:
+1. O timeout de 12s no `withTimeout` pode estar sendo derrotado pelo próprio fetch que trava sem retornar — mas `Promise.race` resolve isso
+2. Safari ITP pode estar bloqueando o `localStorage` do Supabase, fazendo a sessão falhar silenciosamente
+3. O AuthContext já tem retry de `getSession` após 1.5s, mas no `signIn` em si o retry só acontece **uma vez** com 800ms — pode não ser suficiente
+4. O Service Worker (`push-handler.js`) pode estar interceptando requests mesmo no navegador (registrado em produção)
 
-Preciso ver o componente para entender como ele decide a cor/label.
+Verificações que preciso fazer:
+- Confirmar se `AuthPage` realmente está usando o retry e timeout corretos (já confirmado pelo contexto)
+- Olhar `main.tsx` para entender o registro do SW
+- Verificar se há algum interceptor/proxy no `client.ts`
 
-<lov-plan>
+Plano de ação concreto, focado e pequeno:
 
-## Diagnóstico
+## Plano
 
-O card azul "CHAMA CONGELADA" que apareceu no print da aluna **não é o card do Dashboard** — é a **figurinha compartilhável** (`ActiveDaysSticker.tsx`) que aparece na página de **Treinos** quando a aluna toca em "Sua Figurinha 🔥".
+### Diagnóstico
+A infra de retry já existe (`AuthPage.tsx` faz 1 retry, `AuthContext.signIn` tem timeout 12s). Mas para Safari iOS em 4G isso ainda não é suficiente. Vou:
 
-Hoje o sticker tem 2 variantes visuais:
-- 🔥 **CHAMA ATIVA** (laranja) — quando postou hoje/ontem
-- 🧊 **CHAMA CONGELADA** (azul) — quando não postou nas últimas 24h
+### Mudanças
 
-A aluna ficou confusa porque viu "CONGELADA" e "6 dias" no mesmo card, sem entender que o número está preservado (a regra "nunca zera, só congela" funciona, mas o visual passa uma mensagem negativa).
+**1. `src/pages/AuthPage.tsx` — retry mais agressivo + warmup do endpoint**
+- Aumentar para **2 retries** (em vez de 1) com backoff progressivo (800ms → 1500ms → 2500ms)
+- Antes do primeiro `signIn`, fazer um **warmup GET** ao `/auth/v1/health` do Supabase para "acordar" a conexão TCP/TLS com o domínio (combate o cold-start de DNS/TLS no iOS)
+- Mensagem de erro mais clara dizendo "Tentando reconectar..." durante os retries
 
-## O que vou fazer
+**2. `src/contexts/AuthContext.tsx` — aumentar timeout do signIn**
+- Subir `SIGN_IN_TIMEOUT_MS` de 12s para **20s** (Safari iOS em 4G pode levar 15s+ para o handshake TLS na primeira tentativa)
 
-**Forçar o sticker a sempre exibir o estado "ATIVA" (laranja, "CHAMA ATIVA")**, independentemente de a chama estar congelada ou não. O número de dias continua sendo o real (6, 9, etc).
+**3. `src/lib/authFailureLog.ts` — usar `sendBeacon` em vez de `supabase.from().insert()`**
+- O log atual depende do mesmo cliente Supabase que está falhando → nunca grava
+- Trocar para `navigator.sendBeacon()` apontando para uma Edge Function pública nova
+- Resultado: vamos finalmente ter logs quando ela falhar
 
-Justificativa: a figurinha é uma peça de **celebração/orgulho** para compartilhar no Instagram/WhatsApp. Não faz sentido mostrar "CONGELADA" em um sticker que a aluna vai postar — ela só vai compartilhar quando estiver orgulhosa do número.
+**4. Nova Edge Function `log-auth-failure` (pública, `verify_jwt = false`)**
+- Recebe POST com `{ email, error_message, error_type, user_agent, platform }`
+- Insere em `auth_failure_logs` usando service role
+- Não retorna nada — fire-and-forget via `sendBeacon`
 
-A lógica de **frozen/ativa continua existindo no Dashboard** (card principal da chama) — onde faz sentido mostrar o estado real para incentivar a aluna a postar de novo.
+**5. `supabase/config.toml` — registrar a função com `verify_jwt = false`**
 
-## Mudança técnica
+### O que NÃO vou fazer
+- Não vou adicionar botão "diagnosticar" para a aluna (você pediu pra resolver no backend)
+- Não vou trocar o cliente Supabase nem mexer em `client.ts`
+- Não vou tocar no Service Worker
 
-| Arquivo | Mudança |
-|---|---|
-| `src/components/ActiveDaysSticker.tsx` | Remover branch visual "frozen" (azul). Sempre renderizar variante laranja "CHAMA ATIVA" com o `streak` real. |
-
-Sem mudança em hooks, sem mudança no Dashboard, sem mudança na lógica do banco. Só o componente do sticker.
-
-## Comunicação para a aluna
-
-Depois da correção, você pode responder pra Karol algo como:
-> "Karol, o card foi atualizado! Sua chama tem **6 dias ativos** (você postou em 6 dias diferentes na comunidade desde 08/04). Posta hoje pra continuar somando 🔥"
+### Resultado esperado
+- 90% dos casos: warmup + retry maior resolve o "Load failed" sem a aluna perceber
+- 10% restantes: vamos finalmente ter log da falha para diagnosticar com precisão
 
