@@ -147,6 +147,8 @@ const NotificationCenter = () => {
       case "achievement": return "🏆";
       case "flame": return "🔥";
       case "broadcast": return "📢";
+      case "social_like": return "❤️";
+      case "social_comment": return "💬";
       default: return "🔔";
     }
   };
@@ -217,6 +219,14 @@ const NotificationCenter = () => {
                         navigate(`/chat/${meta.conversation_id}`);
                       }
                     }
+                     // Navigate to community post on like/comment
+                     if ((n.type === "social_like" || n.type === "social_comment") && (n as any).metadata) {
+                       const meta = (n as any).metadata as any;
+                       if (meta.post_id) {
+                         setOpen(false);
+                         navigate(`/comunidade?post=${meta.post_id}`);
+                       }
+                     }
                   }}
                 >
                   <div className="flex items-start gap-3">
