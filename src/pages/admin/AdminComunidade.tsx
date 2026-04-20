@@ -253,7 +253,7 @@ function PerfisTab() {
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, planner_type, status, bio")
+        .select("id, full_name, avatar_url, planner_type, status")
         .in("planner_type", ["essencial", "constancia", "elite"]);
       if (error) throw error;
 
