@@ -1,91 +1,67 @@
 
 
-## Resposta direta
+## Plano: Correções de Alunas + Painel Admin de Comunidade
 
-**Não.** Hoje as alunas **não recebem nenhuma notificação** quando alguém curte ou comenta nos posts delas. Verifiquei:
+### 1. Correções pontuais nas alunas (via SQL direto)
 
-- `PostCard.tsx` e `PostDetailModal.tsx` apenas inserem em `post_likes` / `post_comments` — sem criar `notifications`.
-- Não existe trigger no banco em `post_likes` ou `post_comments` (consulta retornou vazio).
-- Não há nenhum código no projeto com termos como "curtiu", "comentou" ou similar.
+**Yhanca Nicoly dos Santos Zeferino** (`yhanca.nicoly@outlook.com`)
+- Verificado no banco: `planner_type` já está como `essencial` ✅
+- Posts ativos: 11/04 e 13/04 — **dias ativos preservados** (a contagem é dinâmica via `community_posts`, então mudar liga não apaga histórico)
+- Ação: confirmar `planner_type='essencial'` (idempotente) — sem perda de dados
 
-A única notificação social existente é a de **broadcast** quando a conta oficial ANAAC posta algo (auto-follow no `handle_new_user`).
+**Izalici Gabriela Back Rodrigues** (`izalici.rodrigues06@gmail.com`)
+- Posts existentes: 09, 10, 11, 12, 13, 14, 16/04 — **falta o dia 15/04**
+- Ação: inserir 1 post de sistema com `created_at = 2026-04-15 12:00 BRT`, conteúdo: `"[Registro retroativo - falha técnica do app] Treino realizado ✅"` 
+- Isso adiciona 1 dia ativo ao streak dela automaticamente (lógica do `useStreak` conta dias únicos com post)
 
-## Plano: Notificações de Curtida e Comentário
+### 2. Nova aba Admin → Comunidade (`/admin/comunidade`)
 
-### O que vou criar
+Adicionar item no menu lateral do `AdminLayout.tsx` (ícone `MessagesSquare`) entre "Notificações" e "Logs do Sistema".
 
-**1. Trigger no banco `notify_on_post_like`** (`post_likes` AFTER INSERT)
-- Busca o `user_id` do dono do post via `community_posts`
-- Se `liker ≠ dono`, insere em `notifications`:
-  - `title`: "❤️ Nova curtida"
-  - `body`: "{Nome da pessoa} curtiu seu post"
-  - `type`: "social_like"
-  - `metadata`: `{ post_id, liker_id, trigger: "post_like" }`
-- O trigger existente `trigger_push_on_notification` já dispara push automaticamente
+**Página `src/pages/admin/AdminComunidade.tsx`** com 3 abas internas:
 
-**2. Trigger no banco `notify_on_post_comment`** (`post_comments` AFTER INSERT)
-- Mesma lógica: dono do post recebe notificação
-- `title`: "💬 Novo comentário"
-- `body`: "{Nome} comentou: {primeiros 60 chars}"
-- `type`: "social_comment"
-- `metadata`: `{ post_id, commenter_id }`
-- **Bônus**: se for resposta (`[reply:xxx]`), também notifica o autor do comentário original
+#### Aba 1: Feed Geral
+- Lista paginada de **todos os posts** da comunidade (`community_posts` + join com `profiles` + contagem de likes/comentários)
+- Cada card mostra: avatar, nome, data, conteúdo, imagem (se houver), curtidas, comentários
+- Filtros: por aluna (autocomplete), por período (hoje/7d/30d/tudo), por liga (`planner_type`)
+- Ação por post: **Excluir** (admin pode remover post inadequado) — usando RLS já existente (admin tem permissão via `posts_delete_own` precisa ser ampliada, ou via service-role no client admin)
 
-**3. Anti-spam (debounce de curtidas)**
-- Quando uma aluna curte/descurte/curte de novo em segundos, evita spam:
-- Antes de inserir, deleta notificações `social_like` do mesmo `liker` para o mesmo `post_id` criadas nos últimos 5 minutos e ainda não lidas.
+#### Aba 2: Perfis das Alunas
+- Grid com todas as alunas ativas (avatar + nome + liga + dias ativos + total de posts)
+- Click em uma aluna abre modal com:
+  - Bio do perfil
+  - Histórico de posts (lista cronológica)
+  - Streak atual + total de dias ativos desde 08/04/2026
+  - Última atividade
 
-**4. Deep link no `NotificationCenter.tsx`**
-- Adicionar handler para `type === "social_like"` e `social_comment`: abrir o post na comunidade (modal ou rota `/comunidade?post=xxx`).
-- Ícone próprio para cada tipo (❤️ e 💬).
+#### Aba 3: Rankings das 3 Ligas
+- 3 colunas lado a lado (em mobile: tabs): **Essencial | Constância | Elite**
+- Cada coluna mostra ranking ordenado por dias ativos (lógica idêntica à `useSegmentedRanking` em `Comunidade.tsx`)
+- Mostra posição, avatar, nome, dias ativos
+- Top 3 destacados com pódio (ouro/prata/bronze)
+- Filtro de período: Semanal / Mensal / Tudo
 
-### O que NÃO vou fazer
+### 3. Alterações técnicas
 
-- Não notifico a própria pessoa quando ela curte/comenta no próprio post.
-- Não crio nova tabela — uso `notifications` que já existe e já tem push integrado.
-- Não toco no fluxo de curtir/comentar do front (lógica fica 100% no banco, sem latência extra).
+| Arquivo | Mudança |
+|---|---|
+| `src/pages/admin/AdminComunidade.tsx` | **NOVO** — página com 3 abas |
+| `src/components/admin/AdminLayout.tsx` | Adicionar item "Comunidade" no `navItems` |
+| `src/app/AuthenticatedApp.tsx` | Adicionar rota `/admin/comunidade` |
+| **Migration SQL** | Adicionar policy `posts_delete_admin` em `community_posts` para permitir admin excluir qualquer post |
+| **SQL data-fix** | UPDATE `profiles` Yhanca + INSERT post retroativo Izalici |
 
-### Detalhes técnicos
+### 4. Reaproveitamento
 
-**Migration SQL:**
-```sql
-CREATE OR REPLACE FUNCTION public.notify_on_post_like()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  _post_owner uuid;
-  _liker_name text;
-BEGIN
-  SELECT user_id INTO _post_owner FROM community_posts WHERE id = NEW.post_id;
-  IF _post_owner IS NULL OR _post_owner = NEW.user_id THEN RETURN NEW; END IF;
-  
-  -- anti-spam: remove curtidas recentes não-lidas do mesmo liker
-  DELETE FROM notifications 
-  WHERE user_id = _post_owner AND type = 'social_like' AND read = false
-    AND metadata->>'liker_id' = NEW.user_id::text
-    AND metadata->>'post_id' = NEW.post_id::text
-    AND created_at > now() - interval '5 minutes';
-  
-  SELECT full_name INTO _liker_name FROM profiles WHERE id = NEW.user_id;
-  
-  INSERT INTO notifications (user_id, title, body, type, metadata)
-  VALUES (_post_owner, '❤️ Nova curtida',
-    COALESCE(_liker_name,'Alguém') || ' curtiu seu post',
-    'social_like',
-    jsonb_build_object('post_id', NEW.post_id, 'liker_id', NEW.user_id));
-  RETURN NEW;
-END; $$;
+- Reusar componente `PodiumCard` existente para o pódio dos rankings
+- Reusar lógica de `useSegmentedRanking` (extrair para hook compartilhado `src/hooks/useLeagueRanking.ts`)
+- Reusar `PostCard` adaptado (sem botão de curtir — apenas visualização + excluir)
 
-CREATE TRIGGER tr_notify_on_post_like
-AFTER INSERT ON post_likes FOR EACH ROW EXECUTE FUNCTION notify_on_post_like();
-```
-(Análogo para `post_comments`.)
+### 5. Resultado esperado
 
-**Arquivo a editar:** `src/components/NotificationCenter.tsx` — mapear `social_like`/`social_comment` para emoji e navegação.
-
-### Resultado esperado
-
-- Aluna recebe push + badge no app sempre que alguém curte/comenta seu post
-- Tap na notificação → abre direto no post
-- Sem spam de curte/descurte
-- Aumento esperado de engajamento na comunidade
+- Yhanca consegue usar a liga essencial mantendo seus 2 dias ativos
+- Izalici passa a ter 8 dias ativos (Apr 9-16, exceto buraco preenchido)
+- Admin tem visibilidade total da comunidade num só lugar
+- Admin pode moderar conteúdo (excluir posts ofensivos/spam)
+- Admin vê quem está liderando cada uma das 3 ligas em tempo real
 
