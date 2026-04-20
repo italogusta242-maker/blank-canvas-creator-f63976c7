@@ -362,7 +362,7 @@ function StudentDetailModal({ userId, onClose }: { userId: string | null; onClos
     queryFn: async () => {
       if (!userId) return null;
       const [{ data: profile }, { data: posts }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, avatar_url, planner_type, bio, email").eq("id", userId).single(),
+        supabase.from("profiles").select("id, full_name, avatar_url, planner_type, email").eq("id", userId).single(),
         supabase.from("community_posts").select("id, content, image_url, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
       ]);
       const activeDays = new Set<string>();
@@ -404,10 +404,6 @@ function StudentDetailModal({ userId, onClose }: { userId: string | null; onClos
                 <p className="text-[10px] text-muted-foreground uppercase">dias ativos</p>
               </div>
             </div>
-
-            {data.profile?.bio && (
-              <p className="text-sm text-muted-foreground italic">"{data.profile.bio}"</p>
-            )}
 
             <div>
               <h4 className="text-sm font-bold mb-2 flex items-center gap-2"><Calendar size={14} /> Histórico de Posts ({data.posts.length})</h4>
