@@ -14,6 +14,7 @@ import {
   Trophy,
   Wifi,
   Megaphone,
+  MessagesSquare,
 } from "lucide-react";
 import { useState } from "react";
 import InsanoLogo from "@/components/InsanoLogo";
@@ -34,6 +35,7 @@ const navItems = [
   { title: "Premiações", path: "/admin/premiacoes", icon: Trophy },
   { title: "Pontuação", path: "/admin/pontuacao", icon: ListChecks },
   { title: "Notificações", path: "/admin/avisos", icon: Megaphone },
+  { title: "Comunidade", path: "/admin/comunidade", icon: MessagesSquare },
   { title: "Logs do Sistema", path: "/admin/webhook-logs", icon: Wifi },
 ];
 

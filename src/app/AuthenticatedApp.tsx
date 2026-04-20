@@ -21,6 +21,7 @@ const AdminPremiacoes = lazy(() => import("@/pages/admin/AdminPremiacoes"));
 const AdminWebhookLogs = lazy(() => import("@/pages/admin/AdminWebhookLogs"));
 const AdminAvisos = lazy(() => import("@/pages/admin/AdminAvisos"));
 const AdminPontuacao = lazy(() => import("@/pages/admin/AdminPontuacao"));
+const AdminComunidade = lazy(() => import("@/pages/admin/AdminComunidade"));
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Perfil = lazy(() => import("@/pages/Perfil"));
@@ -111,6 +112,7 @@ const AppRoutes = () => {
             <Route path="/admin/webhook-logs" element={<AdminWebhookLogs />} />
             <Route path="/admin/avisos" element={<AdminAvisos />} />
             <Route path="/admin/pontuacao" element={<AdminPontuacao />} />
+            <Route path="/admin/comunidade" element={<AdminComunidade />} />
           </Route>
         </Route>
 
