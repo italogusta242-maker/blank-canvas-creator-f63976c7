@@ -1,57 +1,91 @@
 
 
-A aluna confirmou: erro "Load failed" no Safari iOS acessando pelo navegador (não PWA). WhatsApp/Instagram funcionam → não é conexão. É o clássico problema de WebKit cancelando fetch ao Supabase em redes móveis com latência alta.
+## Resposta direta
 
-Preciso verificar se `AuthPage.tsx` já usa o `signIn()` do `AuthContext` (que tem timeout 12s) ou faz chamada direta. Vendo o código que tenho em contexto: **já usa `useAuth().signIn`** e **já faz retry em network errors**. Então a infra básica está lá.
+**Não.** Hoje as alunas **não recebem nenhuma notificação** quando alguém curte ou comenta nos posts delas. Verifiquei:
 
-Mas o problema persiste. Preciso entender o que mais pode estar acontecendo no Safari iOS que o retry não cobre.
+- `PostCard.tsx` e `PostDetailModal.tsx` apenas inserem em `post_likes` / `post_comments` — sem criar `notifications`.
+- Não existe trigger no banco em `post_likes` ou `post_comments` (consulta retornou vazio).
+- Não há nenhum código no projeto com termos como "curtiu", "comentou" ou similar.
 
-Hipóteses:
-1. O timeout de 12s no `withTimeout` pode estar sendo derrotado pelo próprio fetch que trava sem retornar — mas `Promise.race` resolve isso
-2. Safari ITP pode estar bloqueando o `localStorage` do Supabase, fazendo a sessão falhar silenciosamente
-3. O AuthContext já tem retry de `getSession` após 1.5s, mas no `signIn` em si o retry só acontece **uma vez** com 800ms — pode não ser suficiente
-4. O Service Worker (`push-handler.js`) pode estar interceptando requests mesmo no navegador (registrado em produção)
+A única notificação social existente é a de **broadcast** quando a conta oficial ANAAC posta algo (auto-follow no `handle_new_user`).
 
-Verificações que preciso fazer:
-- Confirmar se `AuthPage` realmente está usando o retry e timeout corretos (já confirmado pelo contexto)
-- Olhar `main.tsx` para entender o registro do SW
-- Verificar se há algum interceptor/proxy no `client.ts`
+## Plano: Notificações de Curtida e Comentário
 
-Plano de ação concreto, focado e pequeno:
+### O que vou criar
 
-## Plano
+**1. Trigger no banco `notify_on_post_like`** (`post_likes` AFTER INSERT)
+- Busca o `user_id` do dono do post via `community_posts`
+- Se `liker ≠ dono`, insere em `notifications`:
+  - `title`: "❤️ Nova curtida"
+  - `body`: "{Nome da pessoa} curtiu seu post"
+  - `type`: "social_like"
+  - `metadata`: `{ post_id, liker_id, trigger: "post_like" }`
+- O trigger existente `trigger_push_on_notification` já dispara push automaticamente
 
-### Diagnóstico
-A infra de retry já existe (`AuthPage.tsx` faz 1 retry, `AuthContext.signIn` tem timeout 12s). Mas para Safari iOS em 4G isso ainda não é suficiente. Vou:
+**2. Trigger no banco `notify_on_post_comment`** (`post_comments` AFTER INSERT)
+- Mesma lógica: dono do post recebe notificação
+- `title`: "💬 Novo comentário"
+- `body`: "{Nome} comentou: {primeiros 60 chars}"
+- `type`: "social_comment"
+- `metadata`: `{ post_id, commenter_id }`
+- **Bônus**: se for resposta (`[reply:xxx]`), também notifica o autor do comentário original
 
-### Mudanças
+**3. Anti-spam (debounce de curtidas)**
+- Quando uma aluna curte/descurte/curte de novo em segundos, evita spam:
+- Antes de inserir, deleta notificações `social_like` do mesmo `liker` para o mesmo `post_id` criadas nos últimos 5 minutos e ainda não lidas.
 
-**1. `src/pages/AuthPage.tsx` — retry mais agressivo + warmup do endpoint**
-- Aumentar para **2 retries** (em vez de 1) com backoff progressivo (800ms → 1500ms → 2500ms)
-- Antes do primeiro `signIn`, fazer um **warmup GET** ao `/auth/v1/health` do Supabase para "acordar" a conexão TCP/TLS com o domínio (combate o cold-start de DNS/TLS no iOS)
-- Mensagem de erro mais clara dizendo "Tentando reconectar..." durante os retries
-
-**2. `src/contexts/AuthContext.tsx` — aumentar timeout do signIn**
-- Subir `SIGN_IN_TIMEOUT_MS` de 12s para **20s** (Safari iOS em 4G pode levar 15s+ para o handshake TLS na primeira tentativa)
-
-**3. `src/lib/authFailureLog.ts` — usar `sendBeacon` em vez de `supabase.from().insert()`**
-- O log atual depende do mesmo cliente Supabase que está falhando → nunca grava
-- Trocar para `navigator.sendBeacon()` apontando para uma Edge Function pública nova
-- Resultado: vamos finalmente ter logs quando ela falhar
-
-**4. Nova Edge Function `log-auth-failure` (pública, `verify_jwt = false`)**
-- Recebe POST com `{ email, error_message, error_type, user_agent, platform }`
-- Insere em `auth_failure_logs` usando service role
-- Não retorna nada — fire-and-forget via `sendBeacon`
-
-**5. `supabase/config.toml` — registrar a função com `verify_jwt = false`**
+**4. Deep link no `NotificationCenter.tsx`**
+- Adicionar handler para `type === "social_like"` e `social_comment`: abrir o post na comunidade (modal ou rota `/comunidade?post=xxx`).
+- Ícone próprio para cada tipo (❤️ e 💬).
 
 ### O que NÃO vou fazer
-- Não vou adicionar botão "diagnosticar" para a aluna (você pediu pra resolver no backend)
-- Não vou trocar o cliente Supabase nem mexer em `client.ts`
-- Não vou tocar no Service Worker
+
+- Não notifico a própria pessoa quando ela curte/comenta no próprio post.
+- Não crio nova tabela — uso `notifications` que já existe e já tem push integrado.
+- Não toco no fluxo de curtir/comentar do front (lógica fica 100% no banco, sem latência extra).
+
+### Detalhes técnicos
+
+**Migration SQL:**
+```sql
+CREATE OR REPLACE FUNCTION public.notify_on_post_like()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _post_owner uuid;
+  _liker_name text;
+BEGIN
+  SELECT user_id INTO _post_owner FROM community_posts WHERE id = NEW.post_id;
+  IF _post_owner IS NULL OR _post_owner = NEW.user_id THEN RETURN NEW; END IF;
+  
+  -- anti-spam: remove curtidas recentes não-lidas do mesmo liker
+  DELETE FROM notifications 
+  WHERE user_id = _post_owner AND type = 'social_like' AND read = false
+    AND metadata->>'liker_id' = NEW.user_id::text
+    AND metadata->>'post_id' = NEW.post_id::text
+    AND created_at > now() - interval '5 minutes';
+  
+  SELECT full_name INTO _liker_name FROM profiles WHERE id = NEW.user_id;
+  
+  INSERT INTO notifications (user_id, title, body, type, metadata)
+  VALUES (_post_owner, '❤️ Nova curtida',
+    COALESCE(_liker_name,'Alguém') || ' curtiu seu post',
+    'social_like',
+    jsonb_build_object('post_id', NEW.post_id, 'liker_id', NEW.user_id));
+  RETURN NEW;
+END; $$;
+
+CREATE TRIGGER tr_notify_on_post_like
+AFTER INSERT ON post_likes FOR EACH ROW EXECUTE FUNCTION notify_on_post_like();
+```
+(Análogo para `post_comments`.)
+
+**Arquivo a editar:** `src/components/NotificationCenter.tsx` — mapear `social_like`/`social_comment` para emoji e navegação.
 
 ### Resultado esperado
-- 90% dos casos: warmup + retry maior resolve o "Load failed" sem a aluna perceber
-- 10% restantes: vamos finalmente ter log da falha para diagnosticar com precisão
+
+- Aluna recebe push + badge no app sempre que alguém curte/comenta seu post
+- Tap na notificação → abre direto no post
+- Sem spam de curte/descurte
+- Aumento esperado de engajamento na comunidade
 
