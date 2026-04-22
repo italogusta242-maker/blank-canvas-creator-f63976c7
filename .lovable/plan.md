@@ -1,67 +1,63 @@
 
 
-## Plano: Correções de Alunas + Painel Admin de Comunidade
+## Plano: Corrigir bug de timezone no trilho "Esta Semana"
 
-### 1. Correções pontuais nas alunas (via SQL direto)
+### Diagnóstico revisado
 
-**Yhanca Nicoly dos Santos Zeferino** (`yhanca.nicoly@outlook.com`)
-- Verificado no banco: `planner_type` já está como `essencial` ✅
-- Posts ativos: 11/04 e 13/04 — **dias ativos preservados** (a contagem é dinâmica via `community_posts`, então mudar liga não apaga histórico)
-- Ação: confirmar `planner_type='essencial'` (idempotente) — sem perda de dados
+Você confirmou que **os labels dos dias estão corretos** (D S T Q Q S S aparecem nas posições certas). O problema é apenas no **mapeamento dos posts → slot do dia**:
 
-**Izalici Gabriela Back Rodrigues** (`izalici.rodrigues06@gmail.com`)
-- Posts existentes: 09, 10, 11, 12, 13, 14, 16/04 — **falta o dia 15/04**
-- Ação: inserir 1 post de sistema com `created_at = 2026-04-15 12:00 BRT`, conteúdo: `"[Registro retroativo - falha técnica do app] Treino realizado ✅"` 
-- Isso adiciona 1 dia ativo ao streak dela automaticamente (lógica do `useStreak` conta dias únicos com post)
+- Postou ontem (segunda 21h37 BRT) → check apareceu no domingo
+- Postou sábado à noite → slot ficou congelado
 
-### 2. Nova aba Admin → Comunidade (`/admin/comunidade`)
+### Causa raiz
 
-Adicionar item no menu lateral do `AdminLayout.tsx` (ícone `MessagesSquare`) entre "Notificações" e "Logs do Sistema".
+Em `src/pages/Comunidade.tsx` linha 270, a chave de cada slot do trilho é gerada com `toISOString().split("T")[0]`, que retorna data em **UTC**. Como BRT é UTC-3, qualquer abertura do app após 21h faz a data UTC adiantar 1 dia.
 
-**Página `src/pages/admin/AdminComunidade.tsx`** com 3 abas internas:
+Já a comparação dos posts (linha 290) usa `isoToLocalDate()` que retorna data **local BRT correta**. Resultado: os dois lados não casam, o post cai no slot errado (geralmente o anterior).
 
-#### Aba 1: Feed Geral
-- Lista paginada de **todos os posts** da comunidade (`community_posts` + join com `profiles` + contagem de likes/comentários)
-- Cada card mostra: avatar, nome, data, conteúdo, imagem (se houver), curtidas, comentários
-- Filtros: por aluna (autocomplete), por período (hoje/7d/30d/tudo), por liga (`planner_type`)
-- Ação por post: **Excluir** (admin pode remover post inadequado) — usando RLS já existente (admin tem permissão via `posts_delete_own` precisa ser ampliada, ou via service-role no client admin)
+A label visual usa `getDay()` em horário local separadamente, por isso ela continua certa — só o `date` interno está deslocado.
 
-#### Aba 2: Perfis das Alunas
-- Grid com todas as alunas ativas (avatar + nome + liga + dias ativos + total de posts)
-- Click em uma aluna abre modal com:
-  - Bio do perfil
-  - Histórico de posts (lista cronológica)
-  - Streak atual + total de dias ativos desde 08/04/2026
-  - Última atividade
+### Correção em `src/pages/Comunidade.tsx`
 
-#### Aba 3: Rankings das 3 Ligas
-- 3 colunas lado a lado (em mobile: tabs): **Essencial | Constância | Elite**
-- Cada coluna mostra ranking ordenado por dias ativos (lógica idêntica à `useSegmentedRanking` em `Comunidade.tsx`)
-- Mostra posição, avatar, nome, dias ativos
-- Top 3 destacados com pódio (ouro/prata/bronze)
-- Filtro de período: Semanal / Mensal / Tudo
+**1. Importar `toLocalDate`** (já existe `isoToLocalDate` no import de `@/lib/dateUtils`):
+```typescript
+import { isoToLocalDate, toLocalDate } from "@/lib/dateUtils";
+```
 
-### 3. Alterações técnicas
+**2. Geração dos 7 dias em horário local** (linhas 267-271):
+```typescript
+const days = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (6 - i));
+  return { date: toLocalDate(d), obj: d };
+});
+```
+
+**3. Comparação `isPast` baseada em data local** (linhas 300-304):
+```typescript
+const todayLocal = toLocalDate(new Date());
+// dentro do map:
+const isPast = day.date < todayLocal;
+```
+
+**4. Remover exceção de domingo** (linha 305) — você confirmou que pode congelar igual aos outros:
+```typescript
+const frozen = !active && isPast;
+```
+
+### Resultado esperado
+
+- Post feito segunda 21h37 BRT → check aparece no slot **S** (segunda), não mais no domingo
+- Post feito sábado à noite → check aparece no slot **S** (sábado), não mais congelado
+- Domingo congela normalmente quando não há atividade
+- Funciona em qualquer horário do dia, sem deslocamento UTC
+
+### Arquivos modificados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/admin/AdminComunidade.tsx` | **NOVO** — página com 3 abas |
-| `src/components/admin/AdminLayout.tsx` | Adicionar item "Comunidade" no `navItems` |
-| `src/app/AuthenticatedApp.tsx` | Adicionar rota `/admin/comunidade` |
-| **Migration SQL** | Adicionar policy `posts_delete_admin` em `community_posts` para permitir admin excluir qualquer post |
-| **SQL data-fix** | UPDATE `profiles` Yhanca + INSERT post retroativo Izalici |
+| `src/pages/Comunidade.tsx` | Import de `toLocalDate`; geração local dos 7 dias; `isPast` por string local; remoção da exceção `!isSunday` |
 
-### 4. Reaproveitamento
-
-- Reusar componente `PodiumCard` existente para o pódio dos rankings
-- Reusar lógica de `useSegmentedRanking` (extrair para hook compartilhado `src/hooks/useLeagueRanking.ts`)
-- Reusar `PostCard` adaptado (sem botão de curtir — apenas visualização + excluir)
-
-### 5. Resultado esperado
-
-- Yhanca consegue usar a liga essencial mantendo seus 2 dias ativos
-- Izalici passa a ter 8 dias ativos (Apr 9-16, exceto buraco preenchido)
-- Admin tem visibilidade total da comunidade num só lugar
-- Admin pode moderar conteúdo (excluir posts ofensivos/spam)
-- Admin vê quem está liderando cada uma das 3 ligas em tempo real
+Sem mudanças de banco. Mudança isolada de baixo risco — só afeta o trilho visual "Esta Semana".
 
