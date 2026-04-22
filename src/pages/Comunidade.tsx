@@ -14,7 +14,7 @@ import { PodiumCard, type PodiumEntry } from "@/components/community/PodiumCard"
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useStreak } from "@/hooks/useStreak";
-import { isoToLocalDate } from "@/lib/dateUtils";
+import { isoToLocalDate, toLocalDate } from "@/lib/dateUtils";
 
 // ── Plan type map ──
 const PLAN_MAPPING: Record<string, { label: string; color: string }> = {
