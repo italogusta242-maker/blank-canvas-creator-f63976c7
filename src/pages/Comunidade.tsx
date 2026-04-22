@@ -14,7 +14,7 @@ import { PodiumCard, type PodiumEntry } from "@/components/community/PodiumCard"
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useStreak } from "@/hooks/useStreak";
-import { isoToLocalDate } from "@/lib/dateUtils";
+import { isoToLocalDate, toLocalDate } from "@/lib/dateUtils";
 
 // ── Plan type map ──
 const PLAN_MAPPING: Record<string, { label: string; color: string }> = {
@@ -266,8 +266,9 @@ export default function Comunidade() {
       if (!user?.id) return [];
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
+        d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() - (6 - i));
-        return { date: d.toISOString().split("T")[0], obj: d };
+        return { date: toLocalDate(d), obj: d };
       });
       // Fetch posts + workouts for the week — buffer 1 day on each side to capture late-night BRT posts
       // that were stored in UTC of the next/previous day.
@@ -294,15 +295,13 @@ export default function Comunidade() {
       (posts || []).forEach((p: any) => { const d = isoToLocalDate(p.created_at); if (d) activeDays.add(d); });
       (workouts || []).forEach((w: any) => { const d = isoToLocalDate(w.finished_at); if (d) activeDays.add(d); });
       
-      const today = new Date();
-      today.setHours(0,0,0,0);
+      const todayLocal = toLocalDate(new Date());
 
       const DAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
       return days.map((d) => {
         const active = activeDays.has(d.date);
-        const isSunday = d.obj.getDay() === 0;
-        const isPast = d.obj < today;
-        const frozen = !active && isPast && !isSunday;
+        const isPast = d.date < todayLocal;
+        const frozen = !active && isPast;
         const dayLabel = DAY_LABELS[d.obj.getDay()];
         return { date: d.date, active, frozen, dayLabel };
       });
