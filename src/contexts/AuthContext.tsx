@@ -8,8 +8,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  onboarded: boolean;
-  setOnboarded: (v: boolean) => void;
   signUp: (email: string, password: string, name?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -41,7 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [onboarded, setOnboarded] = useState(false);
   const didRedirectRef = useRef(false);
   const isSigningOutRef = useRef(false);
 
@@ -55,7 +52,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setUser(null);
       setSession(null);
-      setOnboarded(false);
       isSigningOutRef.current = false;
       navigate("/", { replace: true });
     }
@@ -149,12 +145,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    const syncSessionState = async (newSession: Session | null, shouldRedirect: boolean) => {
+    const syncSessionState = async (
+      newSession: Session | null,
+      shouldRedirect: boolean,
+      isInitialSession: boolean = false,
+    ) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
       if (!newSession?.user) {
-        setOnboarded(false);
         if (!cancelled) setLoading(false);
         return;
       }
@@ -166,18 +165,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         newSession.user.user_metadata
       );
 
-      setOnboarded(true);
-
       if (!cancelled) setLoading(false);
 
       if (shouldRedirect) {
+        // Boot hardening: if Android WebView (or any platform) restored the
+        // session on a deep student subroute (e.g. /aluno/treinos), force
+        // the user back to the Home (/aluno). Real fresh logins still go
+        // through normal role-based redirect.
+        if (isInitialSession && !didRedirectRef.current) {
+          const path = window.location.pathname;
+          const isDeepStudentRoute =
+            path.startsWith("/aluno/") && path !== "/aluno";
+          if (isDeepStudentRoute) {
+            didRedirectRef.current = true;
+            navigate("/aluno", { replace: true });
+            return;
+          }
+        }
         void checkRoleAndRedirect(newSession.user.id);
       }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        void syncSessionState(newSession, event === "SIGNED_IN" || event === "INITIAL_SESSION");
+        const shouldRedirect =
+          event === "SIGNED_IN" || event === "INITIAL_SESSION";
+        void syncSessionState(
+          newSession,
+          shouldRedirect,
+          event === "INITIAL_SESSION",
+        );
       }
     );
 
@@ -185,7 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .then(({ data: { session: currentSession } }) => {
         if (cancelled) return;
         if (currentSession) {
-          void syncSessionState(currentSession, true);
+          void syncSessionState(currentSession, true, true);
         } else {
           // Safari ITP may clear localStorage before the SDK hydrates.
           // Retry once after a short delay to let Supabase recover tokens.
@@ -194,7 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             void withTimeout(supabase.auth.getSession(), LOADING_TIMEOUT_MS, "getSession-retry")
               .then(({ data: { session: retry } }) => {
                 if (cancelled) return;
-                void syncSessionState(retry, true);
+                void syncSessionState(retry, true, true);
               })
               .catch((err) => {
                 console.error("AuthContext: retry getSession failed", err);
@@ -266,8 +283,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       session,
       loading: isLoading,
-      onboarded,
-      setOnboarded,
       signUp,
       signIn,
       signOut,
