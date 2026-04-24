@@ -1,63 +1,77 @@
 
 
-## Plano: Corrigir bug de timezone no trilho "Esta Semana"
+## Plano: Hardening de boot + faxina de código morto
 
-### Diagnóstico revisado
+### Fase 1 — Forçar Home no boot (resolver bug "abre em Treinos")
 
-Você confirmou que **os labels dos dias estão corretos** (D S T Q Q S S aparecem nas posições certas). O problema é apenas no **mapeamento dos posts → slot do dia**:
+**Arquivo:** `src/contexts/AuthContext.tsx`
 
-- Postou ontem (segunda 21h37 BRT) → check apareceu no domingo
-- Postou sábado à noite → slot ficou congelado
+**Mudança cirúrgica no listener `onAuthStateChange`:**
 
-### Causa raiz
+Hoje o listener trata `INITIAL_SESSION` igual a `SIGNED_IN` e chama `checkRoleAndRedirect`, que **só redireciona se o pathname não estiver em rotas protegidas**. O bug é que `/aluno/treinos` está dentro do guard `StudentGuard`, então o redirect early-returns e a aluna fica presa lá.
 
-Em `src/pages/Comunidade.tsx` linha 270, a chave de cada slot do trilho é gerada com `toISOString().split("T")[0]`, que retorna data em **UTC**. Como BRT é UTC-3, qualquer abertura do app após 21h faz a data UTC adiantar 1 dia.
+**Correção:** quando o evento for `INITIAL_SESSION` (ou seja, sessão restaurada de boot, não login fresco), forçar destino `/aluno` se a aluna estiver em qualquer subrota de `/aluno/*` que **não seja a home**. Login real (`SIGNED_IN`) continua respeitando a rota atual.
 
-Já a comparação dos posts (linha 290) usa `isoToLocalDate()` que retorna data **local BRT correta**. Resultado: os dois lados não casam, o post cai no slot errado (geralmente o anterior).
+**Garantias explícitas (conforme você pediu):**
+- ❌ Não toco em `access_token`
+- ❌ Não toco em `refresh_token`
+- ❌ Não toco em `setSession` / `getSession` / `signInWithPassword`
+- ❌ Não toco no `safetyTimer` nem na lógica de retry
+- ✅ Mexo apenas no branch de redirect dentro do `syncSessionState` quando `event === "INITIAL_SESSION"`
 
-A label visual usa `getDay()` em horário local separadamente, por isso ela continua certa — só o `date` interno está deslocado.
+**Comportamento resultante:**
+- Aluna fecha app em `/aluno/treinos` → reabre → Android tenta restaurar → AuthContext detecta `INITIAL_SESSION` → força `navigate("/aluno", { replace: true })` → cai na Home ✅
+- Admin fecha em `/admin/usuarios` → reabre → continua em `/admin/usuarios` (rota admin, não toca) ✅
+- Aluna faz login na tela de login → vai pra `/aluno` (comportamento já existente) ✅
 
-### Correção em `src/pages/Comunidade.tsx`
+### Fase 2 — Faxina de onboarding morto
 
-**1. Importar `toLocalDate`** (já existe `isoToLocalDate` no import de `@/lib/dateUtils`):
-```typescript
-import { isoToLocalDate, toLocalDate } from "@/lib/dateUtils";
-```
+**Arquivos a remover/limpar:**
+1. **Deletar** `src/pages/Onboarding.tsx` — não está em nenhuma rota, é código órfão.
+2. **Deletar** `src/pages/onboarding/` (pasta inteira: `constants.ts`, `CheckboxGroup.tsx`, `FileUploadField.tsx`, `googleSheetsScript.ts`) se nada mais importar.
+3. **Deletar** `src/lib/submitOnboarding.ts` se nada mais importar.
+4. **Limpar** `AuthContext.tsx`:
+   - Remover state `onboarded` + setter
+   - Remover `setOnboarded(true)` do `syncSessionState`
+   - Remover `onboarded` e `setOnboarded` do `AuthContextType` e do provider value
 
-**2. Geração dos 7 dias em horário local** (linhas 267-271):
-```typescript
-const days = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - (6 - i));
-  return { date: toLocalDate(d), obj: d };
-});
-```
+**O que NÃO removo:**
+- ❌ Coluna `onboarded` na tabela `profiles` (98 perfis dependem; mexer no banco é risco sem ganho)
+- ❌ Coluna referenciada pelo trigger `handle_new_user` (continua setando `onboarded=true` no signup)
 
-**3. Comparação `isPast` baseada em data local** (linhas 300-304):
-```typescript
-const todayLocal = toLocalDate(new Date());
-// dentro do map:
-const isPast = day.date < todayLocal;
-```
+**Verificação obrigatória antes de deletar cada arquivo:** rodar `rg -n "from.*Onboarding"` pra garantir que ninguém importa.
 
-**4. Remover exceção de domingo** (linha 305) — você confirmou que pode congelar igual aos outros:
-```typescript
-const frozen = !active && isPast;
-```
+### Fase 3 — Relatório de danos
 
-### Resultado esperado
+Te entrego no fim:
+1. ✅ Lista exata de arquivos deletados
+2. ✅ Diff resumido do `AuthContext.tsx`
+3. ✅ Confirmação do comportamento esperado
+4. ✅ O que **não** mudou (treinos, exercícios, vídeos, banco, RLS, edge functions)
 
-- Post feito segunda 21h37 BRT → check aparece no slot **S** (segunda), não mais no domingo
-- Post feito sábado à noite → check aparece no slot **S** (sábado), não mais congelado
-- Domingo congela normalmente quando não há atividade
-- Funciona em qualquer horário do dia, sem deslocamento UTC
+### Arquivos afetados
 
-### Arquivos modificados
+| Arquivo | Ação | Risco |
+|---|---|---|
+| `src/contexts/AuthContext.tsx` | Refatorar redirect do `INITIAL_SESSION` + remover `onboarded` state | Baixo (mudança isolada) |
+| `src/pages/Onboarding.tsx` | Deletar | Zero (não usado) |
+| `src/pages/onboarding/*` | Deletar pasta se órfã | Zero |
+| `src/lib/submitOnboarding.ts` | Deletar se órfão | Zero |
 
-| Arquivo | Mudança |
-|---|---|
-| `src/pages/Comunidade.tsx` | Import de `toLocalDate`; geração local dos 7 dias; `isPast` por string local; remoção da exceção `!isSunday` |
+### O que NÃO faço (reforçando seus limites)
+- ❌ Não crio tela "Comece Aqui"
+- ❌ Não mexo em treinos / exercícios / vídeos
+- ❌ Não toco em payment gate (fica pra outro momento)
+- ❌ Não aplico fade-in entre rotas (sem aprovação)
+- ❌ Não mexo em banco / RLS / edge functions
+- ❌ Não toco em fluxo de refresh token
 
-Sem mudanças de banco. Mudança isolada de baixo risco — só afeta o trilho visual "Esta Semana".
+### Como você valida depois
+
+Pede pra uma aluna que tinha o problema:
+1. Fechar PWA completamente
+2. Reabrir
+3. Confirmar que abre na Home (com saudação, planner, chama) — não em Treinos
+
+Se ainda abrir em Treinos = é cache de PWA velho, ela precisa reinstalar. Se abrir na Home = correção funcionou.
 
