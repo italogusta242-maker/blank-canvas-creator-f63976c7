@@ -526,6 +526,7 @@ const Dashboard = () => {
   // ========== DESKTOP LAYOUT ==========
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 relative min-h-screen transition-colors duration-500" style={{ backgroundColor: pageBg }}>
+      <WelcomeModal open={!!showWelcomeModal} onConfirm={handleConfirmWelcome} />
       {/* FlameBanner removed — message now in hero */}
 
       {/* Desktop Header Redesigned */}
