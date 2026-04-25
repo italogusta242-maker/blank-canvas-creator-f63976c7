@@ -30,6 +30,8 @@ import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
 import PushPermissionBanner from "@/components/PushPermissionBanner";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import WelcomeModal from "@/components/WelcomeModal";
+import { toast } from "sonner";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
