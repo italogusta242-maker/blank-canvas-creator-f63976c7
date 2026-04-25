@@ -139,6 +139,23 @@ const Dashboard = () => {
   const { state: flameState, streak, isLoading: isFlameLoading } = useFlameState();
   const adherence = Math.min(100, performanceScore);
 
+  // Welcome modal: shown only on first login (when profile.onboarded === false)
+  const showWelcomeModal =
+    !isProfileLoading && profile && (profile as any).onboarded === false;
+
+  const handleConfirmWelcome = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ onboarded: true })
+      .eq("id", user.id);
+    if (error) {
+      toast.error("Erro ao salvar. Tenta de novo.");
+      throw error;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+  }, [user, queryClient]);
+
   // Real training plan (from useTrainingPlan) for Hero display
   const { data: realTrainingPlan } = useTrainingPlan();
   const currentDayLabel = useMemo(() => {
