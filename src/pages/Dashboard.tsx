@@ -414,6 +414,7 @@ const Dashboard = () => {
   if (isMobile) {
     return (
       <div className="p-4 max-w-lg mx-auto space-y-4 relative min-h-screen transition-colors duration-500" style={{ backgroundColor: pageBg }}>
+        <WelcomeModal open={!!showWelcomeModal} onConfirm={handleConfirmWelcome} />
         {/* FlameBanner removed — message now in hero */}
 
         {/* Header Redesigned */}
