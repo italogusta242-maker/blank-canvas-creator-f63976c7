@@ -1,139 +1,149 @@
-## Plano: Modal "Comece Aqui" — primeiro login da aluna
 
-### Decisões confirmadas
-- ✅ Aparece **só pra alunas novas** (criadas a partir de hoje). As 98 atuais não veem nada.
-- ✅ **Sem vídeo** — só texto explicativo.
-- ✅ **Sem X, sem fechar clicando fora** — único jeito de fechar é o botão "Entendi, vamos começar!".
-- ✅ Aparece **só no Dashboard `/aluno`** (não em subrotas).
+## Plano: Infraestrutura do Diário de Evolução (Frente B — Parte 1)
+
+### Auditoria do que já existe (importante antes de mudar nada)
+
+**Tabela `monthly_assessments` JÁ EXISTE e está em uso ativo:**
+
+Colunas que já estão lá hoje:
+- `id`, `user_id`, `created_at`, `assessed_at`
+- **Peso/medidas:** `peso` (real), `weight` (real, duplicada/legado), `altura`, `body_fat`, `gordura`, `braco`, `cintura`, `coxa`, `quadril`, `peitoral`, `panturrilha`
+- **Fotos (5 ângulos, em PT):** `foto_frente`, `foto_costas`, `foto_lateral`, `foto_lado_direito`, `foto_lado_esquerdo`
+- **JSON livres:** `photos`, `measurements`
+- **Texto:** `notes` ✅ (já existe!)
+- **RLS:** `assess_insert_own`, `assess_select_own`, `assess_update_own` — todas ok, escopo `auth.uid() = user_id`
+
+**Código em produção que já usa essas colunas:**
+- `src/lib/submitMonthlyAssessment.ts` — grava reavaliação (peso, altura, fotos via JSON `photos`)
+- `src/pages/monthly-assessment/MonthlyAssessment.tsx` — formulário de reavaliação mensal completo
+- `src/components/especialista/StudentPhotosPanel.tsx` — lê `foto_frente/costas/lateral/lado_direito/lado_esquerdo`
+- `src/components/especialista/StudentEvolutionChart.tsx` — lê `peso` pra gráfico de evolução
+- `src/pages/especialista/EspecialistaAlunos.tsx` — lista avaliações
+- 4 edge functions (`generate-diet-plan`, `generate-training-plan`, `check-stale-plans`, `admin-delete-user`)
+
+**Bucket `evolution_photos`:** ❌ não existe. Hoje as fotos da reavaliação vão pro bucket público `community_media` (mesmo bucket dos posts da comunidade) — **isso é um problema de privacidade real**.
 
 ---
 
-### Fase 1 — Banco (migration)
+### Decisão crítica: NÃO criar colunas duplicadas
 
-Alterar o trigger `handle_new_user` pra criar perfis novos com `onboarded = false` em vez de `true`.
+O pedido original sugere criar `weight`, `photo_front_url`, `photo_side_url`, `photo_back_url`. Mas:
+
+- `weight` JÁ existe (e há `peso` em paralelo — não vou piorar a duplicação)
+- `photo_front_url` seria duplicata de `foto_frente`
+- `notes` JÁ existe
+
+**O que vou fazer:** reutilizar as colunas que já estão em uso. Sem migration de schema. O Diário de Evolução vai gravar em `peso`, `foto_frente`, `foto_costas`, `foto_lateral`, `notes` — o mesmo schema que a reavaliação mensal usa hoje. Isso garante que o gráfico de evolução, o painel da especialista e as edge functions continuem funcionando sem 1 linha de código alterada.
+
+A única migration nessa fase é **storage**, não schema.
+
+---
+
+### Fase 1 — Bucket privado `evolution_photos` + RLS
+
+**Migration SQL (única):**
 
 ```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, email, status, onboarded)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
-    NEW.email,
-    'ativo',
-    false  -- ⬅️ MUDANÇA: era true, agora false pra disparar o modal
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    full_name = COALESCE(NULLIF(profiles.full_name, ''), EXCLUDED.full_name);
-  -- Resto igual (user_roles + auto-follow ANAAC)
-  ...
-END;
-$$;
+-- 1. Criar bucket privado
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('evolution_photos', 'evolution_photos', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. RLS: aluna só vê/escreve na própria pasta {user_id}/*
+CREATE POLICY "Evolution photos: users read own"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'evolution_photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Evolution photos: users upload own"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'evolution_photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Evolution photos: users update own"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'evolution_photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Evolution photos: users delete own"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'evolution_photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- 3. Admin / Especialista podem LER fotos de qualquer aluna (pra acompanhamento)
+CREATE POLICY "Evolution photos: admin/specialist read all"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'evolution_photos'
+    AND (
+      has_role('admin'::app_role, auth.uid())
+      OR has_role('specialist'::app_role, auth.uid())
+    )
+  );
 ```
 
-**O que NÃO mexo:**
-- ❌ Não altero as 98 alunas atuais (continuam `onboarded = true`)
-- ❌ Não mexo em `AuthContext.tsx` que faz `ensureProfileExists` com `onboarded: true` — ele só roda como fallback se o trigger falhar, e nesse caso é melhor não mostrar modal mesmo
-- ❌ Não toco em `useProactiveAlerts` nem `AdminUsuarios` que leem `onboarded`
-
----
-
-### Fase 2 — Componente do Modal
-
-**Novo arquivo:** `src/components/WelcomeModal.tsx`
-
-Modal simples baseado no `Dialog` do shadcn (que já tem no projeto):
-- Título: "Bem-vinda ao ANAAC Club! 🎯"
-- Texto curto explicando: "Esse é seu ponto de partida. Aqui você acompanha treinos, dieta, sua chama diária e o desafio de 21 dias."
-- Botão único, destaque: **"Entendi, vamos começar!"**
-- **Sem botão X**, **sem fechar com ESC ou clique fora** (configura `onPointerDownOutside={(e) => e.preventDefault()}` e `onEscapeKeyDown={(e) => e.preventDefault()}` no `DialogContent`)
-- Estilo segue o design system atual (light mode, tokens semânticos)
-
-Props:
-```tsx
-interface WelcomeModalProps {
-  open: boolean;
-  onConfirm: () => Promise<void>;  // marca onboarded=true e fecha
-}
+**Estrutura de pastas resultante:**
+```
+evolution_photos/
+  {user_id}/
+    2026-04-25_frente.jpg
+    2026-04-25_costas.jpg
+    2026-04-25_lateral.jpg
 ```
 
----
-
-### Fase 3 — Integração no Dashboard
-
-**Arquivo:** `src/pages/Dashboard.tsx`
-
-Adicionar lógica:
-1. Lê `profile.onboarded` (já vem do `useProfile` hook).
-2. Se `onboarded === false` → renderiza `<WelcomeModal open={true} ... />`.
-3. No `onConfirm` do modal:
-   - Faz `supabase.from("profiles").update({ onboarded: true }).eq("id", user.id)`
-   - Invalida o cache do React Query (`queryClient.invalidateQueries(["profile"])`)
-   - Modal fecha automaticamente porque `profile.onboarded` vira `true`
-
-**Sem flicker:** O `useProfile` já tem estado de loading, e o `Dashboard.tsx` já mostra `<DashboardSkeleton />` enquanto carrega. O modal só renderiza DEPOIS do profile estar pronto, então não pisca.
+**Como o frontend vai acessar (preview/download):**
+Como o bucket é privado, `getPublicUrl` não funciona. Vai usar `createSignedUrl(path, 3600)` — URL temporária de 1h, gerada sob demanda quando a aluna abre o Diário. Já existe esse padrão no projeto pra fotos de chat (`MediaMessage.tsx`).
 
 ---
 
-### Fase 4 — Garantias e o que NÃO faço
+### Fase 2 — Tipagem (zero ação)
 
-**Não mexo:**
-- ❌ Subrotas (`/aluno/treinos`, `/aluno/dieta`, etc.) — modal só no index
-- ❌ Coluna `onboarded` na tabela (já existe)
-- ❌ Lógica de roteamento ou `AuthContext`
-- ❌ Notificações, push, gamificação
-- ❌ Pagamentos, status, expiração
-- ❌ Upload de fotos / Diário de Evolução (isso é o próximo passo, depois de validar esse)
+`src/integrations/supabase/types.ts` é auto-gerado pelo Supabase. Como a tabela `monthly_assessments` já está lá com todas as colunas (incluindo `notes`), não preciso alterar nada. O arquivo vai se atualizar sozinho depois da migration de storage (mas storage não muda tipos).
 
-**Comportamento resultante:**
-| Quem | O que vê |
+---
+
+### Fase 3 — O que NÃO faço nessa frente
+
+❌ Não crio coluna `photo_front_url` / `photo_side_url` / `photo_back_url` — usaria `foto_frente`, `foto_lateral`, `foto_costas`  
+❌ Não crio coluna `weight` (já existe — e tem `peso` em paralelo)  
+❌ Não adiciono `notes` (já existe)  
+❌ Não migro fotos antigas que estão em `community_media` (são da reavaliação mensal antiga, não do Diário)  
+❌ Não crio nenhuma tela ainda (Parte 2 do plano)  
+❌ Não toco no fluxo da reavaliação mensal (`MonthlyAssessment.tsx`) — ele continua usando `community_media`. Se você quiser depois eu migro, mas é outro escopo.
+
+---
+
+### Resultado esperado depois dessa fase
+
+| Item | Status |
 |---|---|
-| Aluna nova (criada após o deploy) | Vê modal na 1ª vez que abrir o Dashboard, marca `onboarded=true`, nunca mais vê |
-| 98 alunas atuais | Continuam normais, nunca veem o modal |
-| Admin / Closer / CS | Não passam pelo `/aluno`, nunca veem |
+| Bucket `evolution_photos` (privado) | ✅ Criado |
+| RLS aluna lê/escreve só `{user_id}/*` | ✅ Configurado |
+| RLS bloqueia acesso público | ✅ Bucket `public=false` + sem policy `anon` |
+| RLS admin/especialista lê tudo | ✅ Configurado |
+| Tabela `monthly_assessments` pronta pra registros do Diário | ✅ Já estava (vai usar `peso`, `foto_frente`, `foto_costas`, `foto_lateral`, `notes`) |
+| Tipagem TS atualizada | ✅ Auto (já contém tudo) |
 
 ---
 
-### Arquivos afetados
+### Pergunta antes do "go"
 
-| Arquivo | Ação | Risco |
-|---|---|---|
-| Migration SQL (trigger `handle_new_user`) | Alterar default `onboarded=true` → `false` | Baixo — só afeta signups futuros |
-| `src/components/WelcomeModal.tsx` | Criar | Zero |
-| `src/pages/Dashboard.tsx` | Adicionar 1 hook + 1 mutation + render condicional do modal | Baixo |
+A reavaliação mensal antiga (`/aluno/avaliacao-mensal`) hoje grava fotos no bucket público `community_media`. Quer que eu **migre essa rota também** pra usar `evolution_photos` privado, ou deixo só pro Diário novo? 
 
----
+- **Opção A:** Só Diário novo usa privado (reavaliação antiga continua pública — risco de privacidade nas 0 fotos atuais)  
+- **Opção B:** Reavaliação mensal também passa a salvar no privado a partir de agora (fotos antigas continuam onde estavam, novas vão pro privado)
 
-### Como você valida depois
-1. Cria uma aluna teste nova pelo `/admin/usuarios`
-2. Faz login com ela
-3. Cai em `/aluno` → modal aparece
-4. Clica "Entendi" → modal fecha, fica na home normal
-5. Recarrega a página → modal **não** reaparece ✅
-6. Faz login com qualquer aluna antiga → modal **não** aparece ✅
-
----
-
-### Pergunta pra você definir antes do "go"
-Qual texto exato você quer no modal? Sugestão de rascunho:
-
-> **Bem-vinda ao ANAAC Club! 🎯**
-> 
-> Esse é seu ponto de partida. Aqui você vai encontrar:
-> - 🔥 Sua chama diária (não pode apagar!)
-> - 💪 Seus treinos personalizados
-> - 🥗 Sua dieta e checklist diário
-> - 🏆 O desafio de 21 dias
-> - 👯 A comunidade de alunas
-> 
-> Bora começar?
-> 
-> [ Entendi, vamos começar! ]
-
-Se quiser mudar o texto/emojis/copy, me passa antes que eu implemento direto. Se tá bom, é só aprovar o plano.
+Recomendo **Opção B**, mas é decisão sua. Se aprovar o plano sem responder, sigo com **Opção A** (escopo mínimo dessa task).
