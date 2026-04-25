@@ -30,6 +30,8 @@ import { DashboardSkeleton } from "@/components/skeletons/AppSkeletons";
 import { useTrainingPlan } from "@/hooks/useTrainingPlan";
 import PushPermissionBanner from "@/components/PushPermissionBanner";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import WelcomeModal from "@/components/WelcomeModal";
+import { toast } from "sonner";
 
 // ── Removed static daily goals config as it is now dynamically fetched per planner ──
 // Limites por grupo (editáveis pelo especialista — mock)
@@ -136,6 +138,23 @@ const Dashboard = () => {
 
   const { state: flameState, streak, isLoading: isFlameLoading } = useFlameState();
   const adherence = Math.min(100, performanceScore);
+
+  // Welcome modal: shown only on first login (when profile.onboarded === false)
+  const showWelcomeModal =
+    !isProfileLoading && profile && (profile as any).onboarded === false;
+
+  const handleConfirmWelcome = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ onboarded: true })
+      .eq("id", user.id);
+    if (error) {
+      toast.error("Erro ao salvar. Tenta de novo.");
+      throw error;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+  }, [user, queryClient]);
 
   // Real training plan (from useTrainingPlan) for Hero display
   const { data: realTrainingPlan } = useTrainingPlan();
@@ -395,6 +414,7 @@ const Dashboard = () => {
   if (isMobile) {
     return (
       <div className="p-4 max-w-lg mx-auto space-y-4 relative min-h-screen transition-colors duration-500" style={{ backgroundColor: pageBg }}>
+        <WelcomeModal open={!!showWelcomeModal} onConfirm={handleConfirmWelcome} />
         {/* FlameBanner removed — message now in hero */}
 
         {/* Header Redesigned */}
@@ -506,6 +526,7 @@ const Dashboard = () => {
   // ========== DESKTOP LAYOUT ==========
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 relative min-h-screen transition-colors duration-500" style={{ backgroundColor: pageBg }}>
+      <WelcomeModal open={!!showWelcomeModal} onConfirm={handleConfirmWelcome} />
       {/* FlameBanner removed — message now in hero */}
 
       {/* Desktop Header Redesigned */}
